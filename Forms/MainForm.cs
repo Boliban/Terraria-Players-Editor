@@ -1,3 +1,4 @@
+using Terraria_Players_Editor.Controls;
 using Terraria_Players_Editor.Models;
 using Terraria_Players_Editor.Services;
 
@@ -75,11 +76,11 @@ public partial class MainForm : Form
 
     private void BuildForm()
     {
-        Text = AppLocale.Get("App.Title");
+        Text = "Terraria Players Editor";
         ClientSize = new Size(1200, 800);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 9f);
-        MinimumSize = new Size(1000, 600);
+        MinimumSize = new Size(800, 500);
 
         BuildMenu();
         BuildStatusBar();
@@ -123,9 +124,7 @@ public partial class MainForm : Form
     {
         tabControl = new TabControl
         {
-            Dock = DockStyle.Fill,
-            Top = menuStrip.Bottom,
-            Height = ClientSize.Height - menuStrip.Height - statusStrip.Height
+            Dock = DockStyle.Fill
         };
 
         tabControl.TabPages.AddRange([
@@ -133,12 +132,10 @@ public partial class MainForm : Form
             BuildStatsTab(),
             BuildAppearanceTab(),
             BuildInventoryTab(),
-            BuildEquipmentTab(),
-            BuildDyesTab(),
+            BuildEquipmentTab(), // Unified: Equipment + Dyes + Loadouts
             BuildStorageTab(),
             BuildBuffsTab(),
             BuildUpgradesTab(),
-            BuildLoadoutsTab(),
             BuildSpawnPointsTab(),
             BuildMiscTab()
         ]);
@@ -277,168 +274,232 @@ public partial class MainForm : Form
     private TabPage BuildInventoryTab()
     {
         tabInventory = new TabPage("Inventory");
-        var mainPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Padding = new Padding(10) };
-        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 75));
-        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+        var split = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            FixedPanel = FixedPanel.Panel1
+        };
 
-        // Upper: DataGridView
-        dgvInventory = CreateItemGrid();
-        mainPanel.Controls.Add(dgvInventory, 0, 0);
+        // === LEFT: Item Browser ===
+        _browserInventory = new ItemBrowser();
+        split.Panel1.Controls.Add(_browserInventory);
 
-        // Lower: Edit panel + Coins/Ammo
-        var bottom = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3 };
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22));
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 23));
+        // === RIGHT: Modifier + Grids ===
+        var right = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Padding = new Padding(5) };
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 140));
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        grpInventoryEdit = new GroupBox { Text = AppLocale.Get("Inventory.EditSlot"), Dock = DockStyle.Fill };
-        cmbItemSearch = new ComboBox { Location = new Point(15, 25), Width = 280, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
-        lblStack = new Label { Text = AppLocale.Get("Inventory.Stack"), Location = new Point(310, 28), Width = 45 };
-        nudStack = new NumericUpDown { Location = new Point(355, 26), Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblPrefix = new Label { Text = AppLocale.Get("Inventory.Prefix"), Location = new Point(15, 55), Width = 45 };
-        cmbPrefix = new ComboBox { Location = new Point(65, 53), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
-        chkFavorite = new CheckBox { Text = AppLocale.Get("Inventory.Favorite"), Location = new Point(240, 54), Width = 80 };
-        btnSetItem = new Button { Text = AppLocale.Get("Inventory.SetItem"), Location = new Point(15, 85), Width = 100 };
-        btnClearItem = new Button { Text = AppLocale.Get("Inventory.ClearSlot"), Location = new Point(125, 85), Width = 100 };
-        btnSetItem.Click += OnInventorySetItem;
-        btnClearItem.Click += OnInventoryClearItem;
-        dgvInventory.SelectionChanged += OnInventorySelectionChanged;
-        grpInventoryEdit.Controls.AddRange([cmbItemSearch, lblStack, nudStack, lblPrefix, cmbPrefix, chkFavorite, btnSetItem, btnClearItem]);
+        _modInventory = new ItemModifier { Dock = DockStyle.Top, ShowStack = true, ShowPrefix = true, ShowFavorite = true };
+        right.Controls.Add(_modInventory, 0, 0);
 
-        grpCoins = new GroupBox { Text = AppLocale.Get("Inventory.Coins"), Dock = DockStyle.Fill };
-        dgvCoins = CreateItemGrid();
-        dgvCoins.Dock = DockStyle.Fill;
-        grpCoins.Controls.Add(dgvCoins);
+        var gridPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Padding = new Padding(0) };
+        gridPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
+        gridPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 10));
+        gridPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
 
-        grpAmmo = new GroupBox { Text = AppLocale.Get("Inventory.Ammo"), Dock = DockStyle.Fill };
-        dgvAmmo = CreateItemGrid();
-        dgvAmmo.Dock = DockStyle.Fill;
-        grpAmmo.Controls.Add(dgvAmmo);
+        _gridInventory = new SlotGrid(10, 5, enableHotbarColor: true);
+        gridPanel.Controls.Add(_gridInventory, 0, 0);
 
-        bottom.Controls.Add(grpInventoryEdit, 0, 0);
-        bottom.Controls.Add(grpCoins, 1, 0);
-        bottom.Controls.Add(grpAmmo, 2, 0);
-        mainPanel.Controls.Add(bottom, 0, 1);
-        tabInventory.Controls.Add(mainPanel);
+        var coinAmmoPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+        _gridCoins = new SlotGrid(4, 1);
+        var grpCoinsNew = new GroupBox { Text = AppLocale.Get("Inventory.Coins"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        grpCoinsNew.Controls.Add(_gridCoins);
+        _gridAmmo = new SlotGrid(4, 1);
+        var grpAmmoNew = new GroupBox { Text = AppLocale.Get("Inventory.Ammo"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        grpAmmoNew.Controls.Add(_gridAmmo);
+        coinAmmoPanel.Controls.AddRange([grpCoinsNew, grpAmmoNew]);
+        gridPanel.Controls.Add(coinAmmoPanel, 0, 2);
+
+        right.Controls.Add(gridPanel, 0, 1);
+        split.Panel2.Controls.Add(right);
+
+        // Events
+        _gridInventory.SlotSelected += (s, idx) => OnInvGridSlotSelected(idx);
+        _gridCoins.SlotSelected += (s, idx) => { _activeSlotGrid = "coins"; };
+        _gridAmmo.SlotSelected += (s, idx) => { _activeSlotGrid = "ammo"; };
+        _browserInventory.ItemSelected += (s, itemId) => OnBrowserItemSelected(itemId);
+        _modInventory.SetClicked += (s, idx) => OnInvModSet(idx);
+        _modInventory.ClearClicked += (s, idx) => OnInvModClear(idx);
+
+        tabInventory.Controls.Add(split);
         return tabInventory;
     }
 
     private TabPage BuildEquipmentTab()
     {
         tabEquipment = new TabPage("Equipment");
-        var mainPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 3, Padding = new Padding(10) };
+        var split = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            FixedPanel = FixedPanel.Panel1
+        };
 
-        grpArmorSlots = new GroupBox { Text = AppLocale.Get("Equip.Armor"), Dock = DockStyle.Fill };
-        cmbArmorSlots = new ComboBox[3];
-        cmbArmorPrefixes = new ComboBox[3];
-        lblEquipArmor = BuildEquipmentGroup(grpArmorSlots, cmbArmorSlots, cmbArmorPrefixes, 3, EquipArmorLabels());
+        // === LEFT: Item Browser (dynamically switches between all/dye-only) ===
+        _browserEquip = new ItemBrowser();
+        split.Panel1.Controls.Add(_browserEquip);
 
-        grpVanityArmorSlots = new GroupBox { Text = AppLocale.Get("Equip.VanityArmor"), Dock = DockStyle.Fill };
-        cmbVanityArmorSlots = new ComboBox[3];
-        cmbVanityArmorPrefixes = new ComboBox[3];
-        lblEquipVanityArmor = BuildEquipmentGroup(grpVanityArmorSlots, cmbVanityArmorSlots, cmbVanityArmorPrefixes, 3, EquipVanityArmorLabels());
+        // === RIGHT: Loadout selector + Modifier + Equipment grid ===
+        var right = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Padding = new Padding(5) };
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));   // Loadout selector
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 140));  // Modifier
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // Grids
 
-        grpAccessorySlots = new GroupBox { Text = AppLocale.Get("Equip.Accessories"), Dock = DockStyle.Fill };
-        cmbAccessorySlots = new ComboBox[7];
-        cmbAccessoryPrefixes = new ComboBox[7];
-        lblEquipAccessory = BuildEquipmentGroup(grpAccessorySlots, cmbAccessorySlots, cmbAccessoryPrefixes, 7,
-            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.Accessory"), i)).ToArray());
+        // Loadout selector
+        _loadoutSelector = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+        _rbLoadout1 = new RadioButton { Text = AppLocale.Get("Loadout.Select1"), Width = 90, Checked = true };
+        _rbLoadout2 = new RadioButton { Text = AppLocale.Get("Loadout.Select2"), Width = 90 };
+        _rbLoadout3 = new RadioButton { Text = AppLocale.Get("Loadout.Select3"), Width = 90 };
+        _rbLoadout1.CheckedChanged += (s, e) => { if (_rbLoadout1.Checked) OnLoadoutSwitch(0); };
+        _rbLoadout2.CheckedChanged += (s, e) => { if (_rbLoadout2.Checked) OnLoadoutSwitch(1); };
+        _rbLoadout3.CheckedChanged += (s, e) => { if (_rbLoadout3.Checked) OnLoadoutSwitch(2); };
+        _loadoutSelector.Controls.AddRange([_rbLoadout1, _rbLoadout2, _rbLoadout3]);
+        right.Controls.Add(_loadoutSelector, 0, 0);
 
-        grpVanityAccessorySlots = new GroupBox { Text = AppLocale.Get("Equip.VanityAccessories"), Dock = DockStyle.Fill };
-        cmbVanityAccessorySlots = new ComboBox[7];
-        cmbVanityAccessoryPrefixes = new ComboBox[7];
-        lblEquipVanityAcc = BuildEquipmentGroup(grpVanityAccessorySlots, cmbVanityAccessorySlots, cmbVanityAccessoryPrefixes, 7,
-            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.VanityAcc"), i)).ToArray());
+        // Modifier
+        _modEquip = new ItemModifier { Dock = DockStyle.Top, ShowStack = false, ShowPrefix = true, ShowFavorite = false };
+        right.Controls.Add(_modEquip, 0, 1);
 
-        grpMiscEquipSlots = new GroupBox { Text = AppLocale.Get("Equip.Misc"), Dock = DockStyle.Fill };
-        cmbMiscEquipSlots = new ComboBox[5];
-        lblEquipMisc = BuildSimpleEquipmentGroup(grpMiscEquipSlots, cmbMiscEquipSlots, 5, MiscEquipNames());
+        // Equipment + Dyes grid area (scrollable)
+        var scrollPanel = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        var equipPanel = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Padding = new Padding(5) };
+        equipPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+        equipPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
 
-        mainPanel.Controls.Add(grpArmorSlots, 0, 0);
-        mainPanel.Controls.Add(grpVanityArmorSlots, 1, 0);
-        mainPanel.Controls.Add(grpAccessorySlots, 0, 1);
-        mainPanel.Controls.Add(grpVanityAccessorySlots, 1, 1);
-        mainPanel.Controls.Add(grpMiscEquipSlots, 0, 2);
-        mainPanel.SetColumnSpan(grpMiscEquipSlots, 2);
+        // Create equipment slot groups (left column)
+        _equipSlots = CreateEquipSection(equipPanel, 0, "Equip.Armor", 3, "EquipArmor");       // Armor 3
+        _vanitySlots = CreateEquipSection(equipPanel, 1, "Equip.VanityArmor", 3, "EquipVanity"); // Vanity 3
+        _accSlots = CreateEquipSection(equipPanel, 2, "Equip.Accessories", 7, "EquipAcc");       // Accessories 7
+        _vaccSlots = CreateEquipSection(equipPanel, 3, "Equip.VanityAccessories", 7, "EquipVAcc"); // Vanity Acc 7
+        _miscSlots = CreateEquipSection(equipPanel, 4, "Equip.Misc", 5, "EquipMisc");           // Equipment 5
 
-        tabEquipment.Controls.Add(mainPanel);
+        // Create dye slot groups (right column)
+        _armorDyeSlots = CreateEquipSection(equipPanel, 5, "Dyes.Armor", 3, "DyeArmor");
+        _accDyeSlots = CreateEquipSection(equipPanel, 6, "Dyes.Accessories", 7, "DyeAcc");
+        _miscDyeSlots = CreateEquipSection(equipPanel, 7, "Dyes.Equipment", 5, "DyeMisc");
+
+        scrollPanel.Controls.Add(equipPanel);
+        right.Controls.Add(scrollPanel, 0, 2);
+        split.Panel2.Controls.Add(right);
+
+        // Events
+        _modEquip.SetClicked += (s, idx) => OnEquipModSet(idx);
+        _modEquip.ClearClicked += (s, idx) => OnEquipModClear(idx);
+        _browserEquip.ItemSelected += (s, itemId) => { if (_activeEquipGrid != null) OnEquipBrowserSelect(itemId); };
+
+        // Wire all equip slot grids to the same handler
+        foreach (var grid in _equipSlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _vanitySlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _accSlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _vaccSlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _miscSlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _armorDyeSlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _accDyeSlots) grid.SlotSelected += OnEquipSlotSelected;
+        foreach (var grid in _miscDyeSlots) grid.SlotSelected += OnEquipSlotSelected;
+
+        tabEquipment.Controls.Add(split);
         return tabEquipment;
     }
 
-    private TabPage BuildDyesTab()
+    /// <summary>Helper to create a GroupBox with a 1-row SlotGrid inside.</summary>
+    private SlotGrid[] CreateEquipSection(TableLayoutPanel parent, int row, string titleKey, int count, string prefix)
     {
-        tabDyes = new TabPage("Dyes");
-        var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10), AutoScroll = true };
-
-        grpArmorDyes = new GroupBox { Text = AppLocale.Get("Dyes.Armor"), Width = 600, Height = 160 };
-        cmbArmorDyeSlots = new ComboBox[3];
-        lblDyeArmor = BuildSimpleEquipmentGroup(grpArmorDyes, cmbArmorDyeSlots, 3, DyeArmorLabels());
-
-        grpAccessoryDyes = new GroupBox { Text = AppLocale.Get("Dyes.Accessories"), Width = 600, Height = 220 };
-        cmbAccessoryDyeSlots = new ComboBox[7];
-        lblDyeAccessory = BuildSimpleEquipmentGroup(grpAccessoryDyes, cmbAccessoryDyeSlots, 7,
-            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.AccDye"), i)).ToArray());
-
-        grpMiscEquipDyes = new GroupBox { Text = AppLocale.Get("Dyes.Equipment"), Width = 600, Height = 180 };
-        cmbMiscEquipDyeSlots = new ComboBox[5];
-        lblDyeMisc = BuildSimpleEquipmentGroup(grpMiscEquipDyes, cmbMiscEquipDyeSlots, 5, DyeMiscLabels());
-
-        mainPanel.Controls.AddRange([grpArmorDyes, grpAccessoryDyes, grpMiscEquipDyes]);
-        tabDyes.Controls.Add(mainPanel);
-        return tabDyes;
+        var grp = new GroupBox { Text = AppLocale.Get(titleKey), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grids = new SlotGrid[1];
+        grids[0] = new SlotGrid(count, 1);
+        grids[0].Tag = prefix; // Tag identifies which section this grid belongs to
+        grp.Controls.Add(grids[0]);
+        parent.Controls.Add(grp, row % 5, row / 5); // Row in 2-column layout
+        return grids;
     }
 
     private TabPage BuildStorageTab()
     {
         tabStorage = new TabPage("Storage");
-        var mainPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Padding = new Padding(10) };
-        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 75));
-        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+        var split = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            FixedPanel = FixedPanel.Panel1
+        };
+
+        _browserStorage = new ItemBrowser();
+        split.Panel1.Controls.Add(_browserStorage);
+
+        var right = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Padding = new Padding(5) };
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 140));
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        _modStorage = new ItemModifier { Dock = DockStyle.Top, ShowStack = true, ShowPrefix = true, ShowFavorite = false };
+        right.Controls.Add(_modStorage, 0, 0);
 
         tabStorageSub = new TabControl { Dock = DockStyle.Fill };
-        subPiggyBank = new TabPage("Piggy Bank");
-        subSafe = new TabPage("Safe");
-        subDefenderForge = new TabPage("Defender's Forge");
-        subVoidVault = new TabPage("Void Vault");
+        subPiggyBank = new TabPage(AppLocale.Get("Storage.PiggyBank"));
+        subSafe = new TabPage(AppLocale.Get("Storage.Safe"));
+        subDefenderForge = new TabPage(AppLocale.Get("Storage.DefenderForge"));
+        subVoidVault = new TabPage(AppLocale.Get("Storage.VoidVault"));
 
-        dgvPiggyBank = CreateItemGrid(); subPiggyBank.Controls.Add(dgvPiggyBank); dgvPiggyBank.Dock = DockStyle.Fill;
-        dgvSafe = CreateItemGrid(); subSafe.Controls.Add(dgvSafe); dgvSafe.Dock = DockStyle.Fill;
-        dgvDefenderForge = CreateItemGrid(); subDefenderForge.Controls.Add(dgvDefenderForge); dgvDefenderForge.Dock = DockStyle.Fill;
-        dgvVoidVault = CreateItemGrid(); subVoidVault.Controls.Add(dgvVoidVault); dgvVoidVault.Dock = DockStyle.Fill;
+        _gridPiggy = new SlotGrid(10, 4); subPiggyBank.Controls.Add(_gridPiggy);
+        _gridSafe = new SlotGrid(10, 4); subSafe.Controls.Add(_gridSafe);
+        _gridDefender = new SlotGrid(10, 4); subDefenderForge.Controls.Add(_gridDefender);
+        _gridVoid = new SlotGrid(10, 4); subVoidVault.Controls.Add(_gridVoid);
+
+        _gridPiggy.SlotSelected += (s, idx) => _activeStorageIdx = idx;
+        _gridSafe.SlotSelected += (s, idx) => _activeStorageIdx = idx;
+        _gridDefender.SlotSelected += (s, idx) => _activeStorageIdx = idx;
+        _gridVoid.SlotSelected += (s, idx) => _activeStorageIdx = idx;
 
         tabStorageSub.TabPages.AddRange([subPiggyBank, subSafe, subDefenderForge, subVoidVault]);
         tabStorageSub.SelectedIndexChanged += OnStorageTabChanged;
+        right.Controls.Add(tabStorageSub, 0, 1);
 
-        grpStorageEdit = new GroupBox { Text = AppLocale.Get("Storage.EditSlot"), Dock = DockStyle.Fill, Height = 130 };
-        cmbStorageItemSearch = new ComboBox { Location = new Point(15, 25), Width = 280, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
-        lblStorageStack = new Label { Text = AppLocale.Get("Inventory.Stack"), Location = new Point(310, 28), Width = 45 };
-        nudStorageStack = new NumericUpDown { Location = new Point(355, 26), Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblStoragePrefix = new Label { Text = AppLocale.Get("Inventory.Prefix"), Location = new Point(15, 55), Width = 45 };
-        cmbStoragePrefix = new ComboBox { Location = new Point(65, 53), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
-        btnStorageSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(15, 85), Width = 80 };
-        btnStorageClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(105, 85), Width = 80 };
-        btnStorageSet.Click += OnStorageSetItem;
-        btnStorageClear.Click += OnStorageClearItem;
-        grpStorageEdit.Controls.AddRange([cmbStorageItemSearch, lblStorageStack, nudStorageStack, lblStoragePrefix, cmbStoragePrefix, btnStorageSet, btnStorageClear]);
+        _browserStorage.ItemSelected += (s, id) => OnStorageBrowserSelect(id);
+        _modStorage.SetClicked += (s, idx) => OnStorageModSet();
+        _modStorage.ClearClicked += (s, idx) => OnStorageModClear();
 
-        mainPanel.Controls.Add(tabStorageSub, 0, 0);
-        mainPanel.Controls.Add(grpStorageEdit, 0, 1);
-        tabStorage.Controls.Add(mainPanel);
+        split.Panel2.Controls.Add(right);
+        tabStorage.Controls.Add(split);
         return tabStorage;
     }
 
     private TabPage BuildBuffsTab()
     {
         tabBuffs = new TabPage("Buffs");
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Padding = new Padding(10) };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(new Label { Text = AppLocale.Get("Buffs.Title"), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-        dgvBuffs = new DataGridView { Dock = DockStyle.Fill, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AllowUserToAddRows = false };
-        dgvBuffs.Columns.Add("Type", AppLocale.Get("Buffs.Type"));
-        dgvBuffs.Columns.Add("Duration", AppLocale.Get("Buffs.Duration"));
-        layout.Controls.Add(dgvBuffs, 0, 1);
-        tabBuffs.Controls.Add(layout);
+        var split = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            FixedPanel = FixedPanel.Panel1
+        };
+
+        _browserBuffs = new ItemBrowser();
+        // TODO: In future, add buff-only filter mode
+        split.Panel1.Controls.Add(_browserBuffs);
+
+        var right = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Padding = new Padding(5) };
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        right.Controls.Add(new Label { Text = AppLocale.Get("Buffs.Title"), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
+
+        // Buff modifier
+        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100 };
+        _lblBuffType = new Label { Text = AppLocale.Get("Buffs.Type"), Location = new Point(5, 5), Width = 70 };
+        _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
+        _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
+        _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
+        _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
+        _btnBuffSet.Click += (s, e) => OnBuffModSet();
+        _btnBuffClear.Click += (s, e) => OnBuffModClear();
+        buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _btnBuffSet, _btnBuffClear]);
+        right.Controls.Add(buffMod, 0, 1);
+
+        _gridBuffs = new SlotGrid(11, 4);
+        _gridBuffs.SlotSelected += (s, idx) => OnBuffSlotSelected(idx);
+        _browserBuffs.ItemSelected += (s, id) => OnBuffBrowserSelect(id);
+        right.Controls.Add(_gridBuffs, 0, 2);
+
+        split.Panel2.Controls.Add(right);
+        tabBuffs.Controls.Add(split);
         return tabBuffs;
     }
 
@@ -472,58 +533,6 @@ public partial class MainForm : Form
 
         tabUpgrades.Controls.Add(mainPanel);
         return tabUpgrades;
-    }
-
-    private TabPage BuildLoadoutsTab()
-    {
-        tabLoadouts = new TabPage("Loadouts");
-        tabLoadoutSub = new TabControl { Dock = DockStyle.Fill };
-
-        subLoadout2 = new TabPage("Loadout 2");
-        subLoadout3 = new TabPage("Loadout 3");
-
-        cmbL2Armor = BuildLoadoutTab(subLoadout2, "Loadout.Select2", out grpLoadout2Boxes, out lblLoadout2Labels);
-        cmbL3Armor = BuildLoadoutTab(subLoadout3, "Loadout.Select3", out grpLoadout3Boxes, out lblLoadout3Labels);
-
-        tabLoadoutSub.TabPages.AddRange([subLoadout2, subLoadout3]);
-        tabLoadouts.Controls.Add(tabLoadoutSub);
-        return tabLoadouts;
-    }
-
-    private ComboBox[] BuildLoadoutTab(TabPage page, string loadoutKey,
-        out GroupBox[] boxes, out Label[][] allLabels)
-    {
-        var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10), AutoScroll = true };
-        string loadoutName = AppLocale.Get(loadoutKey);
-
-        var armor = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.Armor3")}", Width = 700, Height = 140 };
-        var cArmor = new ComboBox[3];
-        var lblArmor = BuildSimpleEquipmentGroup(armor, cArmor, 3, EquipArmorLabels());
-
-        var vanity = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.VanityArmor3")}", Width = 700, Height = 140 };
-        var cVanity = new ComboBox[3];
-        var lblVanity = BuildSimpleEquipmentGroup(vanity, cVanity, 3, EquipVanityArmorLabels());
-
-        var acc = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.Accessories7")}", Width = 700, Height = 200 };
-        var cAcc = new ComboBox[7];
-        var lblAcc = BuildSimpleEquipmentGroup(acc, cAcc, 7,
-            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.Accessory"), i)).ToArray());
-
-        var vanityAcc = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.VanityAccessories7")}", Width = 700, Height = 200 };
-        var cVanityAcc = new ComboBox[7];
-        var lblVanityAcc = BuildSimpleEquipmentGroup(vanityAcc, cVanityAcc, 7,
-            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.VanityAcc"), i)).ToArray());
-
-        var misc = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.Equipment5")}", Width = 700, Height = 160 };
-        var cMisc = new ComboBox[5];
-        var lblMisc = BuildSimpleEquipmentGroup(misc, cMisc, 5, MiscEquipNames());
-
-        mainPanel.Controls.AddRange([armor, vanity, acc, vanityAcc, misc]);
-        page.Controls.Add(mainPanel);
-
-        boxes = [armor, vanity, acc, vanityAcc, misc];
-        allLabels = [lblArmor, lblVanity, lblAcc, lblVanityAcc, lblMisc];
-        return cArmor;
     }
 
     private TabPage BuildSpawnPointsTab()
@@ -572,7 +581,7 @@ public partial class MainForm : Form
             grpHideInfo.Controls.Add(chkHideInfo[i]);
         }
 
-        grpCooldowns = new GroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 400, Height = 130 };
+        grpCooldowns = new GroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 420, Height = 160 };
         lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay"), Location = new Point(15, 30), Width = 110 };
         nudPotionDelay = new NumericUpDown { Location = new Point(120, 28), Width = 120, Minimum = 0, Maximum = int.MaxValue };
         lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay"), Location = new Point(15, 60), Width = 110 };
@@ -691,6 +700,184 @@ public partial class MainForm : Form
 
     #endregion
 
+    #region Event Handlers
+
+    private void OnInvGridSlotSelected(int idx)
+    {
+        _activeSlotGrid = "main";
+        var item = idx < _player!.MainInventory.Count ? _player.MainInventory[idx] : new ItemData();
+        _modInventory.LoadFromSlot(idx, item);
+    }
+
+    private void OnBrowserItemSelected(int itemId)
+    {
+        var item = new ItemData { ItemId = itemId, StackSize = 1 };
+        if (_activeSlotGrid == "main" && _gridInventory.SelectedIndex >= 0)
+        {
+            var idx = _gridInventory.SelectedIndex;
+            if (idx < _player!.MainInventory.Count)
+            {
+                _player.MainInventory[idx] = item;
+                _gridInventory.SetSlot(idx, item);
+                _modInventory.LoadFromSlot(idx, item);
+            }
+        }
+    }
+
+    private void OnInvModSet(int slotIdx)
+    {
+        if (_player == null || slotIdx < 0) return;
+        var item = _modInventory.BuildItemData();
+        if (_activeSlotGrid == "main" && slotIdx < _player.MainInventory.Count)
+        {
+            _player.MainInventory[slotIdx] = item;
+            _gridInventory.SetSlot(slotIdx, item);
+        }
+    }
+
+    private void OnInvModClear(int slotIdx)
+    {
+        if (_player == null || slotIdx < 0) return;
+        if (_activeSlotGrid == "main" && slotIdx < _player.MainInventory.Count)
+        {
+            _player.MainInventory[slotIdx] = new ItemData();
+            _gridInventory.SetSlot(slotIdx, new ItemData());
+        }
+    }
+
+    private void OnLoadoutSwitch(int loadoutIdx)
+    {
+        if (_player == null) return;
+        _activeLoadout = loadoutIdx;
+        switch (loadoutIdx)
+        {
+            case 0:
+                PopulateEquipFromData(_player.Armor, _player.VanityArmor, _player.Accessories,
+                    _player.VanityAccessories, _player.MiscEquips, _player.ArmorDyes, _player.MiscEquipDyes);
+                break;
+            case 1:
+                if (_player.Loadout2 != null)
+                    PopulateEquipFromData(_player.Loadout2.Armor, _player.Loadout2.VanityArmor,
+                        _player.Loadout2.Accessories, _player.Loadout2.VanityAccessories,
+                        _player.Loadout2.MiscEquips, _player.Loadout2.ArmorDyes, _player.Loadout2.MiscEquipDyes);
+                break;
+            case 2:
+                if (_player.Loadout3 != null)
+                    PopulateEquipFromData(_player.Loadout3.Armor, _player.Loadout3.VanityArmor,
+                        _player.Loadout3.Accessories, _player.Loadout3.VanityAccessories,
+                        _player.Loadout3.MiscEquips, _player.Loadout3.ArmorDyes, _player.Loadout3.MiscEquipDyes);
+                break;
+        }
+    }
+
+    private void OnEquipSlotSelected(object? sender, int idx)
+    {
+        if (sender is SlotGrid grid)
+        {
+            _activeEquipGrid = grid;
+            _modEquip.LoadFromSlot(idx, grid.GetItem(idx) ?? new ItemData());
+        }
+    }
+
+    private void OnEquipBrowserSelect(int itemId)
+    {
+        if (_activeEquipGrid == null || _activeEquipGrid.SelectedIndex < 0) return;
+        var idx = _activeEquipGrid.SelectedIndex;
+        var item = new ItemData { ItemId = itemId, StackSize = 1 };
+        _activeEquipGrid.SetSlot(idx, item);
+        _modEquip.LoadFromSlot(idx, item);
+    }
+
+    private void OnEquipModSet(int slotIdx)
+    {
+        if (_activeEquipGrid == null || slotIdx < 0) return;
+        var item = _modEquip.BuildItemData();
+        _activeEquipGrid.SetSlot(slotIdx, item);
+    }
+
+    private void OnEquipModClear(int slotIdx)
+    {
+        if (_activeEquipGrid == null || slotIdx < 0) return;
+        _activeEquipGrid.SetSlot(slotIdx, new ItemData());
+    }
+
+    private void OnStorageBrowserSelect(int itemId)
+    {
+        var activeGrid = GetActiveStorageGrid();
+        if (activeGrid == null || _activeStorageIdx < 0) return;
+        var item = new ItemData { ItemId = itemId, StackSize = 1 };
+        activeGrid.SetSlot(_activeStorageIdx, item);
+        _modStorage.LoadFromSlot(_activeStorageIdx, item);
+    }
+
+    private void OnStorageModSet()
+    {
+        var activeGrid = GetActiveStorageGrid();
+        if (activeGrid == null || _activeStorageIdx < 0) return;
+        var item = _modStorage.BuildItemData();
+        activeGrid.SetSlot(_activeStorageIdx, item);
+    }
+
+    private void OnStorageModClear()
+    {
+        var activeGrid = GetActiveStorageGrid();
+        if (activeGrid == null || _activeStorageIdx < 0) return;
+        activeGrid.SetSlot(_activeStorageIdx, new ItemData());
+    }
+
+    private SlotGrid? GetActiveStorageGrid()
+    {
+        return tabStorageSub.SelectedIndex switch
+        {
+            0 => _gridPiggy,
+            1 => _gridSafe,
+            2 => _gridDefender,
+            3 => _gridVoid,
+            _ => null
+        };
+    }
+
+    private void OnBuffSlotSelected(int idx)
+    {
+        var item = _gridBuffs.GetItem(idx);
+        if (item != null)
+        {
+            _nudBuffType.Value = item.ItemId;
+            _nudBuffDuration.Value = item.StackSize;
+        }
+    }
+
+    private void OnBuffBrowserSelect(int itemId)
+    {
+        if (_gridBuffs.SelectedIndex < 0) return;
+        var idx = _gridBuffs.SelectedIndex;
+        _player!.BuffTypes[idx] = itemId;
+        _gridBuffs.SetSlot(idx, new ItemData { ItemId = itemId, StackSize = (int)_nudBuffDuration.Value });
+        _nudBuffType.Value = itemId;
+    }
+
+    private void OnBuffModSet()
+    {
+        if (_gridBuffs.SelectedIndex < 0) return;
+        var idx = _gridBuffs.SelectedIndex;
+        var type = (int)_nudBuffType.Value;
+        var dur = (int)_nudBuffDuration.Value;
+        _player!.BuffTypes[idx] = type;
+        _player.BuffTimes[idx] = dur;
+        _gridBuffs.SetSlot(idx, new ItemData { ItemId = type, StackSize = dur });
+    }
+
+    private void OnBuffModClear()
+    {
+        if (_gridBuffs.SelectedIndex < 0) return;
+        var idx = _gridBuffs.SelectedIndex;
+        _player!.BuffTypes[idx] = 0;
+        _player.BuffTimes[idx] = 0;
+        _gridBuffs.SetSlot(idx, new ItemData());
+    }
+
+    #endregion
+
     #region Populate / Collect
 
     private void PopulateAllTabs()
@@ -701,7 +888,7 @@ public partial class MainForm : Form
         txtPlayerName.Text = _player.Name;
         cmbDifficulty.SelectedIndex = Math.Clamp((int)_player.Difficulty, 0, 3);
         txtPlayTime.Text = _player.PlayTimeFormatted;
-        txtFileVersion.Text = _player.FileVersion.ToString();
+        txtFileVersion.Text = VersionMapper.GetDisplayString(_player.FileVersion);
         cmbCurrentLoadout.SelectedIndex = Math.Clamp(_player.CurrentLoadout, 0, 2);
 
         // Tab 2: Stats
@@ -727,39 +914,35 @@ public partial class MainForm : Form
         }
         for (int i = 0; i < 10; i++) if (i < _player.Appearance.HideVisual.Length) chkHideVisual[i].Checked = _player.Appearance.HideVisual[i];
 
-        // Tab 4: Inventory
-        PopulateItemGrid(dgvInventory, _player.MainInventory, 50);
-        PopulateItemGrid(dgvCoins, _player.Coins, 4);
-        PopulateItemGrid(dgvAmmo, _player.Ammo, 4);
+        // Tab 1: File version as game version string
+        txtFileVersion.Text = VersionMapper.GetDisplayString(_player.FileVersion);
 
-        // Tab 5: Equipment
-        PopulateEquipmentCombos(cmbArmorSlots, _player.Armor, 3);
-        PopulateEquipmentCombos(cmbVanityArmorSlots, _player.VanityArmor, 3);
-        PopulateEquipmentCombos(cmbAccessorySlots, _player.Accessories, _player.Accessories.Count);
-        PopulateEquipmentCombos(cmbVanityAccessorySlots, _player.VanityAccessories, _player.VanityAccessories.Count);
-        PopulatePrefixCombos(cmbArmorPrefixes, _player.Armor, 3);
-        PopulatePrefixCombos(cmbVanityArmorPrefixes, _player.VanityArmor, 3);
-        PopulatePrefixCombos(cmbAccessoryPrefixes, _player.Accessories, _player.Accessories.Count);
-        PopulatePrefixCombos(cmbVanityAccessoryPrefixes, _player.VanityAccessories, _player.VanityAccessories.Count);
-        PopulateEquipmentCombos(cmbMiscEquipSlots, _player.MiscEquips, 5);
+        // Tab 4: Inventory — SlotGrids
+        _gridInventory.SetItems(_player.MainInventory);
+        _gridCoins.SetItems(_player.Coins);
+        _gridAmmo.SetItems(_player.Ammo);
 
-        // Tab 6: Dyes
-        PopulateEquipmentCombos(cmbArmorDyeSlots, _player.ArmorDyes, 3);
-        PopulateEquipmentCombos(cmbAccessoryDyeSlots, _player.ArmorDyes, 7, 3);
-        PopulateEquipmentCombos(cmbMiscEquipDyeSlots, _player.MiscEquipDyes, 5);
+        // Tab 5: Unified Equipment — load Loadout 1
+        _activeLoadout = 0;
+        _rbLoadout1.Checked = true;
+        PopulateEquipFromData(_player.Armor, _player.VanityArmor, _player.Accessories,
+            _player.VanityAccessories, _player.MiscEquips, _player.ArmorDyes, _player.MiscEquipDyes);
 
-        // Tab 7: Storage
-        PopulateItemGrid(dgvPiggyBank, _player.PiggyBank, 40);
-        PopulateItemGrid(dgvSafe, _player.Safe, 40);
-        PopulateItemGrid(dgvDefenderForge, _player.DefenderForge, 40);
-        PopulateItemGrid(dgvVoidVault, _player.VoidVault, 40);
+        // Tab 6: Storage
+        _gridPiggy.SetItems(_player.PiggyBank);
+        _gridSafe.SetItems(_player.Safe);
+        _gridDefender.SetItems(_player.DefenderForge);
+        _gridVoid.SetItems(_player.VoidVault);
 
-        // Tab 8: Buffs
-        dgvBuffs.Rows.Clear();
+        // Tab 7: Buffs
+        var buffItems = new List<ItemData>(44);
         for (int i = 0; i < 44; i++)
-            dgvBuffs.Rows.Add(_player.BuffTypes[i], _player.BuffTimes[i]);
+        {
+            buffItems.Add(new ItemData { ItemId = _player.BuffTypes[i], StackSize = _player.BuffTimes[i] });
+        }
+        _gridBuffs.SetItems(buffItems);
 
-        // Tab 9: Upgrades
+        // Tab 8: Upgrades
         chkExtraAccessory.Checked = _player.Upgrades.ExtraAccessory;
         chkAegisCrystal.Checked = _player.Upgrades.UsedAegisCrystal;
         chkAegisFruit.Checked = _player.Upgrades.UsedAegisFruit;
@@ -773,26 +956,82 @@ public partial class MainForm : Form
         nudSuperCart.Value = ClampNud(nudSuperCart, _player.Upgrades.UnlockedSuperCart);
         chkSuperCartEnabled.Checked = _player.Upgrades.EnabledSuperCart;
 
-        // Tab 10: Loadouts
-        if (_player.Loadout2 != null) PopulateLoadoutTab(cmbL2Armor, _player.Loadout2);
-        if (_player.Loadout3 != null) PopulateLoadoutTab(cmbL3Armor, _player.Loadout3);
-
-        // Tab 11: Spawn Points
+        // Tab 9: Spawn Points
         dgvSpawnPoints.Rows.Clear();
         foreach (var sp in _player.SpawnPoints)
             dgvSpawnPoints.Rows.Add(sp.WorldId, sp.WorldName, sp.X, sp.Y);
 
-        // Tab 12: Misc
+        // Tab 10: Misc
         chkHotbarLocked.Checked = _player.HotbarLocked;
         for (int i = 0; i < 13; i++) chkHideInfo[i].Checked = i < _player.HideInfo.Length && _player.HideInfo[i];
         nudPotionDelay.Value = ClampNud(nudPotionDelay, _player.PotionDelay);
         nudManaPotionDelay.Value = ClampNud(nudManaPotionDelay, _player.ManaPotionDelay);
         nudRestorationCd.Value = ClampNud(nudRestorationCd, _player.RestorationPotionCd);
 
-        // Populate item combos
-        PopulateAllItemCombos();
+        // Populate item combos in modifiers
+        _modInventory.PopulateItems();
+        _modInventory.PopulatePrefixes();
+        _modEquip.PopulateItems();
+        _modEquip.PopulatePrefixes();
+        _modStorage.PopulateItems();
+        _modStorage.PopulatePrefixes();
+        _browserInventory.LoadItems();
+        _browserEquip.LoadItems();
+        _browserStorage.LoadItems();
+        _browserBuffs.LoadItems();
 
-        statusLabel.Text = string.Format(AppLocale.Get("Status.Loaded"), Path.GetFileName(_filePath ?? "file"), _player.Name, _player.FileVersion);
+        statusLabel.Text = string.Format(AppLocale.Get("Status.Loaded"),
+            Path.GetFileName(_filePath ?? "file"), _player.Name,
+            VersionMapper.GetDisplayString(_player.FileVersion));
+    }
+
+    private void CollectEquipToLoadout()
+    {
+        if (_player == null) return;
+        List<ItemData> armor, vanity, acc, vacc, misc, armorDyes, miscDyes;
+        if (_activeLoadout == 0)
+        {
+            armor = _player.Armor; vanity = _player.VanityArmor; acc = _player.Accessories;
+            vacc = _player.VanityAccessories; misc = _player.MiscEquips;
+            armorDyes = _player.ArmorDyes; miscDyes = _player.MiscEquipDyes;
+        }
+        else if (_activeLoadout == 1 && _player.Loadout2 != null)
+        {
+            armor = _player.Loadout2.Armor; vanity = _player.Loadout2.VanityArmor; acc = _player.Loadout2.Accessories;
+            vacc = _player.Loadout2.VanityAccessories; misc = _player.Loadout2.MiscEquips;
+            armorDyes = _player.Loadout2.ArmorDyes; miscDyes = _player.Loadout2.MiscEquipDyes;
+        }
+        else if (_activeLoadout == 2 && _player.Loadout3 != null)
+        {
+            armor = _player.Loadout3.Armor; vanity = _player.Loadout3.VanityArmor; acc = _player.Loadout3.Accessories;
+            vacc = _player.Loadout3.VanityAccessories; misc = _player.Loadout3.MiscEquips;
+            armorDyes = _player.Loadout3.ArmorDyes; miscDyes = _player.Loadout3.MiscEquipDyes;
+        }
+        else return;
+
+        for (int i = 0; i < _equipSlots[0].Slots.Length && i < armor.Count; i++) armor[i] = _equipSlots[0].Slots[i].Item ?? new ItemData();
+        for (int i = 0; i < _vanitySlots[0].Slots.Length && i < vanity.Count; i++) vanity[i] = _vanitySlots[0].Slots[i].Item ?? new ItemData();
+        for (int i = 0; i < _accSlots[0].Slots.Length && i < acc.Count; i++) acc[i] = _accSlots[0].Slots[i].Item ?? new ItemData();
+        for (int i = 0; i < _vaccSlots[0].Slots.Length && i < vacc.Count; i++) vacc[i] = _vaccSlots[0].Slots[i].Item ?? new ItemData();
+        for (int i = 0; i < _miscSlots[0].Slots.Length && i < misc.Count; i++) misc[i] = _miscSlots[0].Slots[i].Item ?? new ItemData();
+        // Collect dyes
+        for (int i = 0; i < _armorDyeSlots[0].Slots.Length && i < 3; i++) { if (i < armorDyes.Count) armorDyes[i] = _armorDyeSlots[0].Slots[i].Item ?? new ItemData(); }
+        for (int i = 0; i < _accDyeSlots[0].Slots.Length && i < 7; i++) { var idx = i + 3; if (idx < armorDyes.Count) armorDyes[idx] = _accDyeSlots[0].Slots[i].Item ?? new ItemData(); }
+        for (int i = 0; i < _miscDyeSlots[0].Slots.Length && i < miscDyes.Count; i++) miscDyes[i] = _miscDyeSlots[0].Slots[i].Item ?? new ItemData();
+    }
+
+    private void PopulateEquipFromData(List<ItemData> armor, List<ItemData> vanity, List<ItemData> acc,
+        List<ItemData> vacc, List<ItemData> misc, List<ItemData> armorDyes, List<ItemData> miscDyes)
+    {
+        _equipSlots[0].SetItems(armor);
+        _vanitySlots[0].SetItems(vanity);
+        _accSlots[0].SetItems(acc);
+        _vaccSlots[0].SetItems(vacc);
+        _miscSlots[0].SetItems(misc);
+        // ArmorDyes: first 3 = armor dyes, slots 3-9 = accessory dyes
+        _armorDyeSlots[0].SetItems(armorDyes.Take(3).ToList());
+        _accDyeSlots[0].SetItems(armorDyes.Skip(3).Take(7).ToList());
+        _miscDyeSlots[0].SetItems(miscDyes.Take(5).ToList());
     }
 
     private void CollectAllTabs()
@@ -823,31 +1062,27 @@ public partial class MainForm : Form
         var colorProps = new[] { _player.Appearance.HairColor, _player.Appearance.SkinColor, _player.Appearance.EyeColor, _player.Appearance.ShirtColor, _player.Appearance.UnderShirtColor, _player.Appearance.PantsColor, _player.Appearance.ShoeColor };
         for (int i = 0; i < 7; i++) Array.Copy(_tempColors[i], colorProps[i], 3);
 
-        // Tab 4
-        CollectFromGrid(dgvInventory, _player.MainInventory);
-        CollectFromGrid(dgvCoins, _player.Coins);
-        CollectFromGrid(dgvAmmo, _player.Ammo);
+        // Tab 4: Inventory — read from SlotGrids
+        for (int i = 0; i < _gridInventory.Slots.Length && i < _player.MainInventory.Count; i++)
+            _player.MainInventory[i] = _gridInventory.Slots[i].Item ?? new ItemData();
 
-        // Tab 5
-        CollectEquipmentFromCombos(cmbArmorSlots, cmbArmorPrefixes, _player.Armor);
-        CollectEquipmentFromCombos(cmbVanityArmorSlots, cmbVanityArmorPrefixes, _player.VanityArmor);
-        CollectEquipmentFromCombos(cmbAccessorySlots, cmbAccessoryPrefixes, _player.Accessories);
-        CollectEquipmentFromCombos(cmbVanityAccessorySlots, cmbVanityAccessoryPrefixes, _player.VanityAccessories);
-        CollectEquipmentFromCombos(cmbMiscEquipSlots, null, _player.MiscEquips);
+        // Tab 5: Unified Equipment — save to active loadout
+        CollectEquipToLoadout();
 
-        // Tab 6
-        CollectDyesFromCombos(cmbArmorDyeSlots, _player.ArmorDyes, 0, 3);
-        CollectDyesFromCombos(cmbAccessoryDyeSlots, _player.ArmorDyes, 3, 7);
-        CollectEquipmentFromCombos(cmbMiscEquipDyeSlots, null, _player.MiscEquipDyes);
+        // Tab 6: Storage
+        var storageGrid = GetActiveStorageGrid();
+        var storageList = tabStorageSub.SelectedIndex switch { 0 => _player.PiggyBank, 1 => _player.Safe, 2 => _player.DefenderForge, 3 => _player.VoidVault, _ => null };
+        if (storageGrid != null && storageList != null)
+            for (int i = 0; i < storageGrid.Slots.Length && i < storageList.Count; i++)
+                storageList[i] = storageGrid.Slots[i].Item ?? new ItemData();
 
-        // Tab 7
-        CollectFromGrid(dgvPiggyBank, _player.PiggyBank);
-        CollectFromGrid(dgvSafe, _player.Safe);
-        CollectFromGrid(dgvDefenderForge, _player.DefenderForge);
-        CollectFromGrid(dgvVoidVault, _player.VoidVault);
-
-        // Tab 8
-        for (int i = 0; i < 44 && i < dgvBuffs.Rows.Count; i++) { _player.BuffTypes[i] = GetCellInt(dgvBuffs, i, 0); _player.BuffTimes[i] = GetCellInt(dgvBuffs, i, 1); }
+        // Tab 7: Buffs
+        for (int i = 0; i < 44 && i < _gridBuffs.Slots.Length; i++)
+        {
+            var bItem = _gridBuffs.Slots[i].Item;
+            _player.BuffTypes[i] = bItem?.ItemId ?? 0;
+            _player.BuffTimes[i] = bItem?.StackSize ?? 0;
+        }
 
         // Tab 9
         _player.Upgrades.ExtraAccessory = chkExtraAccessory.Checked;
@@ -881,80 +1116,23 @@ public partial class MainForm : Form
 
     #endregion
 
-    #region Event Handlers
+    #region Event Handlers (Legacy)
 
-    private void OnInventorySetItem(object? sender, EventArgs e)
+    private void OnStorageTabChanged(object? sender, EventArgs e)
     {
-        if (_player == null) return;
-        var row = dgvInventory.CurrentRow;
-        if (row == null || row.Index >= _player.MainInventory.Count) return;
-
-        var sel = cmbItemSearch.SelectedItem as ItemDatabase.ItemLookup?;
-        int id = sel?.Id ?? 0;
-        if (sel == null) id = ItemDatabase.FindIdByPartialName(cmbItemSearch.Text);
-
-        var item = _player.MainInventory[row.Index];
-        item.ItemId = id;
-        item.StackSize = (int)nudStack.Value;
-        item.Prefix = (byte)cmbPrefix.SelectedIndex;
-        item.Favorited = chkFavorite.Checked;
-        PopulateItemGrid(dgvInventory, _player.MainInventory, 50);
+        _activeStorageIdx = -1;
+        PopulateStorageModifier();
     }
 
-    private void OnInventoryClearItem(object? sender, EventArgs e)
+    private void PopulateStorageModifier()
     {
-        if (_player == null) return;
-        var row = dgvInventory.CurrentRow;
-        if (row == null || row.Index >= _player.MainInventory.Count) return;
-        _player.MainInventory[row.Index] = new ItemData();
-        PopulateItemGrid(dgvInventory, _player.MainInventory, 50);
-    }
-
-    private void OnInventorySelectionChanged(object? sender, EventArgs e)
-    {
-        if (_player == null) return;
-        var row = dgvInventory.CurrentRow;
-        if (row == null || row.Index >= _player.MainInventory.Count) return;
-        var item = _player.MainInventory[row.Index];
-        cmbItemSearch.Text = item.ItemName;
-        nudStack.Value = item.StackSize;
-        cmbPrefix.SelectedIndex = item.Prefix < cmbPrefix.Items.Count ? item.Prefix : 0;
-        chkFavorite.Checked = item.Favorited;
-    }
-
-    private void OnStorageTabChanged(object? sender, EventArgs e) => _activeStorageGrid = tabStorageSub.SelectedIndex switch { 0 => dgvPiggyBank, 1 => dgvSafe, 2 => dgvDefenderForge, _ => dgvVoidVault };
-
-    private void OnStorageSetItem(object? sender, EventArgs e)
-    {
-        var grid = _activeStorageGrid;
-        if (_player == null || grid == null) return;
-        var row = grid.CurrentRow;
-        if (row == null) return;
-
-        var items = GetStorageList(grid);
-        if (row.Index >= items.Count) return;
-
-        var sel = cmbStorageItemSearch.SelectedItem as ItemDatabase.ItemLookup?;
-        int id = sel?.Id ?? 0;
-        if (sel == null) id = ItemDatabase.FindIdByPartialName(cmbStorageItemSearch.Text);
-
-        var item = items[row.Index];
-        item.ItemId = id;
-        item.StackSize = (int)nudStorageStack.Value;
-        item.Prefix = (byte)cmbStoragePrefix.SelectedIndex;
-        PopulateItemGrid(grid, items, items.Count);
-    }
-
-    private void OnStorageClearItem(object? sender, EventArgs e)
-    {
-        var grid = _activeStorageGrid;
-        if (_player == null || grid == null) return;
-        var row = grid.CurrentRow;
-        if (row == null) return;
-        var items = GetStorageList(grid);
-        if (row.Index >= items.Count) return;
-        items[row.Index] = new ItemData();
-        PopulateItemGrid(grid, items, items.Count);
+        var grid = GetActiveStorageGrid();
+        if (grid != null && _activeStorageIdx >= 0 && _activeStorageIdx < grid.Slots.Length)
+        {
+            var item = grid.Slots[_activeStorageIdx].Item;
+            if (item != null) _modStorage.LoadFromSlot(_activeStorageIdx, item);
+            else _modStorage.LoadFromSlot(_activeStorageIdx, new ItemData());
+        }
     }
 
     private void OnAddSpawnPoint(object? sender, EventArgs e)
@@ -1210,12 +1388,10 @@ public partial class MainForm : Form
         tabStats.Text = L("Tab.Stats");
         tabAppearance.Text = L("Tab.Appearance");
         tabInventory.Text = L("Tab.Inventory");
-        tabEquipment.Text = L("Tab.Equipment");
-        tabDyes.Text = L("Tab.Dyes");
+        tabEquipment.Text = L("Tab.Equipment"); // Unified: Equip + Dyes + Loadouts
         tabStorage.Text = L("Tab.Storage");
         tabBuffs.Text = L("Tab.Buffs");
         tabUpgrades.Text = L("Tab.Upgrades");
-        tabLoadouts.Text = L("Tab.Loadouts");
         tabSpawnPoints.Text = L("Tab.SpawnPoints");
         tabMisc.Text = L("Tab.Misc");
 
@@ -1272,51 +1448,27 @@ public partial class MainForm : Form
                 5 => "VanityLegs", 6 => "Acc1", 7 => "Acc2", 8 => "Acc3", 9 => "Acc4", _ => "Head"
             }}");
 
-        // Tab 4: Inventory
-        grpInventoryEdit.Text = L("Inventory.EditSlot");
-        lblStack.Text = L("Inventory.Stack");
-        lblPrefix.Text = L("Inventory.Prefix");
-        chkFavorite.Text = L("Inventory.Favorite");
-        btnSetItem.Text = L("Inventory.SetItem");
-        btnClearItem.Text = L("Inventory.ClearSlot");
-        grpCoins.Text = L("Inventory.Coins");
-        grpAmmo.Text = L("Inventory.Ammo");
+        // Tab 4: Inventory — refresh modifier
+        _modInventory.RefreshLocale();
 
-        // Tab 5: Equipment
-        grpArmorSlots.Text = L("Equip.Armor");
-        grpVanityArmorSlots.Text = L("Equip.VanityArmor");
-        grpAccessorySlots.Text = L("Equip.Accessories");
-        grpVanityAccessorySlots.Text = L("Equip.VanityAccessories");
-        grpMiscEquipSlots.Text = L("Equip.Misc");
-        RefreshLabels(lblEquipArmor, _keysEquipArmor);
-        RefreshLabels(lblEquipVanityArmor, _keysEquipVanityArmor);
-        RefreshLabels(lblEquipAccessory, _keysEquipAccessory);
-        RefreshLabels(lblEquipVanityAcc, _keysEquipVanityAcc);
-        RefreshLabels(lblEquipMisc, _keysEquipMisc);
+        // Tab 5: Equipment — refresh modifier + loadout selector
+        _modEquip.RefreshLocale();
+        _rbLoadout1.Text = L("Loadout.Select1");
+        _rbLoadout2.Text = L("Loadout.Select2");
+        _rbLoadout3.Text = L("Loadout.Select3");
 
-        // Tab 6: Dyes
-        grpArmorDyes.Text = L("Dyes.Armor");
-        grpAccessoryDyes.Text = L("Dyes.Accessories");
-        grpMiscEquipDyes.Text = L("Dyes.Equipment");
-        RefreshLabels(lblDyeArmor, _keysDyeArmor);
-        RefreshLabels(lblDyeAccessory, _keysDyeAccessory);
-        RefreshLabels(lblDyeMisc, _keysDyeMisc);
-
-        // Tab 7: Storage
+        // Tab 6: Storage — refresh modifier
+        _modStorage.RefreshLocale();
         subPiggyBank.Text = L("Storage.PiggyBank");
         subSafe.Text = L("Storage.Safe");
         subDefenderForge.Text = L("Storage.DefenderForge");
         subVoidVault.Text = L("Storage.VoidVault");
-        grpStorageEdit.Text = L("Storage.EditSlot");
-        lblStorageStack.Text = L("Inventory.Stack");
-        lblStoragePrefix.Text = L("Inventory.Prefix");
-        btnStorageSet.Text = L("Storage.Set");
-        btnStorageClear.Text = L("Storage.Clear");
 
-        // Tab 8: Buffs
-        // (title label text is set in BuildBuffsTab)
-        dgvBuffs.Columns["Type"].HeaderText = L("Buffs.Type");
-        dgvBuffs.Columns["Duration"].HeaderText = L("Buffs.Duration");
+        // Tab 7: Buffs
+        _lblBuffType.Text = L("Buffs.Type");
+        _lblBuffDuration.Text = L("Buffs.Duration");
+        _btnBuffSet.Text = L("Storage.Set");
+        _btnBuffClear.Text = L("Storage.Clear");
 
         // Tab 9: Upgrades
         chkExtraAccessory.Text = L("Upgrades.ExtraAccessory");
@@ -1331,14 +1483,6 @@ public partial class MainForm : Form
         chkUsingBiomeTorches.Text = L("Upgrades.UsingBiomeTorches");
         lblSuperCart.Text = L("Upgrades.SuperCart");
         chkSuperCartEnabled.Text = L("Upgrades.SuperCartEnabled");
-
-        // Tab 10: Loadouts
-        subLoadout2.Text = L("Loadouts.Loadout2");
-        subLoadout3.Text = L("Loadouts.Loadout3");
-
-        // Refresh loadout tab groupboxes and labels
-        RefreshLoadoutGroupBoxes(grpLoadout2Boxes, lblLoadout2Labels, "Loadout.Select2");
-        RefreshLoadoutGroupBoxes(grpLoadout3Boxes, lblLoadout3Labels, "Loadout.Select3");
 
         // Tab 11: Spawn Points
         btnAddSpawn.Text = L("Spawn.Add");
@@ -1370,43 +1514,40 @@ public partial class MainForm : Form
             if (dgv.Columns["Stack"] != null) dgv.Columns["Stack"].HeaderText = L("Grid.Stack");
             if (dgv.Columns["Prefix"] != null) dgv.Columns["Prefix"].HeaderText = L("Grid.Prefix");
         }
-        UpdateGridHeaders(dgvInventory);
-        UpdateGridHeaders(dgvCoins);
-        UpdateGridHeaders(dgvAmmo);
-        UpdateGridHeaders(dgvPiggyBank);
-        UpdateGridHeaders(dgvSafe);
-        UpdateGridHeaders(dgvDefenderForge);
-        UpdateGridHeaders(dgvVoidVault);
-
         // Repopulate data if player is loaded (to refresh item names with new language)
         if (_player != null)
         {
-            PopulateItemGrid(dgvInventory, _player.MainInventory, 50);
-            PopulateItemGrid(dgvCoins, _player.Coins, 4);
-            PopulateItemGrid(dgvAmmo, _player.Ammo, 4);
-            PopulateItemGrid(dgvPiggyBank, _player.PiggyBank, 40);
-            PopulateItemGrid(dgvSafe, _player.Safe, 40);
-            PopulateItemGrid(dgvDefenderForge, _player.DefenderForge, 40);
-            PopulateItemGrid(dgvVoidVault, _player.VoidVault, 40);
-            PopulateAllItemCombos();
-            // Refresh equipment combos
-            PopulateEquipmentCombos(cmbArmorSlots, _player.Armor, 3);
-            PopulateEquipmentCombos(cmbVanityArmorSlots, _player.VanityArmor, 3);
-            PopulateEquipmentCombos(cmbAccessorySlots, _player.Accessories, _player.Accessories.Count);
-            PopulateEquipmentCombos(cmbVanityAccessorySlots, _player.VanityAccessories, _player.VanityAccessories.Count);
-            PopulateEquipmentCombos(cmbMiscEquipSlots, _player.MiscEquips, 5);
-            PopulateEquipmentCombos(cmbArmorDyeSlots, _player.ArmorDyes, 3);
-            PopulateEquipmentCombos(cmbAccessoryDyeSlots, _player.ArmorDyes, 7, 3);
-            PopulateEquipmentCombos(cmbMiscEquipDyeSlots, _player.MiscEquipDyes, 5);
-            PopulatePrefixCombos(cmbArmorPrefixes, _player.Armor, 3);
-            PopulatePrefixCombos(cmbVanityArmorPrefixes, _player.VanityArmor, 3);
-            PopulatePrefixCombos(cmbAccessoryPrefixes, _player.Accessories, _player.Accessories.Count);
-            PopulatePrefixCombos(cmbVanityAccessoryPrefixes, _player.VanityAccessories, _player.VanityAccessories.Count);
+            _gridInventory.SetItems(_player.MainInventory);
+            _gridCoins.SetItems(_player.Coins);
+            _gridAmmo.SetItems(_player.Ammo);
+            _gridPiggy.SetItems(_player.PiggyBank);
+            _gridSafe.SetItems(_player.Safe);
+            _gridDefender.SetItems(_player.DefenderForge);
+            _gridVoid.SetItems(_player.VoidVault);
+            _gridInventory.RefreshAll();
+            _gridCoins.RefreshAll();
+            _gridAmmo.RefreshAll();
+            _gridBuffs.RefreshAll();
+
+            // Refresh equipment with current loadout
+            OnLoadoutSwitch(_activeLoadout);
+
+            // Repopulate browsers and modifiers
+            _modInventory.PopulateItems();
+            _modInventory.PopulatePrefixes();
+            _modEquip.PopulateItems();
+            _modEquip.PopulatePrefixes();
+            _modStorage.PopulateItems();
+            _modStorage.PopulatePrefixes();
+            _browserInventory.RefreshItems();
+            _browserEquip.RefreshItems();
+            _browserStorage.RefreshItems();
+            _browserBuffs.RefreshItems();
         }
 
         // Status bar
         if (_player != null)
-            statusLabel.Text = string.Format(L("Status.Loaded"), Path.GetFileName(_filePath ?? "file"), _player.Name, _player.FileVersion);
+            statusLabel.Text = string.Format(L("Status.Loaded"), Path.GetFileName(_filePath ?? "file"), _player.Name, VersionMapper.GetDisplayString(_player.FileVersion));
         else
             statusLabel.Text = L("Status.Ready");
     }
