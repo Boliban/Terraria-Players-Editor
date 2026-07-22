@@ -1,4 +1,5 @@
 namespace Terraria_Players_Editor.Models;
+using Terraria_Players_Editor.Services;
 
 /// <summary>
 /// Loads and queries the embedded Terraria item database (items.json).
@@ -43,11 +44,20 @@ public static class ItemDatabase
         }
     }
 
-    /// <summary>Get item name by ID. Returns "Unknown(N)" if not found.</summary>
+    /// <summary>Get item name by ID. Returns "(empty)" or "Unknown(N)" if not found.
+    /// Automatically uses Chinese name when AppLocale is set to ZH and translation exists.</summary>
     public static string GetName(int id)
     {
-        if (id == 0) return "(empty)";
-        return IdToName.TryGetValue(id, out var name) ? name : $"Unknown({id})";
+        if (id == 0) return AppLocale.Current == AppLocale.Lang.ZH ? "(空)" : "(empty)";
+        if (!IdToName.TryGetValue(id, out var enName))
+            return $"Unknown({id})";
+
+        if (AppLocale.Current == AppLocale.Lang.ZH)
+        {
+            var zhName = GameLocaleLoader.GetItemName(enName);
+            if (zhName != null) return zhName;
+        }
+        return enName;
     }
 
     /// <summary>Get item ID by name. Returns -1 if not found.</summary>
