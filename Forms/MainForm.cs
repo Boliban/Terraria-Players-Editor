@@ -114,16 +114,16 @@ public partial class MainForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        lblPlayerName = new Label { Text = "Name:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+        lblPlayerName = new Label { Text = AppLocale.Get("Info.Name"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         txtPlayerName = new TextBox { Dock = DockStyle.Left, Width = 300 };
-        lblDifficulty = new Label { Text = "Difficulty:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+        lblDifficulty = new Label { Text = AppLocale.Get("Info.Difficulty"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         cmbDifficulty = new ComboBox { Dock = DockStyle.Left, Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbDifficulty.Items.AddRange(DifficultyNames());
-        lblPlayTime = new Label { Text = "Play Time:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+        lblPlayTime = new Label { Text = AppLocale.Get("Info.PlayTime"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         txtPlayTime = new TextBox { Dock = DockStyle.Left, Width = 150, ReadOnly = true };
-        lblFileVersion = new Label { Text = "File Version:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+        lblFileVersion = new Label { Text = AppLocale.Get("Info.FileVersion"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         txtFileVersion = new TextBox { Dock = DockStyle.Left, Width = 100, ReadOnly = true };
-        lblLoadout = new Label { Text = "Active Loadout:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+        lblLoadout = new Label { Text = AppLocale.Get("Info.Loadout"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         cmbCurrentLoadout = new ComboBox { Dock = DockStyle.Left, Width = 120, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbCurrentLoadout.Items.AddRange(["Loadout 1", "Loadout 2", "Loadout 3"]);
 
@@ -142,30 +142,30 @@ public partial class MainForm : Form
         tabStats = new TabPage("Stats");
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20) };
 
-        grpHealth = new GroupBox { Text = "Health", Width = 350, Height = 100 };
-        lblHealth = new Label { Text = "Current:", Location = new Point(15, 30), Width = 70 };
+        grpHealth = new GroupBox { Text = AppLocale.Get("Stats.Health"), Width = 350, Height = 100 };
+        lblHealth = new Label { Text = AppLocale.Get("Stats.Current"), Location = new Point(15, 30), Width = 70 };
         nudHealth = new NumericUpDown { Location = new Point(90, 28), Width = 100, Minimum = 0, Maximum = 600 };
-        lblMaxHealth = new Label { Text = "Max:", Location = new Point(210, 30), Width = 40 };
+        lblMaxHealth = new Label { Text = AppLocale.Get("Stats.Max"), Location = new Point(210, 30), Width = 40 };
         nudMaxHealth = new NumericUpDown { Location = new Point(250, 28), Width = 80, Minimum = 100, Maximum = 600, Increment = 20 };
         grpHealth.Controls.AddRange([lblHealth, nudHealth, lblMaxHealth, nudMaxHealth]);
 
-        grpMana = new GroupBox { Text = "Mana", Width = 350, Height = 100 };
-        lblMana = new Label { Text = "Current:", Location = new Point(15, 30), Width = 70 };
+        grpMana = new GroupBox { Text = AppLocale.Get("Stats.Mana"), Width = 350, Height = 100 };
+        lblMana = new Label { Text = AppLocale.Get("Stats.Current"), Location = new Point(15, 30), Width = 70 };
         nudMana = new NumericUpDown { Location = new Point(90, 28), Width = 100, Minimum = 0, Maximum = 400 };
-        lblMaxMana = new Label { Text = "Max:", Location = new Point(210, 30), Width = 40 };
+        lblMaxMana = new Label { Text = AppLocale.Get("Stats.Max"), Location = new Point(210, 30), Width = 40 };
         nudMaxMana = new NumericUpDown { Location = new Point(250, 28), Width = 80, Minimum = 0, Maximum = 400, Increment = 20 };
         grpMana.Controls.AddRange([lblMana, nudMana, lblMaxMana, nudMaxMana]);
 
-        grpCounters = new GroupBox { Text = "Counters", Width = 350, Height = 210 };
-        lblDeathsPvE = new Label { Text = "Deaths (PvE):", Location = new Point(15, 30), Width = 100 };
+        grpCounters = new GroupBox { Text = AppLocale.Get("Stats.Counters"), Width = 350, Height = 210 };
+        lblDeathsPvE = new Label { Text = AppLocale.Get("Stats.DeathsPvE"), Location = new Point(15, 30), Width = 100 };
         nudDeathsPvE = new NumericUpDown { Location = new Point(120, 28), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblDeathsPvP = new Label { Text = "Deaths (PvP):", Location = new Point(15, 60), Width = 100 };
+        lblDeathsPvP = new Label { Text = AppLocale.Get("Stats.DeathsPvP"), Location = new Point(15, 60), Width = 100 };
         nudDeathsPvP = new NumericUpDown { Location = new Point(120, 58), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblTaxMoney = new Label { Text = "Tax Money:", Location = new Point(15, 90), Width = 100 };
+        lblTaxMoney = new Label { Text = AppLocale.Get("Stats.TaxMoney"), Location = new Point(15, 90), Width = 100 };
         nudTaxMoney = new NumericUpDown { Location = new Point(120, 88), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblAnglerQuests = new Label { Text = "Angler Quests:", Location = new Point(15, 120), Width = 100 };
+        lblAnglerQuests = new Label { Text = AppLocale.Get("Stats.AnglerQuests"), Location = new Point(15, 120), Width = 100 };
         nudAnglerQuests = new NumericUpDown { Location = new Point(120, 118), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblGolferScore = new Label { Text = "Golfer Score:", Location = new Point(15, 150), Width = 100 };
+        lblGolferScore = new Label { Text = AppLocale.Get("Stats.GolferScore"), Location = new Point(15, 150), Width = 100 };
         nudGolferScore = new NumericUpDown { Location = new Point(120, 148), Width = 100, Minimum = 0, Maximum = int.MaxValue };
         grpCounters.Controls.AddRange([lblDeathsPvE, nudDeathsPvE, lblDeathsPvP, nudDeathsPvP, lblTaxMoney, nudTaxMoney, lblAnglerQuests, nudAnglerQuests, lblGolferScore, nudGolferScore]);
 
@@ -187,17 +187,17 @@ public partial class MainForm : Form
 
         // Hair & Skin row
         var topRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Height = 40, Width = 1100 };
-        lblHairStyle = new Label { Text = "Hair Style:", Width = 70, TextAlign = ContentAlignment.MiddleRight };
+        lblHairStyle = new Label { Text = AppLocale.Get("Appearance.HairStyle"), Width = 70, TextAlign = ContentAlignment.MiddleRight };
         nudHairStyle = new NumericUpDown { Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblHairDye = new Label { Text = "Hair Dye:", Width = 70, TextAlign = ContentAlignment.MiddleRight };
+        lblHairDye = new Label { Text = AppLocale.Get("Appearance.HairDye"), Width = 70, TextAlign = ContentAlignment.MiddleRight };
         nudHairDye = new NumericUpDown { Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblSkinVariant = new Label { Text = "Skin:", Width = 50, TextAlign = ContentAlignment.MiddleRight };
+        lblSkinVariant = new Label { Text = AppLocale.Get("Appearance.Skin"), Width = 50, TextAlign = ContentAlignment.MiddleRight };
         cmbSkinVariant = new ComboBox { Width = 100, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbSkinVariant.Items.AddRange(["Female", "Male"]);
         topRow.Controls.AddRange([lblHairStyle, nudHairStyle, lblHairDye, nudHairDye, lblSkinVariant, cmbSkinVariant]);
 
         // Color pickers
-        grpColors = new GroupBox { Text = "Colors", Width = 800, Height = 160 };
+        grpColors = new GroupBox { Text = AppLocale.Get("Appearance.Colors"), Width = 800, Height = 160 };
         colorButtons = new Button[7];
         colorPanels = new Panel[7];
         _tempColors = new byte[7][];
@@ -208,14 +208,14 @@ public partial class MainForm : Form
             int y = 25 + (i / 4) * 60;
             var lbl = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
             colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White };
-            colorButtons[i] = new Button { Text = "Pick...", Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
+            colorButtons[i] = new Button { Text = AppLocale.Get("Appearance.Pick"), Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
             int idx = i;
             colorButtons[i].Click += (_, _) => PickColor(idx);
             grpColors.Controls.AddRange([lbl, colorPanels[i], colorButtons[i]]);
         }
 
         // Visibility toggles
-        grpVisibility = new GroupBox { Text = "Visibility Toggles", Width = 800, Height = 100 };
+        grpVisibility = new GroupBox { Text = AppLocale.Get("Appearance.Visibility"), Width = 800, Height = 100 };
         chkHideVisual = new CheckBox[10];
         chkHideMisc = new CheckBox[5];
         for (int i = 0; i < 10; i++)
@@ -246,26 +246,26 @@ public partial class MainForm : Form
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22));
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 23));
 
-        grpInventoryEdit = new GroupBox { Text = "Edit Selected Slot", Dock = DockStyle.Fill };
+        grpInventoryEdit = new GroupBox { Text = AppLocale.Get("Inventory.EditSlot"), Dock = DockStyle.Fill };
         cmbItemSearch = new ComboBox { Location = new Point(15, 25), Width = 280, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
-        lblStack = new Label { Text = "Stack:", Location = new Point(310, 28), Width = 45 };
+        lblStack = new Label { Text = AppLocale.Get("Inventory.Stack"), Location = new Point(310, 28), Width = 45 };
         nudStack = new NumericUpDown { Location = new Point(355, 26), Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblPrefix = new Label { Text = "Prefix:", Location = new Point(15, 55), Width = 45 };
+        lblPrefix = new Label { Text = AppLocale.Get("Inventory.Prefix"), Location = new Point(15, 55), Width = 45 };
         cmbPrefix = new ComboBox { Location = new Point(65, 53), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
-        chkFavorite = new CheckBox { Text = "Favorite", Location = new Point(240, 54), Width = 80 };
-        btnSetItem = new Button { Text = "Set Item", Location = new Point(15, 85), Width = 100 };
-        btnClearItem = new Button { Text = "Clear Slot", Location = new Point(125, 85), Width = 100 };
+        chkFavorite = new CheckBox { Text = AppLocale.Get("Inventory.Favorite"), Location = new Point(240, 54), Width = 80 };
+        btnSetItem = new Button { Text = AppLocale.Get("Inventory.SetItem"), Location = new Point(15, 85), Width = 100 };
+        btnClearItem = new Button { Text = AppLocale.Get("Inventory.ClearSlot"), Location = new Point(125, 85), Width = 100 };
         btnSetItem.Click += OnInventorySetItem;
         btnClearItem.Click += OnInventoryClearItem;
         dgvInventory.SelectionChanged += OnInventorySelectionChanged;
         grpInventoryEdit.Controls.AddRange([cmbItemSearch, lblStack, nudStack, lblPrefix, cmbPrefix, chkFavorite, btnSetItem, btnClearItem]);
 
-        grpCoins = new GroupBox { Text = "Coins", Dock = DockStyle.Fill };
+        grpCoins = new GroupBox { Text = AppLocale.Get("Inventory.Coins"), Dock = DockStyle.Fill };
         dgvCoins = CreateItemGrid();
         dgvCoins.Dock = DockStyle.Fill;
         grpCoins.Controls.Add(dgvCoins);
 
-        grpAmmo = new GroupBox { Text = "Ammo", Dock = DockStyle.Fill };
+        grpAmmo = new GroupBox { Text = AppLocale.Get("Inventory.Ammo"), Dock = DockStyle.Fill };
         dgvAmmo = CreateItemGrid();
         dgvAmmo.Dock = DockStyle.Fill;
         grpAmmo.Controls.Add(dgvAmmo);
@@ -283,27 +283,27 @@ public partial class MainForm : Form
         tabEquipment = new TabPage("Equipment");
         var mainPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 3, Padding = new Padding(10) };
 
-        grpArmorSlots = new GroupBox { Text = "Armor (3)", Dock = DockStyle.Fill };
+        grpArmorSlots = new GroupBox { Text = AppLocale.Get("Equip.Armor"), Dock = DockStyle.Fill };
         cmbArmorSlots = new ComboBox[3];
         cmbArmorPrefixes = new ComboBox[3];
         BuildEquipmentGroup(grpArmorSlots, cmbArmorSlots, cmbArmorPrefixes, 3, ["Helmet", "Chestplate", "Leggings"]);
 
-        grpVanityArmorSlots = new GroupBox { Text = "Vanity Armor (3)", Dock = DockStyle.Fill };
+        grpVanityArmorSlots = new GroupBox { Text = AppLocale.Get("Equip.VanityArmor"), Dock = DockStyle.Fill };
         cmbVanityArmorSlots = new ComboBox[3];
         cmbVanityArmorPrefixes = new ComboBox[3];
         BuildEquipmentGroup(grpVanityArmorSlots, cmbVanityArmorSlots, cmbVanityArmorPrefixes, 3, ["Vanity Helmet", "Vanity Chest", "Vanity Legs"]);
 
-        grpAccessorySlots = new GroupBox { Text = "Accessories (7)", Dock = DockStyle.Fill };
+        grpAccessorySlots = new GroupBox { Text = AppLocale.Get("Equip.Accessories"), Dock = DockStyle.Fill };
         cmbAccessorySlots = new ComboBox[7];
         cmbAccessoryPrefixes = new ComboBox[7];
         BuildEquipmentGroup(grpAccessorySlots, cmbAccessorySlots, cmbAccessoryPrefixes, 7);
 
-        grpVanityAccessorySlots = new GroupBox { Text = "Vanity Accessories (7)", Dock = DockStyle.Fill };
+        grpVanityAccessorySlots = new GroupBox { Text = AppLocale.Get("Equip.VanityAccessories"), Dock = DockStyle.Fill };
         cmbVanityAccessorySlots = new ComboBox[7];
         cmbVanityAccessoryPrefixes = new ComboBox[7];
         BuildEquipmentGroup(grpVanityAccessorySlots, cmbVanityAccessorySlots, cmbVanityAccessoryPrefixes, 7);
 
-        grpMiscEquipSlots = new GroupBox { Text = "Equipment (Pet, Light Pet, Minecart, Mount, Hook)", Dock = DockStyle.Fill };
+        grpMiscEquipSlots = new GroupBox { Text = AppLocale.Get("Equip.Misc"), Dock = DockStyle.Fill };
         cmbMiscEquipSlots = new ComboBox[5];
         BuildSimpleEquipmentGroup(grpMiscEquipSlots, cmbMiscEquipSlots, 5, MiscEquipNames());
 
@@ -323,15 +323,15 @@ public partial class MainForm : Form
         tabDyes = new TabPage("Dyes");
         var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10), AutoScroll = true };
 
-        grpArmorDyes = new GroupBox { Text = "Armor Dyes (3)", Width = 600, Height = 160 };
+        grpArmorDyes = new GroupBox { Text = AppLocale.Get("Dyes.Armor"), Width = 600, Height = 160 };
         cmbArmorDyeSlots = new ComboBox[3];
         BuildSimpleEquipmentGroup(grpArmorDyes, cmbArmorDyeSlots, 3, ["Helmet Dye", "Chestplate Dye", "Leggings Dye"]);
 
-        grpAccessoryDyes = new GroupBox { Text = "Accessory Dyes (7)", Width = 600, Height = 220 };
+        grpAccessoryDyes = new GroupBox { Text = AppLocale.Get("Dyes.Accessories"), Width = 600, Height = 220 };
         cmbAccessoryDyeSlots = new ComboBox[7];
         BuildSimpleEquipmentGroup(grpAccessoryDyes, cmbAccessoryDyeSlots, 7);
 
-        grpMiscEquipDyes = new GroupBox { Text = "Equipment Dyes (5)", Width = 600, Height = 180 };
+        grpMiscEquipDyes = new GroupBox { Text = AppLocale.Get("Dyes.Equipment"), Width = 600, Height = 180 };
         cmbMiscEquipDyeSlots = new ComboBox[5];
         BuildSimpleEquipmentGroup(grpMiscEquipDyes, cmbMiscEquipDyeSlots, 5, MiscEquipNames().Select(n => n + " Dye").ToArray());
 
@@ -361,14 +361,14 @@ public partial class MainForm : Form
         tabStorageSub.TabPages.AddRange([subPiggyBank, subSafe, subDefenderForge, subVoidVault]);
         tabStorageSub.SelectedIndexChanged += OnStorageTabChanged;
 
-        grpStorageEdit = new GroupBox { Text = "Edit Storage Slot", Dock = DockStyle.Fill, Height = 130 };
+        grpStorageEdit = new GroupBox { Text = AppLocale.Get("Storage.EditSlot"), Dock = DockStyle.Fill, Height = 130 };
         cmbStorageItemSearch = new ComboBox { Location = new Point(15, 25), Width = 280, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
-        lblStorageStack = new Label { Text = "Stack:", Location = new Point(310, 28), Width = 45 };
+        lblStorageStack = new Label { Text = AppLocale.Get("Inventory.Stack"), Location = new Point(310, 28), Width = 45 };
         nudStorageStack = new NumericUpDown { Location = new Point(355, 26), Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblStoragePrefix = new Label { Text = "Prefix:", Location = new Point(15, 55), Width = 45 };
+        lblStoragePrefix = new Label { Text = AppLocale.Get("Inventory.Prefix"), Location = new Point(15, 55), Width = 45 };
         cmbStoragePrefix = new ComboBox { Location = new Point(65, 53), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
-        btnStorageSet = new Button { Text = "Set", Location = new Point(15, 85), Width = 80 };
-        btnStorageClear = new Button { Text = "Clear", Location = new Point(105, 85), Width = 80 };
+        btnStorageSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(15, 85), Width = 80 };
+        btnStorageClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(105, 85), Width = 80 };
         btnStorageSet.Click += OnStorageSetItem;
         btnStorageClear.Click += OnStorageClearItem;
         grpStorageEdit.Controls.AddRange([cmbStorageItemSearch, lblStorageStack, nudStorageStack, lblStoragePrefix, cmbStoragePrefix, btnStorageSet, btnStorageClear]);
@@ -385,10 +385,10 @@ public partial class MainForm : Form
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Padding = new Padding(10) };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(new Label { Text = "Active Buffs (44 slots) — Edit Type ID and Duration in ticks below:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
+        layout.Controls.Add(new Label { Text = AppLocale.Get("Buffs.Title"), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
         dgvBuffs = new DataGridView { Dock = DockStyle.Fill, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AllowUserToAddRows = false };
-        dgvBuffs.Columns.Add("Type", "Buff Type ID");
-        dgvBuffs.Columns.Add("Duration", "Duration (ticks)");
+        dgvBuffs.Columns.Add("Type", AppLocale.Get("Buffs.Type"));
+        dgvBuffs.Columns.Add("Duration", AppLocale.Get("Buffs.Duration"));
         layout.Controls.Add(dgvBuffs, 0, 1);
         tabBuffs.Controls.Add(layout);
         return tabBuffs;
@@ -399,21 +399,21 @@ public partial class MainForm : Form
         tabUpgrades = new TabPage("Upgrades");
         var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(20), AutoScroll = true };
 
-        chkExtraAccessory = new CheckBox { Text = "Extra Accessory Slot (Demon Heart)", Width = 350, Margin = new Padding(5) };
-        chkAegisCrystal = new CheckBox { Text = "Used Aegis Crystal (+20 HP)", Width = 350, Margin = new Padding(5) };
-        chkAegisFruit = new CheckBox { Text = "Used Aegis Fruit (+20 HP)", Width = 350, Margin = new Padding(5) };
-        chkArcaneCrystal = new CheckBox { Text = "Used Arcane Crystal (+20 MP)", Width = 350, Margin = new Padding(5) };
-        chkGalaxyPearl = new CheckBox { Text = "Used Galaxy Pearl (+20 luck)", Width = 350, Margin = new Padding(5) };
-        chkGummyWorm = new CheckBox { Text = "Used Gummy Worm (+fishing power)", Width = 350, Margin = new Padding(5) };
-        chkAmbrosia = new CheckBox { Text = "Used Ambrosia (+mining speed)", Width = 350, Margin = new Padding(5) };
-        chkArtisanBread = new CheckBox { Text = "Ate Artisan Bread (+build range)", Width = 350, Margin = new Padding(5) };
-        chkBiomeTorches = new CheckBox { Text = "Unlocked Biome Torches", Width = 350, Margin = new Padding(5) };
-        chkUsingBiomeTorches = new CheckBox { Text = "Using Biome Torches", Width = 350, Margin = new Padding(5) };
+        chkExtraAccessory = new CheckBox { Text = AppLocale.Get("Upgrades.ExtraAccessory"), Width = 400, Margin = new Padding(5) };
+        chkAegisCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.AegisCrystal"), Width = 400, Margin = new Padding(5) };
+        chkAegisFruit = new CheckBox { Text = AppLocale.Get("Upgrades.AegisFruit"), Width = 400, Margin = new Padding(5) };
+        chkArcaneCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.ArcaneCrystal"), Width = 400, Margin = new Padding(5) };
+        chkGalaxyPearl = new CheckBox { Text = AppLocale.Get("Upgrades.GalaxyPearl"), Width = 400, Margin = new Padding(5) };
+        chkGummyWorm = new CheckBox { Text = AppLocale.Get("Upgrades.GummyWorm"), Width = 400, Margin = new Padding(5) };
+        chkAmbrosia = new CheckBox { Text = AppLocale.Get("Upgrades.Ambrosia"), Width = 400, Margin = new Padding(5) };
+        chkArtisanBread = new CheckBox { Text = AppLocale.Get("Upgrades.ArtisanBread"), Width = 400, Margin = new Padding(5) };
+        chkBiomeTorches = new CheckBox { Text = AppLocale.Get("Upgrades.BiomeTorches"), Width = 400, Margin = new Padding(5) };
+        chkUsingBiomeTorches = new CheckBox { Text = AppLocale.Get("Upgrades.UsingBiomeTorches"), Width = 400, Margin = new Padding(5) };
 
         var cartPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Height = 40, Width = 400, Margin = new Padding(5) };
-        lblSuperCart = new Label { Text = "Super Cart Level:", Width = 100, TextAlign = ContentAlignment.MiddleRight };
+        lblSuperCart = new Label { Text = AppLocale.Get("Upgrades.SuperCart"), Width = 110, TextAlign = ContentAlignment.MiddleRight };
         nudSuperCart = new NumericUpDown { Width = 60, Minimum = 0, Maximum = 2 };
-        chkSuperCartEnabled = new CheckBox { Text = "Enabled", Width = 80 };
+        chkSuperCartEnabled = new CheckBox { Text = AppLocale.Get("Upgrades.SuperCartEnabled"), Width = 80 };
         cartPanel.Controls.AddRange([lblSuperCart, nudSuperCart, chkSuperCartEnabled]);
 
         mainPanel.Controls.AddRange([
@@ -479,14 +479,14 @@ public partial class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 15));
 
         dgvSpawnPoints = new DataGridView { Dock = DockStyle.Fill, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AllowUserToAddRows = false };
-        dgvSpawnPoints.Columns.Add("WorldId", "World ID");
-        dgvSpawnPoints.Columns.Add("WorldName", "World Name");
-        dgvSpawnPoints.Columns.Add("X", "X");
-        dgvSpawnPoints.Columns.Add("Y", "Y");
+        dgvSpawnPoints.Columns.Add("WorldId", AppLocale.Get("Spawn.WorldId"));
+        dgvSpawnPoints.Columns.Add("WorldName", AppLocale.Get("Spawn.WorldName"));
+        dgvSpawnPoints.Columns.Add("X", AppLocale.Get("Spawn.X"));
+        dgvSpawnPoints.Columns.Add("Y", AppLocale.Get("Spawn.Y"));
 
         var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(5) };
-        btnAddSpawn = new Button { Text = "Add Spawn Point", Width = 130 };
-        btnRemoveSpawn = new Button { Text = "Remove Selected", Width = 130 };
+        btnAddSpawn = new Button { Text = AppLocale.Get("Spawn.Add"), Width = 130 };
+        btnRemoveSpawn = new Button { Text = AppLocale.Get("Spawn.Remove"), Width = 130 };
         btnAddSpawn.Click += OnAddSpawnPoint;
         btnRemoveSpawn.Click += OnRemoveSpawnPoint;
         btnPanel.Controls.AddRange([btnAddSpawn, btnRemoveSpawn]);
@@ -502,9 +502,9 @@ public partial class MainForm : Form
         tabMisc = new TabPage("Misc");
         var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(20), AutoScroll = true };
 
-        chkHotbarLocked = new CheckBox { Text = "Hotbar Locked", Width = 200, Margin = new Padding(5, 5, 5, 15) };
+        chkHotbarLocked = new CheckBox { Text = AppLocale.Get("Misc.HotbarLocked"), Width = 200, Margin = new Padding(5, 5, 5, 15) };
 
-        grpHideInfo = new GroupBox { Text = "Info Accessory Display", Width = 700, Height = 160 };
+        grpHideInfo = new GroupBox { Text = AppLocale.Get("Misc.HideInfo"), Width = 700, Height = 160 };
         chkHideInfo = new CheckBox[13];
         for (int i = 0; i < 13; i++)
         {
@@ -517,12 +517,12 @@ public partial class MainForm : Form
             grpHideInfo.Controls.Add(chkHideInfo[i]);
         }
 
-        grpCooldowns = new GroupBox { Text = "Cooldowns (ticks)", Width = 400, Height = 130 };
-        lblPotionDelay = new Label { Text = "Potion Delay:", Location = new Point(15, 30), Width = 100 };
+        grpCooldowns = new GroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 400, Height = 130 };
+        lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay"), Location = new Point(15, 30), Width = 110 };
         nudPotionDelay = new NumericUpDown { Location = new Point(120, 28), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        lblManaPotionDelay = new Label { Text = "Mana Potion Delay:", Location = new Point(15, 60), Width = 100 };
+        lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay"), Location = new Point(15, 60), Width = 110 };
         nudManaPotionDelay = new NumericUpDown { Location = new Point(120, 58), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        lblRestorationCd = new Label { Text = "Restoration CD:", Location = new Point(15, 90), Width = 100 };
+        lblRestorationCd = new Label { Text = AppLocale.Get("Misc.RestorationCd"), Location = new Point(15, 90), Width = 110 };
         nudRestorationCd = new NumericUpDown { Location = new Point(120, 88), Width = 120, Minimum = 0, Maximum = int.MaxValue };
         grpCooldowns.Controls.AddRange([lblPotionDelay, nudPotionDelay, lblManaPotionDelay, nudManaPotionDelay, lblRestorationCd, nudRestorationCd]);
 
@@ -947,10 +947,10 @@ public partial class MainForm : Form
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false
         };
-        dgv.Columns.Add("Name", "Name");
-        dgv.Columns.Add("ID", "ID");
-        dgv.Columns.Add("Stack", "Stack");
-        dgv.Columns.Add("Prefix", "Prefix");
+        dgv.Columns.Add("Name", AppLocale.Get("Grid.Name"));
+        dgv.Columns.Add("ID", AppLocale.Get("Grid.ID"));
+        dgv.Columns.Add("Stack", AppLocale.Get("Grid.Stack"));
+        dgv.Columns.Add("Prefix", AppLocale.Get("Grid.Prefix"));
         return dgv;
     }
 
@@ -1072,7 +1072,7 @@ public partial class MainForm : Form
         int y = 25;
         for (int i = 0; i < count; i++)
         {
-            var lbl = new Label { Text = labels != null && i < labels.Length ? labels[i] + ":" : $"Slot {i + 1}:", Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
+            var lbl = new Label { Text = labels != null && i < labels.Length ? labels[i] + ":" : string.Format(AppLocale.Get("Slot.Generic"), i + 1), Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
             itemCombos[i] = new ComboBox { Location = new Point(115, y), Width = 320, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
             prefixCombos[i] = new ComboBox { Location = new Point(440, y), Width = 130, DropDownStyle = ComboBoxStyle.DropDownList };
             grp.Controls.AddRange([lbl, itemCombos[i], prefixCombos[i]]);
@@ -1086,7 +1086,7 @@ public partial class MainForm : Form
         int y = 25;
         for (int i = 0; i < count; i++)
         {
-            var lbl = new Label { Text = labels != null && i < labels.Length ? labels[i] + ":" : $"Slot {i + 1}:", Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
+            var lbl = new Label { Text = labels != null && i < labels.Length ? labels[i] + ":" : string.Format(AppLocale.Get("Slot.Generic"), i + 1), Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
             combos[i] = new ComboBox { Location = new Point(115, y), Width = 400, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
             grp.Controls.AddRange([lbl, combos[i]]);
             y += 32;

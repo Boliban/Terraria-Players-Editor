@@ -41,14 +41,10 @@ public static class PlrCrypto
         aes.IV = AesKey;
 
         using var msOutput = new MemoryStream();
-        using (var cs = new CryptoStream(msOutput, aes.CreateEncryptor(), CryptoStreamMode.Write))
+        using (var cs = new CryptoStream(msOutput, aes.CreateEncryptor(), CryptoStreamMode.Write, leaveOpen: true))
         {
             cs.Write(plainData, 0, plainData.Length);
         }
-        // CryptoStream needs to be flushed/closed before reading MemoryStream
-        msOutput.Position = 0;
-        // We need to return after the CryptoStream is disposed
-        var result = msOutput.ToArray();
-        return result;
+        return msOutput.ToArray();
     }
 }
