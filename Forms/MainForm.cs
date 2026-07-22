@@ -13,11 +13,52 @@ public partial class MainForm : Form
 
     // Localized label arrays — used during tab construction
     private static string[] DifficultyNames() => [AppLocale.Get("Diff.Softcore"), AppLocale.Get("Diff.Mediumcore"), AppLocale.Get("Diff.Hardcore"), AppLocale.Get("Diff.Journey")];
+    private static string[] LoadoutNames() => [AppLocale.Get("Loadout.Select1"), AppLocale.Get("Loadout.Select2"), AppLocale.Get("Loadout.Select3")];
+    private static string[] GenderNames() => [AppLocale.Get("Gender.Female"), AppLocale.Get("Gender.Male")];
     private static string[] HideVisualNames() => [AppLocale.Get("Appearance.Head"), AppLocale.Get("Appearance.Body"), AppLocale.Get("Appearance.Legs"), AppLocale.Get("Appearance.VanityHead"), AppLocale.Get("Appearance.VanityBody"), AppLocale.Get("Appearance.VanityLegs"), AppLocale.Get("Appearance.Acc1"), AppLocale.Get("Appearance.Acc2"), AppLocale.Get("Appearance.Acc3"), AppLocale.Get("Appearance.Acc4")];
     private static string[] HideMiscNames() => [AppLocale.Get("Appearance.Pet"), AppLocale.Get("Appearance.LightPet"), AppLocale.Get("Appearance.Minecart"), AppLocale.Get("Appearance.Mount"), AppLocale.Get("Appearance.Hook")];
     private static string[] HideInfoNames() => [AppLocale.Get("Info.Watch"), AppLocale.Get("Info.Weather"), AppLocale.Get("Info.Depth"), AppLocale.Get("Info.Compass"), AppLocale.Get("Info.Sextant"), AppLocale.Get("Info.Tally"), AppLocale.Get("Info.Stopwatch"), AppLocale.Get("Info.MetalDetector"), AppLocale.Get("Info.DPS"), AppLocale.Get("Info.RareCreature"), AppLocale.Get("Info.FishingPower"), AppLocale.Get("Info.MoonPhase"), AppLocale.Get("Info.Speed")];
     private static string[] ColorNames() => [AppLocale.Get("Color.Hair"), AppLocale.Get("Color.Skin"), AppLocale.Get("Color.Eyes"), AppLocale.Get("Color.Shirt"), AppLocale.Get("Color.UnderShirt"), AppLocale.Get("Color.Pants"), AppLocale.Get("Color.Shoes")];
     private static string[] MiscEquipNames() => [AppLocale.Get("Equip.Pet"), AppLocale.Get("Equip.LightPet"), AppLocale.Get("Equip.Minecart"), AppLocale.Get("Equip.Mount"), AppLocale.Get("Equip.Hook")];
+    private static string[] EquipArmorLabels() => [AppLocale.Get("Equip.Helmet"), AppLocale.Get("Equip.Chestplate"), AppLocale.Get("Equip.Leggings")];
+    private static string[] EquipVanityArmorLabels() => [AppLocale.Get("Equip.VanityHelmet"), AppLocale.Get("Equip.VanityChest"), AppLocale.Get("Equip.VanityLegs")];
+    private static string[] DyeArmorLabels() => [AppLocale.Get("Dyes.HelmetDye"), AppLocale.Get("Dyes.ChestDye"), AppLocale.Get("Dyes.LegsDye")];
+    private static string[] DyeMiscLabels() => [AppLocale.Get("Dyes.PetDye"), AppLocale.Get("Dyes.LightPetDye"), AppLocale.Get("Dyes.MinecartDye"), AppLocale.Get("Dyes.MountDye"), AppLocale.Get("Dyes.HookDye")];
+
+    // Locale key arrays for language-refreshable labels
+    private static readonly string[] _keysEquipArmor = ["Equip.Helmet", "Equip.Chestplate", "Equip.Leggings"];
+    private static readonly string[] _keysEquipVanityArmor = ["Equip.VanityHelmet", "Equip.VanityChest", "Equip.VanityLegs"];
+    private static readonly string[] _keysEquipAccessory = ["Slot.Accessory", "Slot.Accessory", "Slot.Accessory", "Slot.Accessory", "Slot.Accessory", "Slot.Accessory", "Slot.Accessory"];
+    private static readonly string[] _keysEquipVanityAcc = ["Slot.VanityAcc", "Slot.VanityAcc", "Slot.VanityAcc", "Slot.VanityAcc", "Slot.VanityAcc", "Slot.VanityAcc", "Slot.VanityAcc"];
+    private static readonly string[] _keysEquipMisc = ["Equip.Pet", "Equip.LightPet", "Equip.Minecart", "Equip.Mount", "Equip.Hook"];
+    private static readonly string[] _keysDyeArmor = ["Dyes.HelmetDye", "Dyes.ChestDye", "Dyes.LegsDye"];
+    private static readonly string[] _keysDyeAccessory = ["Slot.AccDye", "Slot.AccDye", "Slot.AccDye", "Slot.AccDye", "Slot.AccDye", "Slot.AccDye", "Slot.AccDye"];
+    private static readonly string[] _keysDyeMisc = ["Dyes.PetDye", "Dyes.LightPetDye", "Dyes.MinecartDye", "Dyes.MountDye", "Dyes.HookDye"];
+
+    /// <summary>Refresh label array text from locale keys (with 1-based index for format args).</summary>
+    private static void RefreshLabels(Label[] labels, string[] keys)
+    {
+        for (int i = 0; i < labels.Length && i < keys.Length; i++)
+        {
+            labels[i].Text = string.Format(AppLocale.Get(keys[i]), i + 1);
+        }
+    }
+
+    /// <summary>Refresh a single loadout tab's group boxes and labels.</summary>
+    private static void RefreshLoadoutGroupBoxes(GroupBox[]? boxes, Label[][]? allLabels, string loadoutKey)
+    {
+        if (boxes == null || allLabels == null) return;
+        string loadoutName = AppLocale.Get(loadoutKey);
+
+        string[] boxSuffixes = ["Loadouts.Armor3", "Loadouts.VanityArmor3", "Loadouts.Accessories7", "Loadouts.VanityAccessories7", "Loadouts.Equipment5"];
+        string[][] labelKeys = [_keysEquipArmor, _keysEquipVanityArmor, _keysEquipAccessory, _keysEquipVanityAcc, _keysEquipMisc];
+
+        for (int s = 0; s < boxes.Length && s < boxSuffixes.Length && s < allLabels.Length; s++)
+        {
+            boxes[s].Text = $"{loadoutName} — {AppLocale.Get(boxSuffixes[s])}";
+            RefreshLabels(allLabels[s], labelKeys[s]);
+        }
+    }
 
     // Temporary color storage during editing
     private byte[][] _tempColors = Array.Empty<byte[]>();
@@ -27,6 +68,7 @@ public partial class MainForm : Form
         InitializeComponent();
         BuildForm();
         AppLocale.LanguageChanged += RefreshAllUI;
+        RefreshAllUI(); // Apply current language to all UI elements on startup
     }
 
     #region Form Construction
@@ -57,11 +99,13 @@ public partial class MainForm : Form
         _langEnItem = new ToolStripMenuItem(AppLocale.Get("Menu.LangEN"), null, (_, _) => AppLocale.SetLanguage(AppLocale.Lang.EN));
         _langZhItem = new ToolStripMenuItem(AppLocale.Get("Menu.LangZH"), null, (_, _) => AppLocale.SetLanguage(AppLocale.Lang.ZH));
         langMenu.DropDownItems.AddRange([_langEnItem, _langZhItem]);
-        exitMenuItem = new ToolStripMenuItem("Exit", null, (_, _) => Close());
+
+        var settingsMenu = new ToolStripMenuItem(AppLocale.Get("Menu.Settings"));
+        settingsMenu.DropDownItems.Add(langMenu);
 
         fileMenu.DropDownItems.AddRange([openMenuItem, saveMenuItem, new ToolStripSeparator(), saveAsMenuItem, new ToolStripSeparator(), exitMenuItem]);
         menuStrip.Items.Add(fileMenu);
-        menuStrip.Items.Add(langMenu);
+        menuStrip.Items.Add(settingsMenu);
         Controls.Add(menuStrip);
     }
 
@@ -125,7 +169,7 @@ public partial class MainForm : Form
         txtFileVersion = new TextBox { Dock = DockStyle.Left, Width = 100, ReadOnly = true };
         lblLoadout = new Label { Text = AppLocale.Get("Info.Loadout"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         cmbCurrentLoadout = new ComboBox { Dock = DockStyle.Left, Width = 120, DropDownStyle = ComboBoxStyle.DropDownList };
-        cmbCurrentLoadout.Items.AddRange(["Loadout 1", "Loadout 2", "Loadout 3"]);
+        cmbCurrentLoadout.Items.AddRange(LoadoutNames());
 
         AddRow(layout, 0, lblPlayerName, txtPlayerName);
         AddRow(layout, 1, lblDifficulty, cmbDifficulty);
@@ -193,25 +237,26 @@ public partial class MainForm : Form
         nudHairDye = new NumericUpDown { Width = 70, Minimum = 0, Maximum = int.MaxValue };
         lblSkinVariant = new Label { Text = AppLocale.Get("Appearance.Skin"), Width = 50, TextAlign = ContentAlignment.MiddleRight };
         cmbSkinVariant = new ComboBox { Width = 100, DropDownStyle = ComboBoxStyle.DropDownList };
-        cmbSkinVariant.Items.AddRange(["Female", "Male"]);
+        cmbSkinVariant.Items.AddRange(GenderNames());
         topRow.Controls.AddRange([lblHairStyle, nudHairStyle, lblHairDye, nudHairDye, lblSkinVariant, cmbSkinVariant]);
 
         // Color pickers
         grpColors = new GroupBox { Text = AppLocale.Get("Appearance.Colors"), Width = 800, Height = 160 };
         colorButtons = new Button[7];
         colorPanels = new Panel[7];
+        lblColors = new Label[7];
         _tempColors = new byte[7][];
         for (int i = 0; i < 7; i++)
         {
             _tempColors[i] = new byte[3];
             int x = 15 + (i % 4) * 190;
             int y = 25 + (i / 4) * 60;
-            var lbl = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
+            lblColors[i] = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
             colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White };
             colorButtons[i] = new Button { Text = AppLocale.Get("Appearance.Pick"), Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
             int idx = i;
             colorButtons[i].Click += (_, _) => PickColor(idx);
-            grpColors.Controls.AddRange([lbl, colorPanels[i], colorButtons[i]]);
+            grpColors.Controls.AddRange([lblColors[i], colorPanels[i], colorButtons[i]]);
         }
 
         // Visibility toggles
@@ -286,26 +331,28 @@ public partial class MainForm : Form
         grpArmorSlots = new GroupBox { Text = AppLocale.Get("Equip.Armor"), Dock = DockStyle.Fill };
         cmbArmorSlots = new ComboBox[3];
         cmbArmorPrefixes = new ComboBox[3];
-        BuildEquipmentGroup(grpArmorSlots, cmbArmorSlots, cmbArmorPrefixes, 3, ["Helmet", "Chestplate", "Leggings"]);
+        lblEquipArmor = BuildEquipmentGroup(grpArmorSlots, cmbArmorSlots, cmbArmorPrefixes, 3, EquipArmorLabels());
 
         grpVanityArmorSlots = new GroupBox { Text = AppLocale.Get("Equip.VanityArmor"), Dock = DockStyle.Fill };
         cmbVanityArmorSlots = new ComboBox[3];
         cmbVanityArmorPrefixes = new ComboBox[3];
-        BuildEquipmentGroup(grpVanityArmorSlots, cmbVanityArmorSlots, cmbVanityArmorPrefixes, 3, ["Vanity Helmet", "Vanity Chest", "Vanity Legs"]);
+        lblEquipVanityArmor = BuildEquipmentGroup(grpVanityArmorSlots, cmbVanityArmorSlots, cmbVanityArmorPrefixes, 3, EquipVanityArmorLabels());
 
         grpAccessorySlots = new GroupBox { Text = AppLocale.Get("Equip.Accessories"), Dock = DockStyle.Fill };
         cmbAccessorySlots = new ComboBox[7];
         cmbAccessoryPrefixes = new ComboBox[7];
-        BuildEquipmentGroup(grpAccessorySlots, cmbAccessorySlots, cmbAccessoryPrefixes, 7);
+        lblEquipAccessory = BuildEquipmentGroup(grpAccessorySlots, cmbAccessorySlots, cmbAccessoryPrefixes, 7,
+            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.Accessory"), i)).ToArray());
 
         grpVanityAccessorySlots = new GroupBox { Text = AppLocale.Get("Equip.VanityAccessories"), Dock = DockStyle.Fill };
         cmbVanityAccessorySlots = new ComboBox[7];
         cmbVanityAccessoryPrefixes = new ComboBox[7];
-        BuildEquipmentGroup(grpVanityAccessorySlots, cmbVanityAccessorySlots, cmbVanityAccessoryPrefixes, 7);
+        lblEquipVanityAcc = BuildEquipmentGroup(grpVanityAccessorySlots, cmbVanityAccessorySlots, cmbVanityAccessoryPrefixes, 7,
+            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.VanityAcc"), i)).ToArray());
 
         grpMiscEquipSlots = new GroupBox { Text = AppLocale.Get("Equip.Misc"), Dock = DockStyle.Fill };
         cmbMiscEquipSlots = new ComboBox[5];
-        BuildSimpleEquipmentGroup(grpMiscEquipSlots, cmbMiscEquipSlots, 5, MiscEquipNames());
+        lblEquipMisc = BuildSimpleEquipmentGroup(grpMiscEquipSlots, cmbMiscEquipSlots, 5, MiscEquipNames());
 
         mainPanel.Controls.Add(grpArmorSlots, 0, 0);
         mainPanel.Controls.Add(grpVanityArmorSlots, 1, 0);
@@ -325,15 +372,16 @@ public partial class MainForm : Form
 
         grpArmorDyes = new GroupBox { Text = AppLocale.Get("Dyes.Armor"), Width = 600, Height = 160 };
         cmbArmorDyeSlots = new ComboBox[3];
-        BuildSimpleEquipmentGroup(grpArmorDyes, cmbArmorDyeSlots, 3, ["Helmet Dye", "Chestplate Dye", "Leggings Dye"]);
+        lblDyeArmor = BuildSimpleEquipmentGroup(grpArmorDyes, cmbArmorDyeSlots, 3, DyeArmorLabels());
 
         grpAccessoryDyes = new GroupBox { Text = AppLocale.Get("Dyes.Accessories"), Width = 600, Height = 220 };
         cmbAccessoryDyeSlots = new ComboBox[7];
-        BuildSimpleEquipmentGroup(grpAccessoryDyes, cmbAccessoryDyeSlots, 7);
+        lblDyeAccessory = BuildSimpleEquipmentGroup(grpAccessoryDyes, cmbAccessoryDyeSlots, 7,
+            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.AccDye"), i)).ToArray());
 
         grpMiscEquipDyes = new GroupBox { Text = AppLocale.Get("Dyes.Equipment"), Width = 600, Height = 180 };
         cmbMiscEquipDyeSlots = new ComboBox[5];
-        BuildSimpleEquipmentGroup(grpMiscEquipDyes, cmbMiscEquipDyeSlots, 5, MiscEquipNames().Select(n => n + " Dye").ToArray());
+        lblDyeMisc = BuildSimpleEquipmentGroup(grpMiscEquipDyes, cmbMiscEquipDyeSlots, 5, DyeMiscLabels());
 
         mainPanel.Controls.AddRange([grpArmorDyes, grpAccessoryDyes, grpMiscEquipDyes]);
         tabDyes.Controls.Add(mainPanel);
@@ -434,40 +482,47 @@ public partial class MainForm : Form
         subLoadout2 = new TabPage("Loadout 2");
         subLoadout3 = new TabPage("Loadout 3");
 
-        cmbL2Armor = BuildLoadoutTab(subLoadout2, "Loadout 2");
-        cmbL3Armor = BuildLoadoutTab(subLoadout3, "Loadout 3");
+        cmbL2Armor = BuildLoadoutTab(subLoadout2, "Loadout.Select2", out grpLoadout2Boxes, out lblLoadout2Labels);
+        cmbL3Armor = BuildLoadoutTab(subLoadout3, "Loadout.Select3", out grpLoadout3Boxes, out lblLoadout3Labels);
 
         tabLoadoutSub.TabPages.AddRange([subLoadout2, subLoadout3]);
         tabLoadouts.Controls.Add(tabLoadoutSub);
         return tabLoadouts;
     }
 
-    private ComboBox[] BuildLoadoutTab(TabPage page, string name)
+    private ComboBox[] BuildLoadoutTab(TabPage page, string loadoutKey,
+        out GroupBox[] boxes, out Label[][] allLabels)
     {
         var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10), AutoScroll = true };
+        string loadoutName = AppLocale.Get(loadoutKey);
 
-        var armor = new GroupBox { Text = $"{name} — Armor (3)", Width = 700, Height = 140 };
+        var armor = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.Armor3")}", Width = 700, Height = 140 };
         var cArmor = new ComboBox[3];
-        BuildSimpleEquipmentGroup(armor, cArmor, 3, ["Helmet", "Chestplate", "Leggings"]);
+        var lblArmor = BuildSimpleEquipmentGroup(armor, cArmor, 3, EquipArmorLabels());
 
-        var vanity = new GroupBox { Text = $"{name} — Vanity Armor (3)", Width = 700, Height = 140 };
+        var vanity = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.VanityArmor3")}", Width = 700, Height = 140 };
         var cVanity = new ComboBox[3];
-        BuildSimpleEquipmentGroup(vanity, cVanity, 3, ["Vanity Helmet", "Vanity Chest", "Vanity Legs"]);
+        var lblVanity = BuildSimpleEquipmentGroup(vanity, cVanity, 3, EquipVanityArmorLabels());
 
-        var acc = new GroupBox { Text = $"{name} — Accessories (7)", Width = 700, Height = 200 };
+        var acc = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.Accessories7")}", Width = 700, Height = 200 };
         var cAcc = new ComboBox[7];
-        BuildSimpleEquipmentGroup(acc, cAcc, 7);
+        var lblAcc = BuildSimpleEquipmentGroup(acc, cAcc, 7,
+            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.Accessory"), i)).ToArray());
 
-        var vanityAcc = new GroupBox { Text = $"{name} — Vanity Accessories (7)", Width = 700, Height = 200 };
+        var vanityAcc = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.VanityAccessories7")}", Width = 700, Height = 200 };
         var cVanityAcc = new ComboBox[7];
-        BuildSimpleEquipmentGroup(vanityAcc, cVanityAcc, 7);
+        var lblVanityAcc = BuildSimpleEquipmentGroup(vanityAcc, cVanityAcc, 7,
+            Enumerable.Range(1, 7).Select(i => string.Format(AppLocale.Get("Slot.VanityAcc"), i)).ToArray());
 
-        var misc = new GroupBox { Text = $"{name} — Equipment (5)", Width = 700, Height = 160 };
+        var misc = new GroupBox { Text = $"{loadoutName} — {AppLocale.Get("Loadouts.Equipment5")}", Width = 700, Height = 160 };
         var cMisc = new ComboBox[5];
-        BuildSimpleEquipmentGroup(misc, cMisc, 5, MiscEquipNames());
+        var lblMisc = BuildSimpleEquipmentGroup(misc, cMisc, 5, MiscEquipNames());
 
         mainPanel.Controls.AddRange([armor, vanity, acc, vanityAcc, misc]);
         page.Controls.Add(mainPanel);
+
+        boxes = [armor, vanity, acc, vanityAcc, misc];
+        allLabels = [lblArmor, lblVanity, lblAcc, lblVanityAcc, lblMisc];
         return cArmor;
     }
 
@@ -1067,31 +1122,37 @@ public partial class MainForm : Form
         foreach (var cb in cmbMiscEquipDyeSlots) FillCombo(cb);
     }
 
-    private static void BuildEquipmentGroup(GroupBox grp, ComboBox[] itemCombos, ComboBox[] prefixCombos, int count, string[]? labels = null)
+    private Label[] BuildEquipmentGroup(GroupBox grp, ComboBox[] itemCombos, ComboBox[] prefixCombos, int count, string[]? labels = null)
     {
+        var lbls = new Label[count];
         int y = 25;
         for (int i = 0; i < count; i++)
         {
-            var lbl = new Label { Text = labels != null && i < labels.Length ? labels[i] + ":" : string.Format(AppLocale.Get("Slot.Generic"), i + 1), Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
+            string labelText = labels != null && i < labels.Length ? labels[i] : string.Format(AppLocale.Get("Slot.Generic"), i + 1);
+            lbls[i] = new Label { Text = labelText, Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
             itemCombos[i] = new ComboBox { Location = new Point(115, y), Width = 320, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
             prefixCombos[i] = new ComboBox { Location = new Point(440, y), Width = 130, DropDownStyle = ComboBoxStyle.DropDownList };
-            grp.Controls.AddRange([lbl, itemCombos[i], prefixCombos[i]]);
+            grp.Controls.AddRange([lbls[i], itemCombos[i], prefixCombos[i]]);
             y += 32;
         }
         grp.Height = y + 10;
+        return lbls;
     }
 
-    private static void BuildSimpleEquipmentGroup(GroupBox grp, ComboBox[] combos, int count, string[]? labels = null)
+    private Label[] BuildSimpleEquipmentGroup(GroupBox grp, ComboBox[] combos, int count, string[]? labels = null)
     {
+        var lbls = new Label[count];
         int y = 25;
         for (int i = 0; i < count; i++)
         {
-            var lbl = new Label { Text = labels != null && i < labels.Length ? labels[i] + ":" : string.Format(AppLocale.Get("Slot.Generic"), i + 1), Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
+            string labelText = labels != null && i < labels.Length ? labels[i] : string.Format(AppLocale.Get("Slot.Generic"), i + 1);
+            lbls[i] = new Label { Text = labelText, Location = new Point(10, y + 3), Width = 100, TextAlign = ContentAlignment.MiddleRight };
             combos[i] = new ComboBox { Location = new Point(115, y), Width = 400, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
-            grp.Controls.AddRange([lbl, combos[i]]);
+            grp.Controls.AddRange([lbls[i], combos[i]]);
             y += 32;
         }
         grp.Height = y + 10;
+        return lbls;
     }
 
     private static void AddRow(TableLayoutPanel layout, int row, Control label, Control ctrl)
@@ -1130,11 +1191,19 @@ public partial class MainForm : Form
         saveMenuItem.Text = L("Menu.Save");
         saveAsMenuItem.Text = L("Menu.SaveAs");
         exitMenuItem.Text = L("Menu.Exit");
-        // Language menu items
-        var langMenu = (ToolStripMenuItem)menuStrip.Items[1];
-        langMenu.Text = L("Menu.Language");
-        if (_langEnItem != null) _langEnItem.Text = L("Menu.LangEN");
-        if (_langZhItem != null) _langZhItem.Text = L("Menu.LangZH");
+        // Settings menu (now contains Language)
+        if (menuStrip.Items.Count > 1)
+        {
+            var settingsMenu = (ToolStripMenuItem)menuStrip.Items[1];
+            settingsMenu.Text = L("Menu.Settings");
+            if (settingsMenu.DropDownItems.Count > 0)
+            {
+                var langMenu = (ToolStripMenuItem)settingsMenu.DropDownItems[0];
+                langMenu.Text = L("Menu.Language");
+                if (_langEnItem != null) _langEnItem.Text = L("Menu.LangEN");
+                if (_langZhItem != null) _langZhItem.Text = L("Menu.LangZH");
+            }
+        }
 
         // Tab titles
         tabPlayerInfo.Text = L("Tab.PlayerInfo");
@@ -1157,6 +1226,24 @@ public partial class MainForm : Form
         lblFileVersion.Text = L("Info.FileVersion");
         lblLoadout.Text = L("Info.Loadout");
 
+        // Refresh combo box items
+        {
+            int prevDiff = cmbDifficulty.SelectedIndex;
+            cmbDifficulty.Items.Clear();
+            cmbDifficulty.Items.AddRange(DifficultyNames());
+            cmbDifficulty.SelectedIndex = Math.Clamp(prevDiff, 0, 3);
+
+            int prevLoadout = cmbCurrentLoadout.SelectedIndex;
+            cmbCurrentLoadout.Items.Clear();
+            cmbCurrentLoadout.Items.AddRange(LoadoutNames());
+            cmbCurrentLoadout.SelectedIndex = Math.Clamp(prevLoadout, 0, 2);
+
+            int prevSkin = cmbSkinVariant.SelectedIndex;
+            cmbSkinVariant.Items.Clear();
+            cmbSkinVariant.Items.AddRange(GenderNames());
+            cmbSkinVariant.SelectedIndex = Math.Clamp(prevSkin, 0, 1);
+        }
+
         // Tab 2: Stats
         grpHealth.Text = L("Stats.Health");
         lblHealth.Text = L("Stats.Current");
@@ -1177,6 +1264,7 @@ public partial class MainForm : Form
         lblSkinVariant.Text = L("Appearance.Skin");
         grpColors.Text = L("Appearance.Colors");
         for (int i = 0; i < colorButtons.Length; i++) colorButtons[i].Text = L("Appearance.Pick");
+        for (int i = 0; i < lblColors.Length; i++) lblColors[i].Text = ColorNames()[i] + ":";
         grpVisibility.Text = L("Appearance.Visibility");
         for (int i = 0; i < chkHideVisual.Length; i++)
             chkHideVisual[i].Text = L($"Appearance.{i switch {
@@ -1200,11 +1288,19 @@ public partial class MainForm : Form
         grpAccessorySlots.Text = L("Equip.Accessories");
         grpVanityAccessorySlots.Text = L("Equip.VanityAccessories");
         grpMiscEquipSlots.Text = L("Equip.Misc");
+        RefreshLabels(lblEquipArmor, _keysEquipArmor);
+        RefreshLabels(lblEquipVanityArmor, _keysEquipVanityArmor);
+        RefreshLabels(lblEquipAccessory, _keysEquipAccessory);
+        RefreshLabels(lblEquipVanityAcc, _keysEquipVanityAcc);
+        RefreshLabels(lblEquipMisc, _keysEquipMisc);
 
         // Tab 6: Dyes
         grpArmorDyes.Text = L("Dyes.Armor");
         grpAccessoryDyes.Text = L("Dyes.Accessories");
         grpMiscEquipDyes.Text = L("Dyes.Equipment");
+        RefreshLabels(lblDyeArmor, _keysDyeArmor);
+        RefreshLabels(lblDyeAccessory, _keysDyeAccessory);
+        RefreshLabels(lblDyeMisc, _keysDyeMisc);
 
         // Tab 7: Storage
         subPiggyBank.Text = L("Storage.PiggyBank");
@@ -1239,6 +1335,10 @@ public partial class MainForm : Form
         // Tab 10: Loadouts
         subLoadout2.Text = L("Loadouts.Loadout2");
         subLoadout3.Text = L("Loadouts.Loadout3");
+
+        // Refresh loadout tab groupboxes and labels
+        RefreshLoadoutGroupBoxes(grpLoadout2Boxes, lblLoadout2Labels, "Loadout.Select2");
+        RefreshLoadoutGroupBoxes(grpLoadout3Boxes, lblLoadout3Labels, "Loadout.Select3");
 
         // Tab 11: Spawn Points
         btnAddSpawn.Text = L("Spawn.Add");

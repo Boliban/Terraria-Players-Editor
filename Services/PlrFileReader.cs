@@ -215,9 +215,9 @@ public static class PlrFileReader
                 catch { /* Spawn points format may vary */ }
             }
         }
-        catch (IndexOutOfRangeException)
+        catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentOutOfRangeException or ArgumentException)
         {
-            // File truncated — return what we've read so far
+            // File truncated or malformed — return what we've read so far
         }
 
         player.RawData = data;
@@ -228,53 +228,63 @@ public static class PlrFileReader
 
     private static int ReadInt32(byte[] data, int o, out int value)
     {
+        if (o + 4 > data.Length) throw new IndexOutOfRangeException();
         value = BitConverter.ToInt32(data, o);
         return o + 4;
     }
 
     private static int ReadInt64(byte[] data, int o, out long value)
     {
+        if (o + 8 > data.Length) throw new IndexOutOfRangeException();
         value = BitConverter.ToInt64(data, o);
         return o + 8;
     }
 
     private static int ReadByte(byte[] data, int o, out byte value)
     {
+        if (o >= data.Length) throw new IndexOutOfRangeException();
         value = data[o];
         return o + 1;
     }
 
     private static int ReadBool(byte[] data, int o, out bool value)
     {
+        if (o >= data.Length) throw new IndexOutOfRangeException();
         value = data[o] != 0;
         return o + 1;
     }
 
     private static int ReadInt16(byte[] data, int o, out short value)
     {
+        if (o + 2 > data.Length) throw new IndexOutOfRangeException();
         value = BitConverter.ToInt16(data, o);
         return o + 2;
     }
 
     private static int ReadUInt16(byte[] data, int o)
     {
+        if (o + 2 > data.Length) throw new IndexOutOfRangeException();
         return data[o] + (256 * data[o + 1]);
     }
 
     private static int ReadString(byte[] data, int o, out string value)
     {
+        if (o >= data.Length) throw new IndexOutOfRangeException();
         int length = data[o]; o++;
+        if (o + length > data.Length) throw new IndexOutOfRangeException();
         value = Encoding.UTF8.GetString(data, o, length);
         return o + length;
     }
 
     private static string ReadFixedString(byte[] data, int o, int length)
     {
+        if (o + length > data.Length) throw new IndexOutOfRangeException();
         return Encoding.UTF8.GetString(data, o, length);
     }
 
     private static byte[] ReadBytes(byte[] data, int o, int count)
     {
+        if (o + count > data.Length) throw new IndexOutOfRangeException();
         var result = new byte[count];
         Array.Copy(data, o, result, 0, count);
         return result;

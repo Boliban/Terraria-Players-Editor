@@ -40,6 +40,12 @@ public static class GameLocaleLoader
         return ItemNames.TryGetValue(internalName, out var zh) ? zh : null;
     }
 
+    /// <summary>Get Chinese item name by direct internal name lookup (preferred when internal name is known).</summary>
+    public static string? GetItemNameByInternal(string internalName)
+    {
+        return ItemNames.TryGetValue(internalName, out var zh) ? zh : null;
+    }
+
     /// <summary>Get Chinese prefix name from English prefix name.</summary>
     public static string? GetPrefixName(string englishName)
     {
