@@ -1,6 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Compile Update="Controls\ItemBrowser.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\ItemModifier.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\SlotGrid.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\SlotPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="DemoFile\WinTerrEdit\about.cs">
       <SubType>Form</SubType>
     </Compile>

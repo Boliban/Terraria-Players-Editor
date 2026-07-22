@@ -215,6 +215,45 @@ partial class MainForm
     private Label lblRestorationCd = null!;
     private NumericUpDown nudRestorationCd = null!;
 
+    // === New grid/icon controls ===
+    private Controls.ItemBrowser _browserInventory = null!;
+    private Controls.ItemModifier _modInventory = null!;
+    private Controls.SlotGrid _gridInventory = null!;
+    private Controls.SlotGrid _gridCoins = null!;
+    private Controls.SlotGrid _gridAmmo = null!;
+    private Controls.ItemBrowser _browserEquip = null!;
+    private Controls.ItemModifier _modEquip = null!;
+    private Controls.SlotGrid[] _equipSlots = null!;
+    private Controls.SlotGrid[] _vanitySlots = null!;
+    private Controls.SlotGrid[] _accSlots = null!;
+    private Controls.SlotGrid[] _vaccSlots = null!;
+    private Controls.SlotGrid[] _miscSlots = null!;
+    private Controls.SlotGrid[] _armorDyeSlots = null!;
+    private Controls.SlotGrid[] _accDyeSlots = null!;
+    private Controls.SlotGrid[] _miscDyeSlots = null!;
+    private FlowLayoutPanel _loadoutSelector = null!;
+    private RadioButton _rbLoadout1 = null!;
+    private RadioButton _rbLoadout2 = null!;
+    private RadioButton _rbLoadout3 = null!;
+    private int _activeLoadout = 0;
+    private Controls.ItemBrowser _browserStorage = null!;
+    private Controls.ItemModifier _modStorage = null!;
+    private Controls.SlotGrid _gridPiggy = null!;
+    private Controls.SlotGrid _gridSafe = null!;
+    private Controls.SlotGrid _gridDefender = null!;
+    private Controls.SlotGrid _gridVoid = null!;
+    private int _activeStorageIdx = -1;
+    private Controls.ItemBrowser _browserBuffs = null!;
+    private Controls.SlotGrid _gridBuffs = null!;
+    private Label _lblBuffType = null!;
+    private NumericUpDown _nudBuffType = null!;
+    private Label _lblBuffDuration = null!;
+    private NumericUpDown _nudBuffDuration = null!;
+    private Button _btnBuffSet = null!;
+    private Button _btnBuffClear = null!;
+    private Controls.SlotGrid? _activeEquipGrid;
+    private string _activeSlotGrid = "main";
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
