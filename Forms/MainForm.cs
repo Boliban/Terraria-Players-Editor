@@ -8,14 +8,16 @@ public partial class MainForm : Form
     private PlayerData? _player;
     private string? _filePath;
 
-    private DataGridView? _activeStorageGrid; // tracks which storage grid is selected
+    private DataGridView? _activeStorageGrid;
+    private ToolStripMenuItem? _langEnItem, _langZhItem;
 
-    private static readonly string[] DifficultyNames = { "Softcore (Classic)", "Mediumcore", "Hardcore", "Journey" };
-    private static readonly string[] HideVisualNames = { "Head", "Body", "Legs", "Vanity Head", "Vanity Body", "Vanity Legs", "Acc 1", "Acc 2", "Acc 3", "Acc 4" };
-    private static readonly string[] HideMiscNames = { "Pet", "Light Pet", "Minecart", "Mount", "Hook" };
-    private static readonly string[] HideInfoNames = { "Watch", "Weather", "Depth", "Compass", "Sextant", "Tally", "Stopwatch", "Metal Detector", "DPS", "Rare Creature", "Fishing Power", "Moon Phase", "Speed" };
-    private static readonly string[] ColorNames = { "Hair", "Skin", "Eyes", "Shirt", "UnderShirt", "Pants", "Shoes" };
-    private static readonly string[] MiscEquipNames = { "Pet", "Light Pet", "Minecart", "Mount", "Hook" };
+    // Localized label arrays — used during tab construction
+    private static string[] DifficultyNames() => [AppLocale.Get("Diff.Softcore"), AppLocale.Get("Diff.Mediumcore"), AppLocale.Get("Diff.Hardcore"), AppLocale.Get("Diff.Journey")];
+    private static string[] HideVisualNames() => [AppLocale.Get("Appearance.Head"), AppLocale.Get("Appearance.Body"), AppLocale.Get("Appearance.Legs"), AppLocale.Get("Appearance.VanityHead"), AppLocale.Get("Appearance.VanityBody"), AppLocale.Get("Appearance.VanityLegs"), AppLocale.Get("Appearance.Acc1"), AppLocale.Get("Appearance.Acc2"), AppLocale.Get("Appearance.Acc3"), AppLocale.Get("Appearance.Acc4")];
+    private static string[] HideMiscNames() => [AppLocale.Get("Appearance.Pet"), AppLocale.Get("Appearance.LightPet"), AppLocale.Get("Appearance.Minecart"), AppLocale.Get("Appearance.Mount"), AppLocale.Get("Appearance.Hook")];
+    private static string[] HideInfoNames() => [AppLocale.Get("Info.Watch"), AppLocale.Get("Info.Weather"), AppLocale.Get("Info.Depth"), AppLocale.Get("Info.Compass"), AppLocale.Get("Info.Sextant"), AppLocale.Get("Info.Tally"), AppLocale.Get("Info.Stopwatch"), AppLocale.Get("Info.MetalDetector"), AppLocale.Get("Info.DPS"), AppLocale.Get("Info.RareCreature"), AppLocale.Get("Info.FishingPower"), AppLocale.Get("Info.MoonPhase"), AppLocale.Get("Info.Speed")];
+    private static string[] ColorNames() => [AppLocale.Get("Color.Hair"), AppLocale.Get("Color.Skin"), AppLocale.Get("Color.Eyes"), AppLocale.Get("Color.Shirt"), AppLocale.Get("Color.UnderShirt"), AppLocale.Get("Color.Pants"), AppLocale.Get("Color.Shoes")];
+    private static string[] MiscEquipNames() => [AppLocale.Get("Equip.Pet"), AppLocale.Get("Equip.LightPet"), AppLocale.Get("Equip.Minecart"), AppLocale.Get("Equip.Mount"), AppLocale.Get("Equip.Hook")];
 
     // Temporary color storage during editing
     private byte[][] _tempColors = Array.Empty<byte[]>();
@@ -24,13 +26,14 @@ public partial class MainForm : Form
     {
         InitializeComponent();
         BuildForm();
+        AppLocale.LanguageChanged += RefreshAllUI;
     }
 
     #region Form Construction
 
     private void BuildForm()
     {
-        Text = "Terraria Players Editor";
+        Text = AppLocale.Get("App.Title");
         ClientSize = new Size(1200, 800);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 9f);
@@ -44,21 +47,28 @@ public partial class MainForm : Form
     private void BuildMenu()
     {
         menuStrip = new MenuStrip();
-        fileMenu = new ToolStripMenuItem("File");
-        openMenuItem = new ToolStripMenuItem("Open...", null, OnOpen) { ShortcutKeys = Keys.Control | Keys.O };
-        saveMenuItem = new ToolStripMenuItem("Save", null, OnSave) { ShortcutKeys = Keys.Control | Keys.S };
-        saveAsMenuItem = new ToolStripMenuItem("Save As...", null, OnSaveAs) { ShortcutKeys = Keys.Control | Keys.Shift | Keys.S };
+        fileMenu = new ToolStripMenuItem(AppLocale.Get("Menu.File"));
+        openMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Open"), null, OnOpen) { ShortcutKeys = Keys.Control | Keys.O };
+        saveMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Save"), null, OnSave) { ShortcutKeys = Keys.Control | Keys.S };
+        saveAsMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.SaveAs"), null, OnSaveAs) { ShortcutKeys = Keys.Control | Keys.Shift | Keys.S };
+        exitMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Exit"), null, (_, _) => Close());
+
+        var langMenu = new ToolStripMenuItem(AppLocale.Get("Menu.Language"));
+        _langEnItem = new ToolStripMenuItem(AppLocale.Get("Menu.LangEN"), null, (_, _) => AppLocale.SetLanguage(AppLocale.Lang.EN));
+        _langZhItem = new ToolStripMenuItem(AppLocale.Get("Menu.LangZH"), null, (_, _) => AppLocale.SetLanguage(AppLocale.Lang.ZH));
+        langMenu.DropDownItems.AddRange([_langEnItem, _langZhItem]);
         exitMenuItem = new ToolStripMenuItem("Exit", null, (_, _) => Close());
 
         fileMenu.DropDownItems.AddRange([openMenuItem, saveMenuItem, new ToolStripSeparator(), saveAsMenuItem, new ToolStripSeparator(), exitMenuItem]);
         menuStrip.Items.Add(fileMenu);
+        menuStrip.Items.Add(langMenu);
         Controls.Add(menuStrip);
     }
 
     private void BuildStatusBar()
     {
         statusStrip = new StatusStrip();
-        statusLabel = new ToolStripStatusLabel("Ready — Open a .plr file to begin.");
+        statusLabel = new ToolStripStatusLabel(AppLocale.Get("Status.Ready"));
         statusProgress = new ToolStripProgressBar { Visible = false, Width = 120 };
         statusStrip.Items.Add(statusLabel);
         statusStrip.Items.Add(statusProgress);
@@ -108,7 +118,7 @@ public partial class MainForm : Form
         txtPlayerName = new TextBox { Dock = DockStyle.Left, Width = 300 };
         lblDifficulty = new Label { Text = "Difficulty:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         cmbDifficulty = new ComboBox { Dock = DockStyle.Left, Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
-        cmbDifficulty.Items.AddRange(DifficultyNames);
+        cmbDifficulty.Items.AddRange(DifficultyNames());
         lblPlayTime = new Label { Text = "Play Time:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         txtPlayTime = new TextBox { Dock = DockStyle.Left, Width = 150, ReadOnly = true };
         lblFileVersion = new Label { Text = "File Version:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
@@ -196,7 +206,7 @@ public partial class MainForm : Form
             _tempColors[i] = new byte[3];
             int x = 15 + (i % 4) * 190;
             int y = 25 + (i / 4) * 60;
-            var lbl = new Label { Text = ColorNames[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
+            var lbl = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
             colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White };
             colorButtons[i] = new Button { Text = "Pick...", Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
             int idx = i;
@@ -210,7 +220,7 @@ public partial class MainForm : Form
         chkHideMisc = new CheckBox[5];
         for (int i = 0; i < 10; i++)
         {
-            chkHideVisual[i] = new CheckBox { Text = i < HideVisualNames.Length ? HideVisualNames[i] : $"Visual{i}", Location = new Point(15 + (i % 5) * 155, 25 + (i / 5) * 28), Width = 150 };
+            chkHideVisual[i] = new CheckBox { Text = i < HideVisualNames().Length ? HideVisualNames()[i] : $"Visual{i}", Location = new Point(15 + (i % 5) * 155, 25 + (i / 5) * 28), Width = 150 };
             grpVisibility.Controls.Add(chkHideVisual[i]);
         }
 
@@ -295,7 +305,7 @@ public partial class MainForm : Form
 
         grpMiscEquipSlots = new GroupBox { Text = "Equipment (Pet, Light Pet, Minecart, Mount, Hook)", Dock = DockStyle.Fill };
         cmbMiscEquipSlots = new ComboBox[5];
-        BuildSimpleEquipmentGroup(grpMiscEquipSlots, cmbMiscEquipSlots, 5, MiscEquipNames);
+        BuildSimpleEquipmentGroup(grpMiscEquipSlots, cmbMiscEquipSlots, 5, MiscEquipNames());
 
         mainPanel.Controls.Add(grpArmorSlots, 0, 0);
         mainPanel.Controls.Add(grpVanityArmorSlots, 1, 0);
@@ -323,7 +333,7 @@ public partial class MainForm : Form
 
         grpMiscEquipDyes = new GroupBox { Text = "Equipment Dyes (5)", Width = 600, Height = 180 };
         cmbMiscEquipDyeSlots = new ComboBox[5];
-        BuildSimpleEquipmentGroup(grpMiscEquipDyes, cmbMiscEquipDyeSlots, 5, MiscEquipNames.Select(n => n + " Dye").ToArray());
+        BuildSimpleEquipmentGroup(grpMiscEquipDyes, cmbMiscEquipDyeSlots, 5, MiscEquipNames().Select(n => n + " Dye").ToArray());
 
         mainPanel.Controls.AddRange([grpArmorDyes, grpAccessoryDyes, grpMiscEquipDyes]);
         tabDyes.Controls.Add(mainPanel);
@@ -454,7 +464,7 @@ public partial class MainForm : Form
 
         var misc = new GroupBox { Text = $"{name} — Equipment (5)", Width = 700, Height = 160 };
         var cMisc = new ComboBox[5];
-        BuildSimpleEquipmentGroup(misc, cMisc, 5, MiscEquipNames);
+        BuildSimpleEquipmentGroup(misc, cMisc, 5, MiscEquipNames());
 
         mainPanel.Controls.AddRange([armor, vanity, acc, vanityAcc, misc]);
         page.Controls.Add(mainPanel);
@@ -500,7 +510,7 @@ public partial class MainForm : Form
         {
             chkHideInfo[i] = new CheckBox
             {
-                Text = i < HideInfoNames.Length ? HideInfoNames[i] : $"Info{i}",
+                Text = i < HideInfoNames().Length ? HideInfoNames()[i] : $"Info{i}",
                 Location = new Point(15 + (i % 4) * 170, 25 + (i / 4) * 30),
                 Width = 160
             };
@@ -529,8 +539,8 @@ public partial class MainForm : Form
     {
         using var dlg = new OpenFileDialog
         {
-            Title = "Open Terraria Player File",
-            Filter = "Terraria Player Files (*.plr)|*.plr|All Files (*.*)|*.*",
+            Title = AppLocale.Get("Dialog.OpenTitle"),
+            Filter = AppLocale.Get("Dialog.FileFilter"),
             InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", "Terraria", "Players")
         };
 
@@ -558,12 +568,12 @@ public partial class MainForm : Form
             _player = player;
             _filePath = dlg.FileName;
             PopulateAllTabs();
-            statusLabel.Text = $"Loaded: {Path.GetFileName(dlg.FileName)} — {player.Name} (v{player.FileVersion})";
+            statusLabel.Text = string.Format(AppLocale.Get("Status.Loaded"), Path.GetFileName(dlg.FileName), player.Name, player.FileVersion);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to load file:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            statusLabel.Text = "Failed to load file.";
+            MessageBox.Show(string.Format(AppLocale.Get("Dialog.LoadError"), ex.Message), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            statusLabel.Text = AppLocale.Get("Status.Failed");
         }
         finally
         {
@@ -573,7 +583,7 @@ public partial class MainForm : Form
 
     private void OnSave(object? sender, EventArgs e)
     {
-        if (_player == null) { MessageBox.Show("No player data loaded.", "Info"); return; }
+        if (_player == null) { MessageBox.Show(AppLocale.Get("Dialog.NoPlayer"), "Info"); return; }
         if (string.IsNullOrEmpty(_filePath)) { OnSaveAs(sender, e); return; }
 
         DoSave(_filePath);
@@ -581,11 +591,11 @@ public partial class MainForm : Form
 
     private void OnSaveAs(object? sender, EventArgs e)
     {
-        if (_player == null) { MessageBox.Show("No player data loaded.", "Info"); return; }
+        if (_player == null) { MessageBox.Show(AppLocale.Get("Dialog.NoPlayer"), "Info"); return; }
 
         using var dlg = new SaveFileDialog
         {
-            Title = "Save Terraria Player File",
+            Title = AppLocale.Get("Dialog.SaveTitle"),
             Filter = "Terraria Player Files (*.plr)|*.plr",
             FileName = _player.Name + ".plr",
             InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", "Terraria", "Players")
@@ -604,12 +614,12 @@ public partial class MainForm : Form
             var bytes = await Task.Run(() => PlrFileWriter.Write(_player!));
             await Task.Run(() => File.WriteAllBytes(path, bytes));
             _filePath = path;
-            statusLabel.Text = $"Saved: {Path.GetFileName(path)}";
+            statusLabel.Text = string.Format(AppLocale.Get("Status.Saved"), Path.GetFileName(path));
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to save file:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            statusLabel.Text = "Failed to save file.";
+            MessageBox.Show(string.Format(AppLocale.Get("Dialog.SaveError"), ex.Message), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            statusLabel.Text = AppLocale.Get("Status.SaveFailed");
         }
         finally
         {
@@ -621,7 +631,7 @@ public partial class MainForm : Form
     {
         Enabled = !loading;
         statusProgress.Visible = loading;
-        if (loading) statusLabel.Text = "Working...";
+        if (loading) statusLabel.Text = AppLocale.Get("Status.Working");
     }
 
     #endregion
@@ -727,7 +737,7 @@ public partial class MainForm : Form
         // Populate item combos
         PopulateAllItemCombos();
 
-        statusLabel.Text = $"Loaded: {Path.GetFileName(_filePath ?? "file")} — {_player.Name} (v{_player.FileVersion})";
+        statusLabel.Text = string.Format(AppLocale.Get("Status.Loaded"), Path.GetFileName(_filePath ?? "file"), _player.Name, _player.FileVersion);
     }
 
     private void CollectAllTabs()
@@ -1105,6 +1115,201 @@ public partial class MainForm : Form
 
     private static decimal ClampNud(NumericUpDown nud, int value) =>
         ClampNud(nud, (decimal)value);
+
+    /// <summary>Refreshes all UI text when language changes.</summary>
+    private void RefreshAllUI()
+    {
+        var L = (Func<string, string>)AppLocale.Get;
+
+        // Form title
+        Text = L("App.Title");
+
+        // Menu
+        fileMenu.Text = L("Menu.File");
+        openMenuItem.Text = L("Menu.Open");
+        saveMenuItem.Text = L("Menu.Save");
+        saveAsMenuItem.Text = L("Menu.SaveAs");
+        exitMenuItem.Text = L("Menu.Exit");
+        // Language menu items
+        var langMenu = (ToolStripMenuItem)menuStrip.Items[1];
+        langMenu.Text = L("Menu.Language");
+        if (_langEnItem != null) _langEnItem.Text = L("Menu.LangEN");
+        if (_langZhItem != null) _langZhItem.Text = L("Menu.LangZH");
+
+        // Tab titles
+        tabPlayerInfo.Text = L("Tab.PlayerInfo");
+        tabStats.Text = L("Tab.Stats");
+        tabAppearance.Text = L("Tab.Appearance");
+        tabInventory.Text = L("Tab.Inventory");
+        tabEquipment.Text = L("Tab.Equipment");
+        tabDyes.Text = L("Tab.Dyes");
+        tabStorage.Text = L("Tab.Storage");
+        tabBuffs.Text = L("Tab.Buffs");
+        tabUpgrades.Text = L("Tab.Upgrades");
+        tabLoadouts.Text = L("Tab.Loadouts");
+        tabSpawnPoints.Text = L("Tab.SpawnPoints");
+        tabMisc.Text = L("Tab.Misc");
+
+        // Tab 1: Player Info
+        lblPlayerName.Text = L("Info.Name");
+        lblDifficulty.Text = L("Info.Difficulty");
+        lblPlayTime.Text = L("Info.PlayTime");
+        lblFileVersion.Text = L("Info.FileVersion");
+        lblLoadout.Text = L("Info.Loadout");
+
+        // Tab 2: Stats
+        grpHealth.Text = L("Stats.Health");
+        lblHealth.Text = L("Stats.Current");
+        lblMaxHealth.Text = L("Stats.Max");
+        grpMana.Text = L("Stats.Mana");
+        lblMana.Text = L("Stats.Current");
+        lblMaxMana.Text = L("Stats.Max");
+        grpCounters.Text = L("Stats.Counters");
+        lblDeathsPvE.Text = L("Stats.DeathsPvE");
+        lblDeathsPvP.Text = L("Stats.DeathsPvP");
+        lblTaxMoney.Text = L("Stats.TaxMoney");
+        lblAnglerQuests.Text = L("Stats.AnglerQuests");
+        lblGolferScore.Text = L("Stats.GolferScore");
+
+        // Tab 3: Appearance
+        lblHairStyle.Text = L("Appearance.HairStyle");
+        lblHairDye.Text = L("Appearance.HairDye");
+        lblSkinVariant.Text = L("Appearance.Skin");
+        grpColors.Text = L("Appearance.Colors");
+        for (int i = 0; i < colorButtons.Length; i++) colorButtons[i].Text = L("Appearance.Pick");
+        grpVisibility.Text = L("Appearance.Visibility");
+        for (int i = 0; i < chkHideVisual.Length; i++)
+            chkHideVisual[i].Text = L($"Appearance.{i switch {
+                0 => "Head", 1 => "Body", 2 => "Legs", 3 => "VanityHead", 4 => "VanityBody",
+                5 => "VanityLegs", 6 => "Acc1", 7 => "Acc2", 8 => "Acc3", 9 => "Acc4", _ => "Head"
+            }}");
+
+        // Tab 4: Inventory
+        grpInventoryEdit.Text = L("Inventory.EditSlot");
+        lblStack.Text = L("Inventory.Stack");
+        lblPrefix.Text = L("Inventory.Prefix");
+        chkFavorite.Text = L("Inventory.Favorite");
+        btnSetItem.Text = L("Inventory.SetItem");
+        btnClearItem.Text = L("Inventory.ClearSlot");
+        grpCoins.Text = L("Inventory.Coins");
+        grpAmmo.Text = L("Inventory.Ammo");
+
+        // Tab 5: Equipment
+        grpArmorSlots.Text = L("Equip.Armor");
+        grpVanityArmorSlots.Text = L("Equip.VanityArmor");
+        grpAccessorySlots.Text = L("Equip.Accessories");
+        grpVanityAccessorySlots.Text = L("Equip.VanityAccessories");
+        grpMiscEquipSlots.Text = L("Equip.Misc");
+
+        // Tab 6: Dyes
+        grpArmorDyes.Text = L("Dyes.Armor");
+        grpAccessoryDyes.Text = L("Dyes.Accessories");
+        grpMiscEquipDyes.Text = L("Dyes.Equipment");
+
+        // Tab 7: Storage
+        subPiggyBank.Text = L("Storage.PiggyBank");
+        subSafe.Text = L("Storage.Safe");
+        subDefenderForge.Text = L("Storage.DefenderForge");
+        subVoidVault.Text = L("Storage.VoidVault");
+        grpStorageEdit.Text = L("Storage.EditSlot");
+        lblStorageStack.Text = L("Inventory.Stack");
+        lblStoragePrefix.Text = L("Inventory.Prefix");
+        btnStorageSet.Text = L("Storage.Set");
+        btnStorageClear.Text = L("Storage.Clear");
+
+        // Tab 8: Buffs
+        // (title label text is set in BuildBuffsTab)
+        dgvBuffs.Columns["Type"].HeaderText = L("Buffs.Type");
+        dgvBuffs.Columns["Duration"].HeaderText = L("Buffs.Duration");
+
+        // Tab 9: Upgrades
+        chkExtraAccessory.Text = L("Upgrades.ExtraAccessory");
+        chkAegisCrystal.Text = L("Upgrades.AegisCrystal");
+        chkAegisFruit.Text = L("Upgrades.AegisFruit");
+        chkArcaneCrystal.Text = L("Upgrades.ArcaneCrystal");
+        chkGalaxyPearl.Text = L("Upgrades.GalaxyPearl");
+        chkGummyWorm.Text = L("Upgrades.GummyWorm");
+        chkAmbrosia.Text = L("Upgrades.Ambrosia");
+        chkArtisanBread.Text = L("Upgrades.ArtisanBread");
+        chkBiomeTorches.Text = L("Upgrades.BiomeTorches");
+        chkUsingBiomeTorches.Text = L("Upgrades.UsingBiomeTorches");
+        lblSuperCart.Text = L("Upgrades.SuperCart");
+        chkSuperCartEnabled.Text = L("Upgrades.SuperCartEnabled");
+
+        // Tab 10: Loadouts
+        subLoadout2.Text = L("Loadouts.Loadout2");
+        subLoadout3.Text = L("Loadouts.Loadout3");
+
+        // Tab 11: Spawn Points
+        btnAddSpawn.Text = L("Spawn.Add");
+        btnRemoveSpawn.Text = L("Spawn.Remove");
+        dgvSpawnPoints.Columns["WorldId"].HeaderText = L("Spawn.WorldId");
+        dgvSpawnPoints.Columns["WorldName"].HeaderText = L("Spawn.WorldName");
+        dgvSpawnPoints.Columns["X"].HeaderText = L("Spawn.X");
+        dgvSpawnPoints.Columns["Y"].HeaderText = L("Spawn.Y");
+
+        // Tab 12: Misc
+        chkHotbarLocked.Text = L("Misc.HotbarLocked");
+        grpHideInfo.Text = L("Misc.HideInfo");
+        for (int i = 0; i < chkHideInfo.Length; i++)
+            chkHideInfo[i].Text = L($"Info.{i switch {
+                0 => "Watch", 1 => "Weather", 2 => "Depth", 3 => "Compass", 4 => "Sextant",
+                5 => "Tally", 6 => "Stopwatch", 7 => "MetalDetector", 8 => "DPS",
+                9 => "RareCreature", 10 => "FishingPower", 11 => "MoonPhase", 12 => "Speed", _ => "Watch"
+            }}");
+        grpCooldowns.Text = L("Misc.Cooldowns");
+        lblPotionDelay.Text = L("Misc.PotionDelay");
+        lblManaPotionDelay.Text = L("Misc.ManaPotionDelay");
+        lblRestorationCd.Text = L("Misc.RestorationCd");
+
+        // Grid column headers
+        void UpdateGridHeaders(DataGridView dgv)
+        {
+            if (dgv.Columns["Name"] != null) dgv.Columns["Name"].HeaderText = L("Grid.Name");
+            if (dgv.Columns["ID"] != null) dgv.Columns["ID"].HeaderText = L("Grid.ID");
+            if (dgv.Columns["Stack"] != null) dgv.Columns["Stack"].HeaderText = L("Grid.Stack");
+            if (dgv.Columns["Prefix"] != null) dgv.Columns["Prefix"].HeaderText = L("Grid.Prefix");
+        }
+        UpdateGridHeaders(dgvInventory);
+        UpdateGridHeaders(dgvCoins);
+        UpdateGridHeaders(dgvAmmo);
+        UpdateGridHeaders(dgvPiggyBank);
+        UpdateGridHeaders(dgvSafe);
+        UpdateGridHeaders(dgvDefenderForge);
+        UpdateGridHeaders(dgvVoidVault);
+
+        // Repopulate data if player is loaded (to refresh item names with new language)
+        if (_player != null)
+        {
+            PopulateItemGrid(dgvInventory, _player.MainInventory, 50);
+            PopulateItemGrid(dgvCoins, _player.Coins, 4);
+            PopulateItemGrid(dgvAmmo, _player.Ammo, 4);
+            PopulateItemGrid(dgvPiggyBank, _player.PiggyBank, 40);
+            PopulateItemGrid(dgvSafe, _player.Safe, 40);
+            PopulateItemGrid(dgvDefenderForge, _player.DefenderForge, 40);
+            PopulateItemGrid(dgvVoidVault, _player.VoidVault, 40);
+            PopulateAllItemCombos();
+            // Refresh equipment combos
+            PopulateEquipmentCombos(cmbArmorSlots, _player.Armor, 3);
+            PopulateEquipmentCombos(cmbVanityArmorSlots, _player.VanityArmor, 3);
+            PopulateEquipmentCombos(cmbAccessorySlots, _player.Accessories, _player.Accessories.Count);
+            PopulateEquipmentCombos(cmbVanityAccessorySlots, _player.VanityAccessories, _player.VanityAccessories.Count);
+            PopulateEquipmentCombos(cmbMiscEquipSlots, _player.MiscEquips, 5);
+            PopulateEquipmentCombos(cmbArmorDyeSlots, _player.ArmorDyes, 3);
+            PopulateEquipmentCombos(cmbAccessoryDyeSlots, _player.ArmorDyes, 7, 3);
+            PopulateEquipmentCombos(cmbMiscEquipDyeSlots, _player.MiscEquipDyes, 5);
+            PopulatePrefixCombos(cmbArmorPrefixes, _player.Armor, 3);
+            PopulatePrefixCombos(cmbVanityArmorPrefixes, _player.VanityArmor, 3);
+            PopulatePrefixCombos(cmbAccessoryPrefixes, _player.Accessories, _player.Accessories.Count);
+            PopulatePrefixCombos(cmbVanityAccessoryPrefixes, _player.VanityAccessories, _player.VanityAccessories.Count);
+        }
+
+        // Status bar
+        if (_player != null)
+            statusLabel.Text = string.Format(L("Status.Loaded"), Path.GetFileName(_filePath ?? "file"), _player.Name, _player.FileVersion);
+        else
+            statusLabel.Text = L("Status.Ready");
+    }
 
     #endregion
 }

@@ -1,4 +1,5 @@
 namespace Terraria_Players_Editor.Models;
+using Terraria_Players_Editor.Services;
 
 /// <summary>
 /// Static database of Terraria item prefixes/modifiers and their display names.
@@ -49,9 +50,19 @@ public static class PrefixData
         { 97, "Scraggling" },
     };
 
-    /// <summary>Gets the display name for a prefix ID.</summary>
-    public static string GetName(byte prefix) =>
-        Prefixes.TryGetValue(prefix, out var name) ? name : $"Unknown({prefix})";
+    /// <summary>Gets the display name for a prefix ID. Uses current language if set to ZH and translation exists.</summary>
+    public static string GetName(byte prefix)
+    {
+        if (!Prefixes.TryGetValue(prefix, out var enName))
+            return $"Unknown({prefix})";
+
+        if (AppLocale.Current == AppLocale.Lang.ZH)
+        {
+            var zhName = Services.GameLocaleLoader.GetPrefixName(enName);
+            if (zhName != null) return zhName;
+        }
+        return enName;
+    }
 
     /// <summary>Gets the byte value for a prefix name. Returns 0 if not found.</summary>
     public static byte GetId(string name) =>
