@@ -115,6 +115,25 @@ partial class MainForm
     private ComboBox[] cmbAccessoryDyeSlots = null!;
     private ComboBox[] cmbMiscEquipDyeSlots = null!;
 
+    // Label arrays for localization refresh
+    private Label[] lblEquipArmor = null!;
+    private Label[] lblEquipVanityArmor = null!;
+    private Label[] lblEquipAccessory = null!;
+    private Label[] lblEquipVanityAcc = null!;
+    private Label[] lblEquipMisc = null!;
+    private Label[] lblDyeArmor = null!;
+    private Label[] lblDyeAccessory = null!;
+    private Label[] lblDyeMisc = null!;
+
+    // Color label references (7 colors: Hair, Skin, Eyes, Shirt, UnderShirt, Pants, Shoes)
+    private Label[] lblColors = null!;
+
+    // Loadout tab GroupBox references for text refresh
+    private GroupBox[] grpLoadout2Boxes = null!;
+    private GroupBox[] grpLoadout3Boxes = null!;
+    private Label[][] lblLoadout2Labels = null!;
+    private Label[][] lblLoadout3Labels = null!;
+
     // === Tab 7: Storage ===
     private TabPage tabStorage = null!;
     private TabControl tabStorageSub = null!;

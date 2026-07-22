@@ -9,6 +9,8 @@ public static class ItemDatabase
 {
     private static readonly Dictionary<int, string> IdToName = new();
     private static readonly Dictionary<string, int> NameToId = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, int> NameZhToId = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<int, string> IdToInternal = new();
     private static readonly Dictionary<int, string> IdToCategory = new();
 
     public static int MaxId { get; private set; }
@@ -26,7 +28,8 @@ public static class ItemDatabase
             }
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
-            var items = System.Text.Json.JsonSerializer.Deserialize<List<JsonItemEntry>>(json);
+            var items = System.Text.Json.JsonSerializer.Deserialize<List<JsonItemEntry>>(json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             if (items == null) return;
 
@@ -34,13 +37,34 @@ public static class ItemDatabase
             {
                 IdToName[item.Id] = item.Name;
                 NameToId[item.Name] = item.Id;
+                IdToInternal[item.Id] = item.Internal ?? "";
                 IdToCategory[item.Id] = item.Category ?? "None";
                 if (item.Id > MaxId) MaxId = item.Id;
             }
+
+            // Build Chinese name → ID reverse lookup
+            BuildZhReverseLookup();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to load item database: {ex.Message}");
+        }
+    }
+
+    /// <summary>Build Chinese name → ID mapping for search support.</summary>
+    private static void BuildZhReverseLookup()
+    {
+        foreach (var kv in IdToName)
+        {
+            // Get Chinese name via GameLocaleLoader using the internal name
+            var internalName = IdToInternal.GetValueOrDefault(kv.Key, "");
+            string? zhName = null;
+            if (!string.IsNullOrEmpty(internalName))
+                zhName = GameLocaleLoader.GetItemNameByInternal(internalName);
+            if (zhName == null)
+                zhName = GameLocaleLoader.GetItemName(kv.Value);
+            if (!string.IsNullOrEmpty(zhName))
+                NameZhToId[zhName] = kv.Key;
         }
     }
 
@@ -54,8 +78,15 @@ public static class ItemDatabase
 
         if (AppLocale.Current == AppLocale.Lang.ZH)
         {
-            var zhName = GameLocaleLoader.GetItemName(enName);
-            if (zhName != null) return zhName;
+            // Use internal name (from items.json) for precise lookup
+            if (IdToInternal.TryGetValue(id, out var internalName) && !string.IsNullOrEmpty(internalName))
+            {
+                var zhName = GameLocaleLoader.GetItemNameByInternal(internalName);
+                if (zhName != null) return zhName;
+            }
+            // Fallback: convert display name to internal format
+            var zhName2 = GameLocaleLoader.GetItemName(enName);
+            if (zhName2 != null) return zhName2;
         }
         return enName;
     }
@@ -73,7 +104,7 @@ public static class ItemDatabase
         return IdToCategory.TryGetValue(id, out var cat) ? cat : "Unknown";
     }
 
-    /// <summary>Search items by name substring. Case-insensitive.</summary>
+    /// <summary>Search items by name substring (supports both EN and ZH). Case-insensitive.</summary>
     public static List<ItemLookup> Search(string? query, int maxResults = 100)
     {
         var results = new List<ItemLookup>();
@@ -86,12 +117,30 @@ public static class ItemDatabase
         }
 
         var q = query.Trim();
+
+        // Search English names
         foreach (var kv in IdToName)
         {
             if (kv.Value.Contains(q, StringComparison.OrdinalIgnoreCase))
                 results.Add(new ItemLookup(kv.Key, kv.Value, IdToCategory.GetValueOrDefault(kv.Key, "")));
             if (results.Count >= maxResults) break;
         }
+
+        // Also search Chinese names if in ZH mode
+        if (AppLocale.Current == AppLocale.Lang.ZH && results.Count < maxResults)
+        {
+            var existingIds = new HashSet<int>(results.Select(r => r.Id));
+            foreach (var kv in NameZhToId)
+            {
+                if (existingIds.Contains(kv.Value)) continue;
+                if (kv.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
+                {
+                    results.Add(new ItemLookup(kv.Value, IdToName.GetValueOrDefault(kv.Value, "Unknown"), IdToCategory.GetValueOrDefault(kv.Value, "")));
+                    if (results.Count >= maxResults) break;
+                }
+            }
+        }
+
         return results;
     }
 
@@ -103,15 +152,47 @@ public static class ItemDatabase
                        .ToList();
     }
 
-    /// <summary>Try to find an item ID by partial name match.</summary>
+    /// <summary>Try to find an item ID by exact or partial name match (supports both EN and ZH).</summary>
     public static int FindIdByPartialName(string name)
     {
-        var id = GetId(name);
-        if (id >= 0) return id;
+        if (string.IsNullOrWhiteSpace(name)) return 0;
 
-        // Try partial match
-        var match = IdToName.FirstOrDefault(kv => kv.Value.Equals(name, StringComparison.OrdinalIgnoreCase));
-        return match.Key != 0 ? match.Key : -1;
+        var trimmed = name.Trim();
+
+        // 1. Exact match in English
+        if (NameToId.TryGetValue(trimmed, out var id))
+            return id;
+
+        // 2. Exact match in Chinese
+        if (AppLocale.Current == AppLocale.Lang.ZH && NameZhToId.TryGetValue(trimmed, out var zhId))
+            return zhId;
+
+        // 3. Partial match in English
+        var matchEn = IdToName.FirstOrDefault(kv => kv.Value.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        if (matchEn.Key != 0) return matchEn.Key;
+
+        // 4. Partial match in Chinese
+        if (AppLocale.Current == AppLocale.Lang.ZH)
+        {
+            var matchZh = NameZhToId.FirstOrDefault(kv => kv.Key.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+            if (matchZh.Key != null) return matchZh.Value;
+
+            // 5. Contains search in Chinese
+            foreach (var kv in NameZhToId)
+            {
+                if (kv.Key.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
+                    return kv.Value;
+            }
+        }
+
+        // 6. Contains search in English
+        foreach (var kv in IdToName)
+        {
+            if (kv.Value.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
+                return kv.Key;
+        }
+
+        return -1;
     }
 
     public static int Count => IdToName.Count;
@@ -119,13 +200,14 @@ public static class ItemDatabase
     /// <summary>Lightweight item lookup record.</summary>
     public readonly record struct ItemLookup(int Id, string Name, string Category)
     {
-        public override string ToString() => $"{Name} (ID:{Id})";
+        public override string ToString() => $"{ItemDatabase.GetName(Id)} (ID:{Id})";
     }
 
     private sealed class JsonItemEntry
     {
         public int Id { get; set; }
         public string Name { get; set; } = "";
+        public string? Internal { get; set; }
         public string? Category { get; set; }
     }
 }
