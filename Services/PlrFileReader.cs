@@ -1,275 +1,348 @@
 using Terraria_Players_Editor.Models;
+using System.Text;
 
 namespace Terraria_Players_Editor.Services;
 
 /// <summary>
-/// Reads and parses Terraria .plr player files (1.4.4+ format).
-/// Handles version-specific branching for backwards compatibility.
+/// Reads and parses Terraria .plr player files (1.4.4+ / v319).
+///
+/// Format reference (from WinTerrEdit analysis and hex verification):
+/// - "relogic": fixed 7 bytes with NO length prefix at offset 4
+/// - Strings: 1-byte length prefix + UTF-8 bytes
+/// - Item IDs / quantities / stats: 2-byte uint16 LE (b1 + 256*b2)
+/// - Item slots (v319): [Fav(1)|ID(2)|pad(2)|Qty(2)|pad(2)|Pref(1)] = 10 bytes
+/// - Equip slots: [ID(2)|pad(2)|Pref(1)] = 5 bytes
+/// - Health/Mana: 4 bytes each [low, high, 0, 0], uint16 encoded
 /// </summary>
 public static class PlrFileReader
 {
-    /// <summary>Parse a .plr file from decrypted bytes.</summary>
     public static PlayerData Read(byte[] data)
     {
-        using var ms = new MemoryStream(data);
-        using var reader = new BinaryReader(ms);
         var player = new PlayerData();
+        int o = 0;
 
         try
         {
-            // === Header ===
-            player.FileVersion = reader.ReadInt32();
-            string magic = reader.ReadString();       // "relogic"
-            byte fileType = reader.ReadByte();         // 0x03 = player
-            player.Revision = reader.ReadInt32();
-            reader.ReadInt64();                        // favorite (unused, always 0)
+            // === Header (0-23) ===
+            { int v; o = ReadInt32(data, o, out v); player.FileVersion = v; }
+            // "relogic" — fixed 7 bytes, no prefix
+            string magic = ReadFixedString(data, o, 7); o += 7;
+            o++; // fileType (0x03)
+            { int v; o = ReadInt32(data, o, out v); player.Revision = v; }
+            o += 8; // favorite (int64)
 
             // === Identity ===
-            player.Name = reader.ReadString();
-            player.Difficulty = reader.ReadByte();
-            player.PlayTime = reader.ReadInt64();
+            { string v; o = ReadString(data, o, out v); player.Name = v; }
+            int nameEndOffset = o; // position right after name bytes
+            { byte v; o = ReadByte(data, o, out v); player.Difficulty = v; }
+            { long v; o = ReadInt64(data, o, out v); player.PlayTime = v; }
 
-            // === Appearance ===
-            player.Appearance.HairStyle = reader.ReadInt32();
-            player.Appearance.HairDye = reader.ReadByte();
+            // === Stats at nameEndOffset+19 (health) and +27 (mana) ===
+            // 4 bytes each, uint16 encoded in first 2 bytes, last 2 are padding
+            o = nameEndOffset + 19;
+            player.Stats.Health = ReadUInt16(data, o); o += 4;
+            player.Stats.MaxHealth = ReadUInt16(data, o); o += 4;
 
-            // HideVisual (10 bools)
+            o = nameEndOffset + 27;
+            player.Stats.Mana = ReadUInt16(data, o); o += 4;
+            player.Stats.MaxMana = ReadUInt16(data, o); o += 4;
+
+            // === Appearance fields (between playTime and stats) ===
+            o = nameEndOffset + 9;
+            { byte v; o = ReadByte(data, o, out v); player.Appearance.HairStyle = v; }
+            { byte v; o = ReadByte(data, o, out v); player.Appearance.HairDye = v; }
+
+            // hideVisual: 10 bits packed in 2 bytes
+            short hideVisBits; o = ReadInt16(data, o, out hideVisBits);
             for (int i = 0; i < 10; i++)
-                player.Appearance.HideVisual[i] = reader.ReadBoolean();
+                player.Appearance.HideVisual[i] = ((hideVisBits >> i) & 1) != 0;
 
-            // HideMisc (5 bools)
+            // hideMisc: 5 bits packed in 1 byte
+            byte hideMscBits; o = ReadByte(data, o, out hideMscBits);
             for (int i = 0; i < 5; i++)
-                player.Appearance.HideMisc[i] = reader.ReadBoolean();
+                player.Appearance.HideMisc[i] = ((hideMscBits >> i) & 1) != 0;
 
-            player.Appearance.SkinVariant = reader.ReadByte();
+            { byte v; o = ReadByte(data, o, out v); player.Appearance.SkinVariant = v; }
 
-            // Colors (7 × 3 bytes RGB)
-            player.Appearance.HairColor = reader.ReadBytes(3);
-            player.Appearance.SkinColor = reader.ReadBytes(3);
-            player.Appearance.EyeColor = reader.ReadBytes(3);
-            player.Appearance.ShirtColor = reader.ReadBytes(3);
-            player.Appearance.UnderShirtColor = reader.ReadBytes(3);
-            player.Appearance.PantsColor = reader.ReadBytes(3);
-            player.Appearance.ShoeColor = reader.ReadBytes(3);
+            // selectedItem: 2 bytes
+            { short v; o = ReadInt16(data, o, out v); player.SelectedItem = v; }
+            o += 2; // 2 bytes padding to reach nameEndOffset+19
 
-            // === Stats ===
-            player.Stats.Health = reader.ReadInt32();
-            player.Stats.MaxHealth = reader.ReadInt32();
-            player.Stats.Mana = reader.ReadInt32();
-            player.Stats.MaxMana = reader.ReadInt32();
+            // === Colors at nameEndOffset+57 (21 bytes: 7 × 3 RGB) ===
+            o = nameEndOffset + 57;
+            player.Appearance.HairColor = ReadBytes(data, o, 3); o += 3;
+            player.Appearance.SkinColor = ReadBytes(data, o, 3); o += 3;
+            player.Appearance.EyeColor = ReadBytes(data, o, 3); o += 3;
+            player.Appearance.ShirtColor = ReadBytes(data, o, 3); o += 3;
+            player.Appearance.UnderShirtColor = ReadBytes(data, o, 3); o += 3;
+            player.Appearance.PantsColor = ReadBytes(data, o, 3); o += 3;
+            player.Appearance.ShoeColor = ReadBytes(data, o, 3); o += 3;
 
-            // === Permanent Upgrades ===
-            player.Upgrades.ExtraAccessory = reader.ReadBoolean();
-            // downedDD2EventAnyDifficulty - skip
-            reader.ReadBoolean();
-            player.Upgrades.UnlockedBiomeTorches = reader.ReadBoolean();
-            player.Upgrades.UsingBiomeTorches = reader.ReadBoolean();
-            player.Upgrades.AteArtisanBread = reader.ReadBoolean();
-            player.Upgrades.UsedAegisCrystal = reader.ReadBoolean();
-            player.Upgrades.UsedAegisFruit = reader.ReadBoolean();
-            player.Upgrades.UsedArcaneCrystal = reader.ReadBoolean();
-            player.Upgrades.UsedGalaxyPearl = reader.ReadBoolean();
-            player.Upgrades.UsedGummyWorm = reader.ReadBoolean();
-            player.Upgrades.UsedAmbrosia = reader.ReadBoolean();
-            player.Upgrades.UnlockedSuperCart = reader.ReadByte();
-            player.Upgrades.EnabledSuperCart = reader.ReadBoolean();
+            // === Permanent Upgrades (between mana and colors, at nameEndOffset+35) ===
+            o = nameEndOffset + 35;
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.ExtraAccessory = v; }
+            o++; // downedDD2
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UnlockedBiomeTorches = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsingBiomeTorches = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.AteArtisanBread = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsedAegisCrystal = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsedAegisFruit = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsedArcaneCrystal = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsedGalaxyPearl = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsedGummyWorm = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.UsedAmbrosia = v; }
+            { byte v; o = ReadByte(data, o, out v); player.Upgrades.UnlockedSuperCart = v; }
+            { bool v; o = ReadBool(data, o, out v); player.Upgrades.EnabledSuperCart = v; }
 
-            // === Tax Money ===
-            player.TaxMoney = reader.ReadInt32();
+            // After colors: skip 2 bytes then read taxMoney at nameEndOffset+80
+            o = nameEndOffset + 80;
+            { int v; o = ReadInt32(data, o, out v); player.TaxMoney = v; }
 
-            // === Equipment (id + prefix only, no stack/favorited) ===
-            player.Armor = ReadEquipmentItems(reader, 3);
-            player.VanityArmor = ReadEquipmentItems(reader, 3);
-            // Accessory count: read the count from stream
-            int accCount = reader.ReadInt32();
-            player.Accessories = ReadEquipmentItems(reader, accCount);
-            int vanityAccCount = reader.ReadInt32();
-            player.VanityAccessories = ReadEquipmentItems(reader, vanityAccCount);
-            player.ArmorDyes = ReadEquipmentItems(reader, 10);    // 3 armor + 7 acc dyes
+            // === Equipment at nameEndOffset+84: 5-byte slots [ID(2)|pad(2)|Pref(1)] ===
+            o = nameEndOffset + 84;
+            player.Armor = ReadEquipItems5(data, ref o, 3);
+            player.VanityArmor = ReadEquipItems5(data, ref o, 3);
+            player.Accessories = ReadEquipItems5(data, ref o, 7);
+            player.VanityAccessories = ReadEquipItems5(data, ref o, 7);
+            player.ArmorDyes = ReadEquipItems5(data, ref o, 10);
+            player.MiscEquips = ReadEquipItems5(data, ref o, 5);
+            player.MiscEquipDyes = ReadEquipItems5(data, ref o, 5);
 
-            // === Inventory (with stack + favorited) ===
-            player.MainInventory = ReadInventoryItems(reader, 50);
-            player.Coins = ReadInventoryItems(reader, 4);
-            player.Ammo = ReadInventoryItems(reader, 4);
+            // Trash item (10-byte format)
+            player.TrashItem = ReadInvItem(data, ref o);
 
-            // === Misc Equipment ===
-            player.MiscEquips = ReadEquipmentItems(reader, 5);     // pet, light pet, minecart, mount, hook
-            player.MiscEquipDyes = ReadEquipmentItems(reader, 5);
+            // === Jump to Inventory at nameEndOffset+228 ===
+            o = nameEndOffset + 228;
+            player.MainInventory = ReadInvItems10(data, ref o, 50);
+            player.Coins = ReadInvItems10(data, ref o, 4);
+            player.Ammo = ReadInvItems10(data, ref o, 4);
 
-            // === Storage (with stack, no favorited) ===
-            player.PiggyBank = ReadStorageItems(reader, 40);
-            player.Safe = ReadStorageItems(reader, 40);
-            player.DefenderForge = ReadStorageItems(reader, 40);
-            if (player.FileVersion >= 269)
-                player.VoidVault = ReadStorageItems(reader, 40);
-
-            // === Trash ===
-            int trashId = reader.ReadInt32();
-            int trashStack = reader.ReadInt16();
-            byte trashPrefix = reader.ReadByte();
-            player.TrashItem = new ItemData
-            {
-                ItemId = trashId,
-                StackSize = trashStack,
-                Prefix = trashPrefix
-            };
-
-            // === Buffs ===
-            int buffCount = player.FileVersion >= 269 ? 44 : 22;
-            player.BuffTypes = new int[44];
-            player.BuffTimes = new int[44];
-            for (int i = 0; i < buffCount; i++)
-                player.BuffTypes[i] = reader.ReadInt32();
-            for (int i = 0; i < buffCount; i++)
-                player.BuffTimes[i] = reader.ReadInt32();
-
-            // === Spawn Points ===
-            int spawnCount = reader.ReadInt32();
-            for (int i = 0; i < spawnCount; i++)
-            {
-                player.SpawnPoints.Add(new SpawnPointData
-                {
-                    X = reader.ReadInt32(),
-                    Y = reader.ReadInt32(),
-                    WorldId = reader.ReadInt32(),
-                    WorldName = reader.ReadString()
-                });
-            }
-
-            // === Toggles / Info ===
-            player.HotbarLocked = reader.ReadBoolean();
+            // === Flags / Toggles / Counters ===
+            { bool v; o = ReadBool(data, o, out v); player.HotbarLocked = v; }
             for (int i = 0; i < 13; i++)
-                player.HideInfo[i] = reader.ReadBoolean();
-            player.AnglerQuestsFinished = reader.ReadInt32();
-            reader.ReadInt32(); // savedBartender
-            player.GolferScoreAccumulated = reader.ReadInt32();
+            { o = ReadBool(data, o, out bool v); player.HideInfo[i] = v; }
+            { int v; o = ReadInt32(data, o, out v); player.AnglerQuestsFinished = v; }
+            o += 4; // savedBartender
+            { int v; o = ReadInt32(data, o, out v); player.GolferScoreAccumulated = v; }
 
-            // === Builder Toggles (version-dependent count) ===
-            int toggleCount = 12; // v230+
-            if (player.FileVersion < 200)
-                toggleCount = 10;
-            else if (player.FileVersion < 230)
-                toggleCount = 11;
-            for (int i = 0; i < toggleCount; i++)
-                player.BuilderToggles[i] = reader.ReadBoolean();
+            for (int i = 0; i < 12; i++)
+            { o = ReadBool(data, o, out bool v); player.BuilderToggles[i] = v; }
 
-            // === Dpad Bindings / Builder Acc ===
             for (int i = 0; i < 4; i++)
-                player.DPadRadialBindings[i] = reader.ReadInt32();
+            { o = ReadInt32(data, o, out int v); player.DPadRadialBindings[i] = v; }
             for (int i = 0; i < 4; i++)
-                player.BuilderAccStatus[i] = reader.ReadInt32();
+            { o = ReadInt32(data, o, out int v); player.BuilderAccStatus[i] = v; }
+            o += 4; // bartenderQuestLog
 
-            reader.ReadInt32(); // bartenderQuestLog
+            { int v; o = ReadInt32(data, o, out v); player.NumberOfDeathsPvE = v; }
+            { int v; o = ReadInt32(data, o, out v); player.NumberOfDeathsPvP = v; }
 
-            // === Death Counts ===
-            player.NumberOfDeathsPvE = reader.ReadInt32();
-            player.NumberOfDeathsPvP = reader.ReadInt32();
+            { int v; o = ReadInt32(data, o, out v); player.PotionDelay = v; }
+            { int v; o = ReadInt32(data, o, out v); player.ManaPotionDelay = v; }
+            { int v; o = ReadInt32(data, o, out v); player.RestorationPotionCd = v; }
 
-            // === Cooldowns ===
-            player.PotionDelay = reader.ReadInt32();
-            player.ManaPotionDelay = reader.ReadInt32();
-            player.RestorationPotionCd = reader.ReadInt32();
-
-            // === Emotes (v220+) ===
+            // Emotes
             if (player.FileVersion >= 220)
             {
-                int emoteCount = reader.ReadInt32();
-                for (int i = 0; i < emoteCount; i++)
-                    player.UnlockedEmotes.Add(reader.ReadInt32());
+                int emoteCount; o = ReadInt32(data, o, out emoteCount);
+                for (int i = 0; i < Math.Min(emoteCount, 200); i++)
+                { o = ReadInt32(data, o, out int e); player.UnlockedEmotes.Add(e); }
             }
 
-            // === Loadouts (v269+) ===
+            // Loadouts
             if (player.FileVersion >= 269)
             {
-                player.CurrentLoadout = reader.ReadInt32();
-                player.Loadout2 = ReadSavedLoadout(reader);
-                player.Loadout3 = ReadSavedLoadout(reader);
+                { int v; o = ReadInt32(data, o, out v); player.CurrentLoadout = v; }
+                player.Loadout2 = ReadLoadout(data, ref o);
+                player.Loadout3 = ReadLoadout(data, ref o);
             }
 
-            // === Journey Research (v230+) ===
+            // Journey Research
             if (player.FileVersion >= 230)
             {
-                int researchedCount = reader.ReadInt32();
-                for (int i = 0; i < researchedCount; i++)
+                int researchCount; o = ReadInt32(data, o, out researchCount);
+                for (int i = 0; i < researchCount; i++)
                 {
-                    string itemName = reader.ReadString();
-                    int researchCount = reader.ReadInt32();
-                    player.ResearchedItems[itemName] = researchCount;
+                    string itemName; o = ReadString(data, o, out itemName);
+                    int cnt; o = ReadInt32(data, o, out cnt);
+                    player.ResearchedItems[itemName] = cnt;
                 }
             }
+
+            // === Storage at fixed offsets ===
+            o = nameEndOffset + 1608;
+            player.PiggyBank = ReadStorageItems10(data, ref o, 40);
+            o = nameEndOffset + 2008;
+            player.Safe = ReadStorageItems10(data, ref o, 40);
+            o = nameEndOffset + 2408;
+            player.DefenderForge = ReadStorageItems10(data, ref o, 40);
+            if (player.FileVersion >= 269)
+            {
+                o = nameEndOffset + 2808;
+                player.VoidVault = ReadStorageItems10(data, ref o, 40);
+            }
+
+            // === Buffs ===
+            o = nameEndOffset + 3208;
+            int buffCount = player.FileVersion >= 269 ? 44 : 22;
+            for (int i = 0; i < buffCount; i++)
+            {
+                int buffId = ReadUInt16(data, o); o += 4;
+                if (i < player.BuffTypes.Length) player.BuffTypes[i] = buffId;
+            }
+            for (int i = 0; i < buffCount; i++)
+            {
+                int dur = data[o] + (data[o + 1] << 8) + (data[o + 2] << 16);
+                o += 4;
+                if (i < player.BuffTimes.Length) player.BuffTimes[i] = dur;
+            }
+
+            // === Spawn Points ===
+            if (o < data.Length)
+            {
+                try
+                {
+                    int spawnCount; o = ReadInt32(data, o, out spawnCount);
+                    for (int i = 0; i < spawnCount; i++)
+                    {
+                        int sx; o = ReadInt32(data, o, out sx);
+                        int sy; o = ReadInt32(data, o, out sy);
+                        int swid; o = ReadInt32(data, o, out swid);
+                        string swn; o = ReadString(data, o, out swn);
+                        player.SpawnPoints.Add(new SpawnPointData { X = sx, Y = sy, WorldId = swid, WorldName = swn });
+                    }
+                }
+                catch { /* Spawn points format may vary */ }
+            }
         }
-        catch (EndOfStreamException)
+        catch (IndexOutOfRangeException)
         {
             // File truncated — return what we've read so far
         }
 
+        player.RawData = data;
         return player;
     }
 
-    /// <summary>Read equipment items (id + prefix only).</summary>
-    private static List<ItemData> ReadEquipmentItems(BinaryReader reader, int count)
+    #region Low-level helpers
+
+    private static int ReadInt32(byte[] data, int o, out int value)
+    {
+        value = BitConverter.ToInt32(data, o);
+        return o + 4;
+    }
+
+    private static int ReadInt64(byte[] data, int o, out long value)
+    {
+        value = BitConverter.ToInt64(data, o);
+        return o + 8;
+    }
+
+    private static int ReadByte(byte[] data, int o, out byte value)
+    {
+        value = data[o];
+        return o + 1;
+    }
+
+    private static int ReadBool(byte[] data, int o, out bool value)
+    {
+        value = data[o] != 0;
+        return o + 1;
+    }
+
+    private static int ReadInt16(byte[] data, int o, out short value)
+    {
+        value = BitConverter.ToInt16(data, o);
+        return o + 2;
+    }
+
+    private static int ReadUInt16(byte[] data, int o)
+    {
+        return data[o] + (256 * data[o + 1]);
+    }
+
+    private static int ReadString(byte[] data, int o, out string value)
+    {
+        int length = data[o]; o++;
+        value = Encoding.UTF8.GetString(data, o, length);
+        return o + length;
+    }
+
+    private static string ReadFixedString(byte[] data, int o, int length)
+    {
+        return Encoding.UTF8.GetString(data, o, length);
+    }
+
+    private static byte[] ReadBytes(byte[] data, int o, int count)
+    {
+        var result = new byte[count];
+        Array.Copy(data, o, result, 0, count);
+        return result;
+    }
+
+    #endregion
+
+    #region Item reading
+
+    private static List<ItemData> ReadEquipItems5(byte[] data, ref int o, int count)
     {
         var items = new List<ItemData>(count);
         for (int i = 0; i < count; i++)
         {
-            items.Add(new ItemData
-            {
-                ItemId = reader.ReadInt32(),
-                Prefix = reader.ReadByte(),
-                StackSize = 1,
-                Favorited = false
-            });
+            int id = ReadUInt16(data, o); o += 2;
+            o += 2; // padding
+            byte prefix = data[o]; o += 1;
+            items.Add(new ItemData { ItemId = id, Prefix = prefix, StackSize = 1 });
         }
         return items;
     }
 
-    /// <summary>Read inventory items (id + stack + prefix + favorited).</summary>
-    private static List<ItemData> ReadInventoryItems(BinaryReader reader, int count)
+    private static ItemData ReadInvItem(byte[] data, ref int o)
+    {
+        bool fav = data[o] != 0; o++;
+        int id = ReadUInt16(data, o); o += 2;
+        o += 2; // padding
+        int stack = ReadUInt16(data, o); o += 2;
+        o += 2; // padding
+        byte prefix = data[o]; o++;
+        return new ItemData { ItemId = id, StackSize = stack, Prefix = prefix, Favorited = fav };
+    }
+
+    private static List<ItemData> ReadInvItems10(byte[] data, ref int o, int count)
+    {
+        var items = new List<ItemData>(count);
+        for (int i = 0; i < count; i++)
+            items.Add(ReadInvItem(data, ref o));
+        return items;
+    }
+
+    private static List<ItemData> ReadStorageItems10(byte[] data, ref int o, int count)
     {
         var items = new List<ItemData>(count);
         for (int i = 0; i < count; i++)
         {
-            items.Add(new ItemData
-            {
-                ItemId = reader.ReadInt32(),
-                StackSize = reader.ReadInt16(),
-                Prefix = reader.ReadByte(),
-                Favorited = reader.ReadBoolean()
-            });
+            int id = ReadUInt16(data, o); o += 2;
+            o += 2; // padding
+            int stack = ReadUInt16(data, o); o += 2;
+            o += 2; // padding
+            byte prefix = data[o]; o++;
+            items.Add(new ItemData { ItemId = id, StackSize = stack, Prefix = prefix });
         }
         return items;
     }
 
-    /// <summary>Read storage items (id + stack + prefix, no favorited).</summary>
-    private static List<ItemData> ReadStorageItems(BinaryReader reader, int count)
+    private static PlayerLoadout ReadLoadout(byte[] data, ref int o)
     {
-        var items = new List<ItemData>(count);
-        for (int i = 0; i < count; i++)
-        {
-            items.Add(new ItemData
-            {
-                ItemId = reader.ReadInt32(),
-                StackSize = reader.ReadInt16(),
-                Prefix = reader.ReadByte(),
-                Favorited = false
-            });
-        }
-        return items;
+        var lo = new PlayerLoadout();
+        lo.Armor = ReadEquipItems5(data, ref o, 3);
+        lo.VanityArmor = ReadEquipItems5(data, ref o, 3);
+        lo.Accessories = ReadEquipItems5(data, ref o, 7);
+        lo.VanityAccessories = ReadEquipItems5(data, ref o, 7);
+        lo.ArmorDyes = ReadEquipItems5(data, ref o, 10);
+        lo.MiscEquips = ReadEquipItems5(data, ref o, 5);
+        lo.MiscEquipDyes = ReadEquipItems5(data, ref o, 5);
+        return lo;
     }
 
-    /// <summary>Read a saved equipment loadout.</summary>
-    private static PlayerLoadout ReadSavedLoadout(BinaryReader reader)
-    {
-        var loadout = new PlayerLoadout();
-        loadout.Armor = ReadEquipmentItems(reader, 3);
-        loadout.VanityArmor = ReadEquipmentItems(reader, 3);
-        int accCount = reader.ReadInt32();
-        loadout.Accessories = ReadEquipmentItems(reader, accCount);
-        int vanityAccCount = reader.ReadInt32();
-        loadout.VanityAccessories = ReadEquipmentItems(reader, vanityAccCount);
-        loadout.ArmorDyes = ReadEquipmentItems(reader, 10);
-        loadout.MiscEquips = ReadEquipmentItems(reader, 5);
-        loadout.MiscEquipDyes = ReadEquipmentItems(reader, 5);
-        return loadout;
-    }
+    #endregion
 }

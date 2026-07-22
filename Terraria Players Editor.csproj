@@ -14,4 +14,10 @@
     <EmbeddedResource Include="Data\Locale\*.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="DemoFile\**" />
+    <EmbeddedResource Remove="DemoFile\**" />
+    <None Remove="DemoFile\**" />
+  </ItemGroup>
+
 </Project>

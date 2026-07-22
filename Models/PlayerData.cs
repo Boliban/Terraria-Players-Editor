@@ -5,9 +5,15 @@ namespace Terraria_Players_Editor.Models;
 /// </summary>
 public sealed class PlayerData
 {
+    // === Raw data for safe round-trip saving ===
+    public byte[]? RawData { get; set; }
+
     // === Header ===
     public int FileVersion { get; set; }
     public int Revision { get; set; }
+
+    // === Hotbar ===
+    public int SelectedItem { get; set; }
 
     // === Identity ===
     public string Name { get; set; } = "";
