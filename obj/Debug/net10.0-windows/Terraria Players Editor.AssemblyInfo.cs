@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Terraria Players Editor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+672007770b4cf8cec061c403ae8c48ea008b5b55")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4c379b83715cc26d77405af73f7159ad6beddd00")]
 [assembly: System.Reflection.AssemblyProductAttribute("Terraria Players Editor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Terraria Players Editor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

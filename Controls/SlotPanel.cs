@@ -16,13 +16,18 @@ public class SlotPanel : UserControl
     private int _slotIndex;
     private ItemData? _item;
     private Color _normalBackColor;
+    private readonly Color _emptyBackColor;
 
     public SlotPanel(int slotIndex = 0, bool isHotbar = false)
     {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+        UpdateStyles();
+
         _slotIndex = slotIndex;
         _normalBackColor = isHotbar
             ? Color.FromArgb(80, 60, 40)   // Warm brown - hotbar
             : Color.FromArgb(40, 35, 45);  // Dark purple-gray - normal
+        _emptyBackColor = _normalBackColor; // Empty slots match filled slot colors
 
         Size = new Size(48, 48);
         BackColor = _normalBackColor;
@@ -32,8 +37,8 @@ public class SlotPanel : UserControl
 
         _icon = new PictureBox
         {
-            Size = new Size(36, 36),
-            Location = new Point(5, 3),
+            Size = new Size(32, 32),
+            Location = new Point(7, 7),
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent,
             Enabled = false
@@ -110,18 +115,24 @@ public class SlotPanel : UserControl
         {
             _icon.Image = IconService.DefaultIcon;
             _stackLabel.Visible = false;
-            BackColor = _selected ? Color.Gold : Color.FromArgb(60, 50, 60); // Empty slot color
+            BackColor = _selected ? Color.Gold : _emptyBackColor;
             return;
         }
 
         _icon.Image = IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon;
         _stackLabel.Visible = _item.StackSize > 1;
-        _stackLabel.Text = _item.StackSize > 999 ? "999+" : _item.StackSize.ToString();
+        if (_item.StackSize >= 1000)
+        {
+            _stackLabel.Font = new Font("Segoe UI", 5.5f, FontStyle.Bold);
+            _stackLabel.Text = _item.StackSize.ToString();
+        }
+        else
+        {
+            _stackLabel.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+            _stackLabel.Text = _item.StackSize.ToString();
+        }
         _stackLabel.Location = new Point(Width - _stackLabel.PreferredWidth - 2,
             Height - _stackLabel.PreferredHeight);
-        _normalBackColor = _normalBackColor == Color.FromArgb(80, 60, 40)
-            ? Color.FromArgb(80, 60, 40)
-            : Color.FromArgb(40, 35, 45);
         if (!_selected) BackColor = _normalBackColor;
     }
 
@@ -143,6 +154,11 @@ public class SlotPanel : UserControl
     {
         base.OnMouseLeave(e);
         if (!_selected)
-            BackColor = _item != null && !_item.IsEmpty ? _normalBackColor : Color.FromArgb(60, 50, 60);
+        {
+            // Only restore color if mouse truly left the control bounds
+            var mousePos = PointToClient(MousePosition);
+            if (!ClientRectangle.Contains(mousePos))
+                BackColor = _item != null && !_item.IsEmpty ? _normalBackColor : _emptyBackColor;
+        }
     }
 }

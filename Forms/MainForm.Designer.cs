@@ -245,12 +245,18 @@ partial class MainForm
     private int _activeStorageIdx = -1;
     private Controls.ItemBrowser _browserBuffs = null!;
     private Controls.SlotGrid _gridBuffs = null!;
+    private Label _lblBuffTitle = null!;
     private Label _lblBuffType = null!;
     private NumericUpDown _nudBuffType = null!;
     private Label _lblBuffDuration = null!;
     private NumericUpDown _nudBuffDuration = null!;
     private Button _btnBuffSet = null!;
     private Button _btnBuffClear = null!;
+    private SplitContainer _splitInventory = null!;
+    private SplitContainer _splitEquip = null!;
+    private SplitContainer _splitStorage = null!;
+    private SplitContainer _splitBuffs = null!;
+    private bool _populating;
     private Controls.SlotGrid? _activeEquipGrid;
     private string _activeSlotGrid = "main";
 

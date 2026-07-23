@@ -4,304 +4,298 @@ using System.Text;
 namespace Terraria_Players_Editor.Services;
 
 /// <summary>
-/// Serializes PlayerData to .plr binary format matching 1.4.4+ / v319 layout.
+/// Serializes PlayerData to .plr binary format using sequential BinaryWriter,
+/// matching Terraria's actual Player.Serialize method for v319.
 /// </summary>
 public static class PlrFileWriter
 {
+    private const int ItemSlots = 58;
+    private const int ArmorSlots = 20;
+    private const int DyeSlots = 10;
+    private const int MiscEquipCount = 5;
+    private const int StorageSlots = 40;
+    private const int BuffCount = 44;
+
     public static byte[] Write(PlayerData player)
     {
         using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms);
 
-        // === Header ===
-        WriteInt32(ms, player.FileVersion);
-        ms.Write(Encoding.UTF8.GetBytes("relogic"));
-        ms.WriteByte(0x03); // fileType
-        WriteInt32(ms, player.Revision);
-        WriteInt64(ms, 0);  // favorite
+        // === Original PLR header: version + "relogic" magic + fileType + revision + favorites ===
+        w.Write(player.FileVersion);
+        w.Write(Encoding.UTF8.GetBytes("relogic")); // 7 raw bytes, no length prefix
+        w.Write((byte)0x03); // fileType
+        w.Write(player.Revision);
+        w.Write(0L); // favorites (int64)
 
-        // === Identity ===
-        WriteString(ms, player.Name);
-        int nameEndOffset = (int)ms.Position;
-        ms.WriteByte(player.Difficulty);
-        WriteInt64(ms, player.PlayTime);
+        // === Core identity ===
+        w.Write(player.Name);
+        w.Write(player.Difficulty);
+        w.Write(player.PlayTime);
+        w.Write((int)player.Appearance.HairStyle);
+        w.Write(player.Appearance.HairDye);
+        w.Write((byte)0); // team
 
-        // === Appearance before stats ===
-        // hairStyle, hairDye at +9, +10
-        ms.WriteByte((byte)player.Appearance.HairStyle);
-        ms.WriteByte(player.Appearance.HairDye);
+        // === Hide visual accessory: 10 bits in 2 bytes ===
+        byte hideVa1 = 0;
+        for (int i = 0; i < 8 && i < player.Appearance.HideVisual.Length; i++)
+            if (player.Appearance.HideVisual[i]) hideVa1 |= (byte)(1 << i);
+        w.Write(hideVa1);
+        byte hideVa2 = 0;
+        for (int i = 0; i < 2 && i + 8 < player.Appearance.HideVisual.Length; i++)
+            if (player.Appearance.HideVisual[i + 8]) hideVa2 |= (byte)(1 << i);
+        w.Write(hideVa2);
 
-        // hideVisual: 10 bits in 2 bytes
-        short hideVis = 0;
-        for (int i = 0; i < 10; i++)
-            if (i < player.Appearance.HideVisual.Length && player.Appearance.HideVisual[i])
-                hideVis |= (short)(1 << i);
-        WriteInt16(ms, hideVis);
-
-        // hideMisc: 5 bits in 1 byte
+        // hideMisc: pack 5 bools into 1 byte
         byte hideMsc = 0;
-        for (int i = 0; i < 5; i++)
-            if (i < player.Appearance.HideMisc.Length && player.Appearance.HideMisc[i])
-                hideMsc |= (byte)(1 << i);
-        ms.WriteByte(hideMsc);
+        for (int i = 0; i < 5 && i < player.Appearance.HideMisc.Length; i++)
+            if (player.Appearance.HideMisc[i]) hideMsc |= (byte)(1 << i);
+        w.Write(hideMsc);
+        w.Write(player.Appearance.SkinVariant);
 
-        ms.WriteByte(player.Appearance.SkinVariant);
+        // === Stats ===
+        w.Write(player.Stats.Health);
+        w.Write(player.Stats.MaxHealth);
+        w.Write(player.Stats.Mana);
+        w.Write(player.Stats.MaxMana);
 
-        // selectedItem: 2 bytes
-        WriteInt16(ms, (short)player.SelectedItem);
+        // === Upgrades ===
+        w.Write(player.Upgrades.ExtraAccessory);
+        w.Write(player.Upgrades.UnlockedBiomeTorches);
+        w.Write(player.Upgrades.UsingBiomeTorches);
+        w.Write(player.Upgrades.AteArtisanBread);
+        w.Write(player.Upgrades.UsedAegisCrystal);
+        w.Write(player.Upgrades.UsedAegisFruit);
+        w.Write(player.Upgrades.UsedArcaneCrystal);
+        w.Write(player.Upgrades.UsedGalaxyPearl);
+        w.Write(player.Upgrades.UsedGummyWorm);
+        w.Write(player.Upgrades.UsedAmbrosia);
+        w.Write(false); // downedDD2
 
-        // 2 bytes padding to align stats at nameEndOffset+19
-        WriteInt16(ms, 0);
+        // === Counters ===
+        w.Write(player.TaxMoney);
+        w.Write(player.NumberOfDeathsPvE);
+        w.Write(player.NumberOfDeathsPvP);
 
-        // === Stats at nameEndOffset+19 (4 bytes each, uint16 encoded) ===
-        WriteEncodedInt32Pad(ms, player.Stats.Health);
-        WriteEncodedInt32Pad(ms, player.Stats.MaxHealth);
+        // === Colors (7 × RGB) ===
+        WriteColor(w, player.Appearance.HairColor);
+        WriteColor(w, player.Appearance.SkinColor);
+        WriteColor(w, player.Appearance.EyeColor);
+        WriteColor(w, player.Appearance.ShirtColor);
+        WriteColor(w, player.Appearance.UnderShirtColor);
+        WriteColor(w, player.Appearance.PantsColor);
+        WriteColor(w, player.Appearance.ShoeColor);
 
-        // === Mana at nameEndOffset+27 (4 bytes each) ===
-        WriteEncodedInt32Pad(ms, player.Stats.Mana);
-        WriteEncodedInt32Pad(ms, player.Stats.MaxMana);
+        // === Armor: 20 slots (armor 3 + vanity 3 + accessories 7 + vanity acc 7) ===
+        var flatArmor = new List<ItemData>(ArmorSlots);
+        flatArmor.AddRange(SafeTake(player.Armor, 3));
+        flatArmor.AddRange(SafeTake(player.VanityArmor, 3));
+        flatArmor.AddRange(SafeTake(player.Accessories, 7));
+        flatArmor.AddRange(SafeTake(player.VanityAccessories, 7));
+        for (int i = 0; i < ArmorSlots; i++)
+        {
+            var a = i < flatArmor.Count ? flatArmor[i] : new ItemData();
+            w.Write(a.ItemId);
+            w.Write(a.Prefix);
+        }
 
-        // === Permanent Upgrades at nameEndOffset+35 ===
-        ms.WriteByte(player.Upgrades.ExtraAccessory ? (byte)1 : (byte)0);
-        ms.WriteByte(0); // downedDD2
-        ms.WriteByte(player.Upgrades.UnlockedBiomeTorches ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsingBiomeTorches ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.AteArtisanBread ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsedAegisCrystal ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsedAegisFruit ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsedArcaneCrystal ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsedGalaxyPearl ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsedGummyWorm ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UsedAmbrosia ? (byte)1 : (byte)0);
-        ms.WriteByte(player.Upgrades.UnlockedSuperCart);
-        ms.WriteByte(player.Upgrades.EnabledSuperCart ? (byte)1 : (byte)0);
+        // === Dyes: 10 slots ===
+        for (int i = 0; i < DyeSlots; i++)
+        {
+            var d = i < player.ArmorDyes.Count ? player.ArmorDyes[i] : new ItemData();
+            w.Write(d.ItemId);
+            w.Write(d.Prefix);
+        }
 
-        // Pad to colors at nameEndOffset+57
-        PadTo(ms, nameEndOffset + 57);
+        // === Inventory: 58 slots (main 50 + coins 4 + ammo 4) ===
+        var flatInv = new List<ItemData>(ItemSlots);
+        flatInv.AddRange(SafeTake(player.MainInventory, 50));
+        flatInv.AddRange(SafeTake(player.Coins, 4));
+        flatInv.AddRange(SafeTake(player.Ammo, 4));
+        for (int i = 0; i < ItemSlots; i++)
+        {
+            var inv = i < flatInv.Count ? flatInv[i] : new ItemData();
+            w.Write(inv.ItemId);
+            w.Write(inv.StackSize);
+            w.Write(inv.Prefix);
+            w.Write(inv.Favorited);
+        }
 
-        // === Colors at nameEndOffset+57 (21 bytes) ===
-        WriteColor(ms, player.Appearance.HairColor);
-        WriteColor(ms, player.Appearance.SkinColor);
-        WriteColor(ms, player.Appearance.EyeColor);
-        WriteColor(ms, player.Appearance.ShirtColor);
-        WriteColor(ms, player.Appearance.UnderShirtColor);
-        WriteColor(ms, player.Appearance.PantsColor);
-        WriteColor(ms, player.Appearance.ShoeColor);
+        // === Misc equips + dyes: 5 each ===
+        for (int i = 0; i < MiscEquipCount; i++)
+        {
+            var me = i < player.MiscEquips.Count ? player.MiscEquips[i] : new ItemData();
+            w.Write(me.ItemId);
+            w.Write(me.Prefix);
+            var md = i < player.MiscEquipDyes.Count ? player.MiscEquipDyes[i] : new ItemData();
+            w.Write(md.ItemId);
+            w.Write(md.Prefix);
+        }
 
-        // Pad to taxMoney at nameEndOffset+80
-        PadTo(ms, nameEndOffset + 80);
+        // === Storage: PiggyBank (40) + Safe (40) + DefenderForge (40) ===
+        WriteStorage(w, player.PiggyBank, StorageSlots, false);
+        WriteStorage(w, player.Safe, StorageSlots, false);
+        WriteStorage(w, player.DefenderForge, StorageSlots, false);
 
-        // Tax money (int32)
-        WriteInt32(ms, player.TaxMoney);
+        // === Storage: VoidVault (40, with favorited) ===
+        WriteStorage(w, player.VoidVault, StorageSlots, true);
 
-        // === Equipment at nameEndOffset+84 (5-byte slots) ===
-        WriteEquipItems5(ms, player.Armor, 3);
-        WriteEquipItems5(ms, player.VanityArmor, 3);
-        WriteEquipItems5(ms, player.Accessories, 7);
-        WriteEquipItems5(ms, player.VanityAccessories, 7);
-        WriteEquipItems5(ms, player.ArmorDyes, 10);
-        WriteEquipItems5(ms, player.MiscEquips, 5);
-        WriteEquipItems5(ms, player.MiscEquipDyes, 5);
+        // === Void vault info flag ===
+        w.Write((byte)0); // voidVaultInfo
 
-        // Trash item (10-byte format)
-        WriteInvItem(ms, player.TrashItem ?? new ItemData());
+        // === Buffs: 44 pairs (type + time) ===
+        for (int i = 0; i < BuffCount; i++)
+        {
+            w.Write(i < player.BuffTypes.Length ? player.BuffTypes[i] : 0);
+            w.Write(i < player.BuffTimes.Length ? player.BuffTimes[i] : 0);
+        }
 
-        // Pad to inventory at nameEndOffset+228
-        PadTo(ms, nameEndOffset + 228);
+        // === Spawn points ===
+        for (int i = 0; i < 200; i++)
+        {
+            if (i >= player.SpawnPoints.Count)
+            {
+                w.Write(-1);
+                break;
+            }
+            w.Write(player.SpawnPoints[i].X);
+            w.Write(player.SpawnPoints[i].Y);
+            w.Write(player.SpawnPoints[i].WorldId);
+            w.Write(Encoding.UTF8.GetByteCount(player.SpawnPoints[i].WorldName));
+            w.Write(Encoding.UTF8.GetBytes(player.SpawnPoints[i].WorldName));
+        }
 
-        // === Inventory (50 × 10 bytes) ===
-        WriteInvItems10(ms, player.MainInventory, 50);
-        WriteInvItems10(ms, player.Coins, 4);
-        WriteInvItems10(ms, player.Ammo, 4);
-
-        // === Flags / Toggles ===
-        ms.WriteByte(player.HotbarLocked ? (byte)1 : (byte)0);
+        // === Flags ===
+        w.Write(player.HotbarLocked);
         for (int i = 0; i < 13; i++)
-            ms.WriteByte(i < player.HideInfo.Length && player.HideInfo[i] ? (byte)1 : (byte)0);
-        WriteInt32(ms, player.AnglerQuestsFinished);
-        WriteInt32(ms, 0); // savedBartender
-        WriteInt32(ms, player.GolferScoreAccumulated);
+            w.Write(i < player.HideInfo.Length ? player.HideInfo[i] : false);
+        w.Write(player.AnglerQuestsFinished);
 
+        // === DPad bindings ===
+        for (int i = 0; i < 4; i++)
+            w.Write(0); // DPad bindings
         for (int i = 0; i < 12; i++)
-            ms.WriteByte(i < player.BuilderToggles.Length && player.BuilderToggles[i] ? (byte)1 : (byte)0);
+            w.Write(0); // builderAccStatus
 
-        for (int i = 0; i < 4; i++)
-            WriteInt32(ms, i < player.DPadRadialBindings.Length ? player.DPadRadialBindings[i] : 0);
-        for (int i = 0; i < 4; i++)
-            WriteInt32(ms, i < player.BuilderAccStatus.Length ? player.BuilderAccStatus[i] : 0);
-        WriteInt32(ms, 0); // bartenderQuestLog
+        w.Write(0); // bartenderQuestLog
 
-        WriteInt32(ms, player.NumberOfDeathsPvE);
-        WriteInt32(ms, player.NumberOfDeathsPvP);
-        WriteInt32(ms, player.PotionDelay);
-        WriteInt32(ms, player.ManaPotionDelay);
-        WriteInt32(ms, player.RestorationPotionCd);
+        // === Death state ===
+        w.Write(false); // dead
 
-        // Emotes
-        if (player.FileVersion >= 220)
+        // === Timestamp ===
+        w.Write(DateTime.UtcNow.ToBinary());
+
+        // === Golfer score ===
+        w.Write(player.GolferScoreAccumulated);
+
+        // === Creative tracker (research items) ===
+        // Format: int32 count + for each: string(internalName) + int32(researchCount)
+        WriteResearchItems(w, player);
+
+        // === Temporary item slots ===
+        // Format: byte count (0-1) + optionally: int32 type + int32 stack + byte prefix + bool favorited
+        w.Write((byte)0);
+
+        // === Creative powers ===
+        // Format: sentinel-based — while(true) { bool hasMore; if(!hasMore) break; ushort id; data }
+        // For non-journey characters: just write false (1 byte) — no powers persisted
+        w.Write(false);
+
+        // === Super cart bits ===
+        byte cartBits = 0;
+        if (player.Upgrades.UnlockedSuperCart != 0) cartBits |= 1;
+        if (player.Upgrades.EnabledSuperCart) cartBits |= 2;
+        w.Write(cartBits);
+
+        // === Loadouts ===
+        w.Write(player.CurrentLoadout);
+        WriteLoadout(w, player.Loadout2 ?? new PlayerLoadout());
+        WriteLoadout(w, player.Loadout3 ?? new PlayerLoadout());
+
+        // === Voice ===
+        w.Write((byte)0); // voiceVariant
+        w.Write(0f); // voicePitchOffset
+
+        // === Pending refunds (empty) ===
+        w.Write(0);
+
+        // === One-time dialogues (empty) ===
+        w.Write(0);
+
+        w.Flush();
+        byte[] plain = ms.ToArray();
+        DebugLog.LogHex("Writer plaintext output", plain);
+        return PlrCrypto.Encrypt(plain);
+    }
+
+    #region Helpers
+
+    private static void WriteColor(BinaryWriter w, byte[] c)
+    {
+        w.Write(c.Length > 0 ? c[0] : (byte)0);
+        w.Write(c.Length > 1 ? c[1] : (byte)0);
+        w.Write(c.Length > 2 ? c[2] : (byte)0);
+    }
+
+    private static void WriteResearchItems(BinaryWriter w, PlayerData player)
+    {
+        // Format: int32 count + foreach: string(internalName) + int32(researchCount)
+        // BinaryWriter.Write(string) uses 7-bit-encoded length prefix, matching the game
+        if (player.ResearchedItems.Count > 0)
         {
-            WriteInt32(ms, player.UnlockedEmotes.Count);
-            foreach (var e in player.UnlockedEmotes)
-                WriteInt32(ms, e);
-        }
-
-        // Loadouts
-        if (player.FileVersion >= 269)
-        {
-            WriteInt32(ms, player.CurrentLoadout);
-            WriteLoadout(ms, player.Loadout2 ?? new PlayerLoadout());
-            WriteLoadout(ms, player.Loadout3 ?? new PlayerLoadout());
-        }
-
-        // Journey Research
-        if (player.FileVersion >= 230)
-        {
-            WriteInt32(ms, player.ResearchedItems.Count);
+            w.Write(player.ResearchedItems.Count);
             foreach (var kv in player.ResearchedItems)
             {
-                WriteString(ms, kv.Key);
-                WriteInt32(ms, kv.Value);
+                w.Write(kv.Key);
+                w.Write(kv.Value);
             }
         }
-
-        // Pad to piggy bank at nameEndOffset+1608
-        PadTo(ms, nameEndOffset + 1608);
-
-        // === Storage (40 × 10 bytes each) ===
-        WriteStorageItems10(ms, player.PiggyBank, 40);
-        WriteStorageItems10(ms, player.Safe, 40);
-        WriteStorageItems10(ms, player.DefenderForge, 40);
-        if (player.FileVersion >= 269)
-            WriteStorageItems10(ms, player.VoidVault, 40);
-
-        // === Buffs ===
-        int buffCount = player.FileVersion >= 269 ? 44 : 22;
-        for (int i = 0; i < buffCount; i++)
-            WriteEncodedInt32Pad(ms, i < player.BuffTypes.Length ? player.BuffTypes[i] : 0);
-        for (int i = 0; i < buffCount; i++)
+        else
         {
-            int dur = i < player.BuffTimes.Length ? player.BuffTimes[i] : 0;
-            byte[] tmp = BitConverter.GetBytes(dur);
-            ms.WriteByte(tmp[0]);
-            ms.WriteByte(tmp[1]);
-            ms.WriteByte(tmp[2]);
-            ms.WriteByte(0);
+            w.Write(0);
         }
-
-        // Spawn Points
-        WriteInt32(ms, player.SpawnPoints.Count);
-        foreach (var sp in player.SpawnPoints)
-        {
-            WriteInt32(ms, sp.X);
-            WriteInt32(ms, sp.Y);
-            WriteInt32(ms, sp.WorldId);
-            WriteString(ms, sp.WorldName);
-        }
-
-        return PlrCrypto.Encrypt(ms.ToArray());
     }
 
-    #region Writer helpers
-
-    private static void WriteInt32(MemoryStream ms, int v) => ms.Write(BitConverter.GetBytes(v));
-    private static void WriteInt16(MemoryStream ms, short v) => ms.Write(BitConverter.GetBytes(v));
-    private static void WriteInt64(MemoryStream ms, long v) => ms.Write(BitConverter.GetBytes(v));
-
-    private static void WriteString(MemoryStream ms, string v)
-    {
-        var b = Encoding.UTF8.GetBytes(v);
-        ms.WriteByte((byte)b.Length);
-        ms.Write(b);
-    }
-
-    private static void WriteColor(MemoryStream ms, byte[] c)
-    {
-        for (int i = 0; i < 3; i++)
-            ms.WriteByte(i < c.Length ? c[i] : (byte)0);
-    }
-
-    private static void WriteEncodedInt32Pad(MemoryStream ms, int v)
-    {
-        byte[] tmp = BitConverter.GetBytes(v);
-        ms.WriteByte(tmp[0]);
-        ms.WriteByte(tmp[1]);
-        ms.WriteByte(0);
-        ms.WriteByte(0);
-    }
-
-    private static void WriteEquipItems5(MemoryStream ms, List<ItemData> items, int count)
+    private static void WriteStorage(BinaryWriter w, List<ItemData> items, int count, bool writeFavorited)
     {
         for (int i = 0; i < count; i++)
         {
-            if (i < items.Count)
-            {
-                byte[] idb = BitConverter.GetBytes(items[i].ItemId);
-                ms.WriteByte(idb[0]); ms.WriteByte(idb[1]);
-                WriteInt16(ms, 0); // padding
-                ms.WriteByte(items[i].Prefix);
-            }
-            else
-            {
-                ms.WriteByte(0); ms.WriteByte(0);
-                WriteInt16(ms, 0);
-                ms.WriteByte(0);
-            }
+            var it = i < items.Count ? items[i] : new ItemData();
+            w.Write(it.ItemId);
+            w.Write(it.StackSize);
+            w.Write(it.Prefix);
+            if (writeFavorited)
+                w.Write(it.Favorited);
         }
     }
 
-    private static void WriteInvItem(MemoryStream ms, ItemData item)
+    private static void WriteLoadout(BinaryWriter w, PlayerLoadout lo)
     {
-        ms.WriteByte(item.Favorited ? (byte)1 : (byte)0);
-        byte[] idb = BitConverter.GetBytes(item.ItemId);
-        ms.WriteByte(idb[0]); ms.WriteByte(idb[1]);
-        WriteInt16(ms, 0);
-        byte[] stb = BitConverter.GetBytes(item.StackSize);
-        ms.WriteByte(stb[0]); ms.WriteByte(stb[1]);
-        WriteInt16(ms, 0);
-        ms.WriteByte(item.Prefix);
-    }
+        // Armor: 20 slots
+        var la = new List<ItemData>(20);
+        la.AddRange(SafeTake(lo.Armor, 3));
+        la.AddRange(SafeTake(lo.VanityArmor, 3));
+        la.AddRange(SafeTake(lo.Accessories, 7));
+        la.AddRange(SafeTake(lo.VanityAccessories, 7));
+        for (int i = 0; i < 20; i++) { var a = i < la.Count ? la[i] : new ItemData(); w.Write(a.ItemId); w.Write(a.Prefix); }
 
-    private static void WriteInvItems10(MemoryStream ms, List<ItemData> items, int count)
-    {
-        for (int i = 0; i < count; i++)
-            WriteInvItem(ms, i < items.Count ? items[i] : new ItemData());
-    }
+        // Dyes: 10 slots
+        for (int i = 0; i < 10; i++) { var d = i < lo.ArmorDyes.Count ? lo.ArmorDyes[i] : new ItemData(); w.Write(d.ItemId); w.Write(d.Prefix); }
 
-    private static void WriteStorageItems10(MemoryStream ms, List<ItemData> items, int count)
-    {
-        for (int i = 0; i < count; i++)
+        // Misc equips + dyes: 5 each
+        for (int i = 0; i < 5; i++)
         {
-            if (i < items.Count)
-            {
-                byte[] idb = BitConverter.GetBytes(items[i].ItemId);
-                ms.WriteByte(idb[0]); ms.WriteByte(idb[1]);
-                WriteInt16(ms, 0);
-                byte[] stb = BitConverter.GetBytes(items[i].StackSize);
-                ms.WriteByte(stb[0]); ms.WriteByte(stb[1]);
-                WriteInt16(ms, 0);
-                ms.WriteByte(items[i].Prefix);
-            }
-            else
-            {
-                for (int j = 0; j < 9; j++) ms.WriteByte(0);
-            }
+            var me = i < lo.MiscEquips.Count ? lo.MiscEquips[i] : new ItemData(); w.Write(me.ItemId); w.Write(me.Prefix);
+            var md = i < lo.MiscEquipDyes.Count ? lo.MiscEquipDyes[i] : new ItemData(); w.Write(md.ItemId); w.Write(md.Prefix);
         }
     }
 
-    private static void WriteLoadout(MemoryStream ms, PlayerLoadout lo)
+    private static List<ItemData> SafeTake(List<ItemData> source, int count)
     {
-        WriteEquipItems5(ms, lo.Armor, 3);
-        WriteEquipItems5(ms, lo.VanityArmor, 3);
-        WriteEquipItems5(ms, lo.Accessories, 7);
-        WriteEquipItems5(ms, lo.VanityAccessories, 7);
-        WriteEquipItems5(ms, lo.ArmorDyes, 10);
-        WriteEquipItems5(ms, lo.MiscEquips, 5);
-        WriteEquipItems5(ms, lo.MiscEquipDyes, 5);
-    }
-
-    private static void PadTo(MemoryStream ms, int target)
-    {
-        while (ms.Position < target)
-            ms.WriteByte(0);
+        var result = new List<ItemData>(count);
+        for (int i = 0; i < count; i++)
+            result.Add(i < source.Count ? source[i] : new ItemData());
+        return result;
     }
 
     #endregion

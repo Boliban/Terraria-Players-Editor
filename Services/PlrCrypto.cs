@@ -18,7 +18,7 @@ public static class PlrCrypto
         aes.KeySize = 128;
         aes.BlockSize = 128;
         aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
+        aes.Padding = PaddingMode.None;  // Match the game — padding stays in the output
         aes.Key = AesKey;
         aes.IV = AesKey;
 
