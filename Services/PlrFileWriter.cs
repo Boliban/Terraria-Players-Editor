@@ -18,6 +18,8 @@ public static class PlrFileWriter
 
     public static byte[] Write(PlayerData player)
     {
+        DebugLog.Log($"Writer: Health={player.Stats.Health}/{player.Stats.MaxHealth}, Mana={player.Stats.Mana}/{player.Stats.MaxMana}, HairStyle={player.Appearance.HairStyle}, Name='{player.Name}'");
+        DebugLog.Log($"Writer: Inventory={player.MainInventory.Count(x=>x.ItemId>0)} non-empty, BuilderAccStatus[0]={player.BuilderAccStatus[0]}");
         using var ms = new MemoryStream();
         using var w = new BinaryWriter(ms);
 
@@ -112,14 +114,20 @@ public static class PlrFileWriter
         flatInv.AddRange(SafeTake(player.MainInventory, 50));
         flatInv.AddRange(SafeTake(player.Coins, 4));
         flatInv.AddRange(SafeTake(player.Ammo, 4));
+        // Log first 10 inventory slots for debugging
+        var invHex = new System.Text.StringBuilder("Inventory slots: ");
+        int invOffset = (int)ms.Position;
         for (int i = 0; i < ItemSlots; i++)
         {
             var inv = i < flatInv.Count ? flatInv[i] : new ItemData();
+            if (i < 10 && inv.ItemId > 0)
+                invHex.Append($"[{i}: ID={inv.ItemId} stack={inv.StackSize} pref={inv.Prefix}] ");
             w.Write(inv.ItemId);
             w.Write(inv.StackSize);
             w.Write(inv.Prefix);
             w.Write(inv.Favorited);
         }
+        DebugLog.Log($"Inventory starts at offset {invOffset}, first non-empty: {invHex}");
 
         // === Misc equips + dyes: 5 each ===
         for (int i = 0; i < MiscEquipCount; i++)
@@ -175,7 +183,7 @@ public static class PlrFileWriter
         for (int i = 0; i < 4; i++)
             w.Write(0); // DPad bindings
         for (int i = 0; i < 12; i++)
-            w.Write(0); // builderAccStatus
+            w.Write(i < player.BuilderAccStatus.Length ? player.BuilderAccStatus[i] : 0);
 
         w.Write(0); // bartenderQuestLog
 
@@ -207,10 +215,11 @@ public static class PlrFileWriter
         if (player.Upgrades.EnabledSuperCart) cartBits |= 2;
         w.Write(cartBits);
 
-        // === Loadouts ===
+        // === Loadouts === (game expects 3: main + loadout2 + loadout3)
         w.Write(player.CurrentLoadout);
-        WriteLoadout(w, player.Loadout2 ?? new PlayerLoadout());
-        WriteLoadout(w, player.Loadout3 ?? new PlayerLoadout());
+        WriteLoadout(w, BuildMainLoadout(player));    // loadout[0]: current equipment
+        WriteLoadout(w, player.Loadout2 ?? new PlayerLoadout());  // loadout[1]
+        WriteLoadout(w, player.Loadout3 ?? new PlayerLoadout());  // loadout[2]
 
         // === Voice ===
         w.Write((byte)0); // voiceVariant
@@ -224,8 +233,11 @@ public static class PlrFileWriter
 
         w.Flush();
         byte[] plain = ms.ToArray();
+        DebugLog.Log($"Writer: plaintext size = {plain.Length} bytes");
         DebugLog.LogHex("Writer plaintext output", plain);
-        return PlrCrypto.Encrypt(plain);
+        byte[] encrypted = PlrCrypto.Encrypt(plain);
+        DebugLog.Log($"Writer: encrypted size = {encrypted.Length} bytes");
+        return encrypted;
     }
 
     #region Helpers
@@ -269,25 +281,56 @@ public static class PlrFileWriter
         }
     }
 
+    /// <summary>Build a PlayerLoadout from the player's current equipment (used as loadout[0]).</summary>
+    private static PlayerLoadout BuildMainLoadout(PlayerData player)
+    {
+        return new PlayerLoadout
+        {
+            Armor = SafeList(player.Armor, 3),
+            VanityArmor = SafeList(player.VanityArmor, 3),
+            Accessories = SafeList(player.Accessories, 7),
+            VanityAccessories = SafeList(player.VanityAccessories, 7),
+            ArmorDyes = SafeList(player.ArmorDyes, 10),
+            MiscEquips = SafeList(player.MiscEquips, 5),
+            MiscEquipDyes = SafeList(player.MiscEquipDyes, 5),
+        };
+    }
+
+    private static List<ItemData> SafeList(List<ItemData> source, int count)
+    {
+        var result = new List<ItemData>(count);
+        for (int i = 0; i < count; i++)
+            result.Add(i < source.Count ? source[i] : new ItemData());
+        return result;
+    }
+
+    /// <summary>
+    /// Write loadout data matching the game's EquipmentLoadout.Serialize format.
+    /// Each item uses Item.Serialize (10 bytes: type+stack+prefix+fav), NOT 5 bytes.
+    /// </summary>
     private static void WriteLoadout(BinaryWriter w, PlayerLoadout lo)
     {
-        // Armor: 20 slots
+        // Armor: 20 items, each using full Item.Serialize (int32 type + int32 stack + byte prefix + bool fav)
         var la = new List<ItemData>(20);
         la.AddRange(SafeTake(lo.Armor, 3));
         la.AddRange(SafeTake(lo.VanityArmor, 3));
         la.AddRange(SafeTake(lo.Accessories, 7));
         la.AddRange(SafeTake(lo.VanityAccessories, 7));
-        for (int i = 0; i < 20; i++) { var a = i < la.Count ? la[i] : new ItemData(); w.Write(a.ItemId); w.Write(a.Prefix); }
+        for (int i = 0; i < 20; i++) WriteItemFull(w, i < la.Count ? la[i] : new ItemData());
 
-        // Dyes: 10 slots
-        for (int i = 0; i < 10; i++) { var d = i < lo.ArmorDyes.Count ? lo.ArmorDyes[i] : new ItemData(); w.Write(d.ItemId); w.Write(d.Prefix); }
+        // Dyes: 10 items, full Item.Serialize
+        for (int i = 0; i < 10; i++) WriteItemFull(w, i < lo.ArmorDyes.Count ? lo.ArmorDyes[i] : new ItemData());
 
-        // Misc equips + dyes: 5 each
-        for (int i = 0; i < 5; i++)
-        {
-            var me = i < lo.MiscEquips.Count ? lo.MiscEquips[i] : new ItemData(); w.Write(me.ItemId); w.Write(me.Prefix);
-            var md = i < lo.MiscEquipDyes.Count ? lo.MiscEquipDyes[i] : new ItemData(); w.Write(md.ItemId); w.Write(md.Prefix);
-        }
+        // Hide flags: 10 bools (hideVisual for loadout)
+        for (int i = 0; i < 10; i++) w.Write(false);
+    }
+
+    private static void WriteItemFull(BinaryWriter w, ItemData item)
+    {
+        w.Write(item.ItemId);
+        w.Write(item.StackSize);
+        w.Write(item.Prefix);
+        w.Write(item.Favorited);
     }
 
     private static List<ItemData> SafeTake(List<ItemData> source, int count)

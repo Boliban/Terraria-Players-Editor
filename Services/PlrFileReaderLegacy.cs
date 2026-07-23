@@ -16,7 +16,7 @@ namespace Terraria_Players_Editor.Services;
 /// </summary>
 public static class PlrFileReaderLegacy
 {
-    public static PlayerData Read(byte[] data)
+    public static PlayerData Read(byte[] data, bool enableDebug = true)
     {
         var player = new PlayerData();
         int o = 0;
@@ -34,6 +34,7 @@ public static class PlrFileReaderLegacy
             // === Identity ===
             { string v; o = ReadString(data, o, out v); player.Name = v; }
             int nameEndOffset = o; // position right after name bytes
+            DebugLog.Log($"Legacy: Name='{player.Name}', nameEndOffset={nameEndOffset}");
             { byte v; o = ReadByte(data, o, out v); player.Difficulty = v; }
             { long v; o = ReadInt64(data, o, out v); player.PlayTime = v; }
 
@@ -49,8 +50,9 @@ public static class PlrFileReaderLegacy
 
             // === Appearance fields (between playTime and stats) ===
             o = nameEndOffset + 9;
-            { byte v; o = ReadByte(data, o, out v); player.Appearance.HairStyle = v; }
+            { byte v; o = ReadByte(data, o, out v); player.Appearance.HairStyle = (int)v; }
             { byte v; o = ReadByte(data, o, out v); player.Appearance.HairDye = v; }
+            DebugLog.Log($"Legacy: HairStyle={player.Appearance.HairStyle}, HairDye={player.Appearance.HairDye}");
 
             // hideVisual: 10 bits packed in 2 bytes
             short hideVisBits; o = ReadInt16(data, o, out hideVisBits);
@@ -116,6 +118,9 @@ public static class PlrFileReaderLegacy
             player.MainInventory = ReadInvItems10(data, ref o, 50);
             player.Coins = ReadInvItems10(data, ref o, 4);
             player.Ammo = ReadInvItems10(data, ref o, 4);
+            // Log first few inventory items for debugging
+            int nonEmpty = player.MainInventory.Count(x => x.ItemId > 0);
+            DebugLog.Log($"Legacy: Inventory={nonEmpty}/50 non-empty items, Coins={player.Coins.Count(x=>x.ItemId>0)} non-empty, Ammo={player.Ammo.Count(x=>x.ItemId>0)} non-empty");
 
             // === Flags / Toggles / Counters ===
             { bool v; o = ReadBool(data, o, out v); player.HotbarLocked = v; }
@@ -130,8 +135,10 @@ public static class PlrFileReaderLegacy
 
             for (int i = 0; i < 4; i++)
             { o = ReadInt32(data, o, out int v); player.DPadRadialBindings[i] = v; }
-            for (int i = 0; i < 4; i++)
+            int bacCount = player.FileVersion >= 230 ? 12 : (player.FileVersion >= 197 ? 11 : (player.FileVersion >= 167 ? 10 : (player.FileVersion >= 164 ? 8 : 0)));
+            for (int i = 0; i < bacCount && i < player.BuilderAccStatus.Length; i++)
             { o = ReadInt32(data, o, out int v); player.BuilderAccStatus[i] = v; }
+            for (int i = player.BuilderAccStatus.Length; i < bacCount; i++) o += 4; // skip extra
             o += 4; // bartenderQuestLog
 
             { int v; o = ReadInt32(data, o, out v); player.NumberOfDeathsPvE = v; }
@@ -221,6 +228,7 @@ public static class PlrFileReaderLegacy
         }
 
         player.RawData = data;
+        DebugLog.Log($"Legacy: Read complete — Health={player.Stats.Health}/{player.Stats.MaxHealth}, Mana={player.Stats.Mana}/{player.Stats.MaxMana}, Difficulty={player.Difficulty}, HairStyle={player.Appearance.HairStyle}");
         return player;
     }
 

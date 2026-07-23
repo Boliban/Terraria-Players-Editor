@@ -14,7 +14,7 @@ public static class DebugLog
     public static bool Enabled
     {
         get => _enabled;
-        set => _enabled = value;
+        set { _enabled = value; if (!value) Clear(); }
     }
 
     public static void Log(string message)
