@@ -23,6 +23,7 @@ public class ItemModifier : UserControl
     private readonly Button _btnSet;
     private readonly Button _btnClear;
     private int _currentSlotIndex = -1;
+    private int _currentItemId;
 
     public ItemModifier()
     {
@@ -126,11 +127,15 @@ public class ItemModifier : UserControl
     public void LoadFromSlot(int slotIndex, ItemData item)
     {
         _currentSlotIndex = slotIndex;
+        _currentItemId = item.ItemId;
         _icon.Image = IconService.GetItemIcon(item.ItemId) ?? IconService.DefaultIcon;
         _lblName.Text = item.ItemName;
         _lblId.Text = $"ID: {item.ItemId}";
         _nudStack.Value = item.StackSize > 0 ? item.StackSize : 1;
         _chkFavorite.Checked = item.Favorited;
+
+        // Update search combo text to match current item so Set doesn't clobber it
+        _cmbItemSearch.Text = item.IsEmpty ? "" : $"{item.ItemName} (ID:{item.ItemId})";
 
         // Set prefix combo
         if (_cmbPrefix.Items.Count > 0 && item.Prefix < _cmbPrefix.Items.Count)
@@ -140,10 +145,18 @@ public class ItemModifier : UserControl
     /// <summary>Build an ItemData from the current control values.</summary>
     public ItemData BuildItemData()
     {
-        // Try to parse item ID from selected combo text
+        // Try to parse item ID from search combo text; fall back to current item
         var searchText = _cmbItemSearch.Text;
-        var itemId = ItemDatabase.FindIdByPartialName(searchText);
-        if (itemId < 0) itemId = 0;
+        int itemId;
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            itemId = ItemDatabase.FindIdByPartialName(searchText);
+            if (itemId < 0) itemId = _currentItemId;
+        }
+        else
+        {
+            itemId = _currentItemId;
+        }
 
         return new ItemData
         {
@@ -162,12 +175,12 @@ public class ItemModifier : UserControl
             _cmbItemSearch.Items.Add(item.ToString());
     }
 
-    /// <summary>Populate the prefix combo with all prefixes.</summary>
+    /// <summary>Populate the prefix combo with localized prefix names.</summary>
     public void PopulatePrefixes()
     {
         _cmbPrefix.Items.Clear();
         foreach (var kv in PrefixData.All)
-            _cmbPrefix.Items.Add(kv.Value);
+            _cmbPrefix.Items.Add(PrefixData.GetName(kv.Key));
     }
 
     /// <summary>Refresh display text (for language switching).</summary>

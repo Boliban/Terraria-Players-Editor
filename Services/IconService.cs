@@ -85,6 +85,16 @@ public static class IconService
                     var bytes = Convert.FromBase64String(kv.Value);
                     using var ms = new MemoryStream(bytes);
                     var bmp = new Bitmap(ms);
+                    // Validate and rescale non-32x32 icons
+                    if (bmp.Width != 32 || bmp.Height != 32)
+                    {
+                        var resized = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                        using var g = Graphics.FromImage(resized);
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                        g.DrawImage(bmp, 0, 0, 32, 32);
+                        bmp.Dispose();
+                        bmp = resized;
+                    }
                     target[id] = bmp;
                 }
                 catch
@@ -97,7 +107,7 @@ public static class IconService
 
     private static Bitmap CreateDefaultIcon()
     {
-        var bmp = new Bitmap(32, 32);
+        var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bmp);
         g.Clear(Color.Transparent);
         using var pen = new Pen(Color.Gray, 1);

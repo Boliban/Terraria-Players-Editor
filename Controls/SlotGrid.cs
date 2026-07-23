@@ -18,6 +18,9 @@ public class SlotGrid : UserControl
 
     public SlotGrid(int columns, int rows, bool enableHotbarColor = false)
     {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+        UpdateStyles();
+
         _columns = columns;
         _rows = rows;
         _enableHotbarColor = enableHotbarColor;
