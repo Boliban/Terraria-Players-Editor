@@ -23,6 +23,7 @@ public static class PlrFileReader
     public static PlayerData Read(byte[] plainData)
     {
         DebugLog.Clear();
+        DebugLog.Log($"Game Reader: input plaintext size = {plainData.Length} bytes");
         DebugLog.LogHex("Plaintext input to PlrFileReader", plainData);
         var player = new PlayerData();
         try
@@ -123,7 +124,9 @@ public static class PlrFileReader
             }
 
             // === Inventory: 58 slots ===
+            long invPos = ms.Position;
             player.MainInventory = new List<ItemData>(50);
+            var invDbg = new System.Text.StringBuilder("Inventory read: ");
             for (int i = 0; i < ItemSlots; i++)
             {
                 int id = r.ReadInt32();
@@ -134,7 +137,10 @@ public static class PlrFileReader
                 if (i < 50) player.MainInventory.Add(item);
                 else if (i < 54) player.Coins.Add(item);
                 else player.Ammo.Add(item);
+                if (i < 10 && id > 0)
+                    invDbg.Append($"[{i}: ID={id} stack={stack}] ");
             }
+            DebugLog.Log($"Reader: inventory at offset {invPos}, first non-empty: {invDbg}");
 
             // === Misc equips + dyes: 5 each ===
             player.MiscEquips = new List<ItemData>(MiscEquipCount);
@@ -188,8 +194,10 @@ public static class PlrFileReader
             player.AnglerQuestsFinished = r.ReadInt32();
 
             // === DPad / builder ===
-            for (int i = 0; i < 4; i++) r.ReadInt32(); // DPad bindings
-            for (int i = 0; i < 12; i++) r.ReadInt32(); // builderAccStatus
+            for (int i = 0; i < 4; i++) r.ReadInt32(); // DPad bindings — skip
+            for (int i = 0; i < 12; i++)
+                player.BuilderAccStatus[i] = r.ReadInt32();
+            DebugLog.Log($"Reader: BuilderAccStatus[0]={player.BuilderAccStatus[0]} (ruler: {(player.BuilderAccStatus[0] == 1 ? "ON" : "OFF")})");
             r.ReadInt32(); // bartenderQuestLog
 
             // === Death state ===
@@ -239,12 +247,13 @@ public static class PlrFileReader
             player.Upgrades.UnlockedSuperCart = (byte)((cartBits & 1) != 0 ? 1 : 0);
             player.Upgrades.EnabledSuperCart = (cartBits & 2) != 0;
 
-            // === Loadouts ===
+            // === Loadouts === (game stores 3: main + loadout2 + loadout3)
             if (version >= 262)
             {
                 player.CurrentLoadout = r.ReadInt32();
-                player.Loadout2 = ReadLoadout(r);
-                player.Loadout3 = ReadLoadout(r);
+                ReadLoadout(r); // loadout[0] = main — duplicates current equipment, skip it
+                player.Loadout2 = ReadLoadout(r); // loadout[1]
+                player.Loadout3 = ReadLoadout(r); // loadout[2]
             }
 
             // === Voice ===
@@ -307,39 +316,39 @@ public static class PlrFileReader
         return items;
     }
 
+    /// <summary>
+    /// Read loadout data matching the game's EquipmentLoadout.Deserialize format.
+    /// Each item uses full Item.Serialize: int32 type + int32 stack + byte prefix + bool fav.
+    /// </summary>
     private static PlayerLoadout ReadLoadout(BinaryReader r)
     {
         var lo = new PlayerLoadout();
-        // Armor: 20 slots
+        // Armor: 20 items × 10 bytes each
         for (int i = 0; i < 20; i++)
         {
             int id = r.ReadInt32();
+            int stack = r.ReadInt32();
             byte prefix = r.ReadByte();
-            var item = new ItemData { ItemId = id, Prefix = prefix, StackSize = 1 };
+            bool fav = r.ReadBoolean();
+            var item = new ItemData { ItemId = id, StackSize = stack, Prefix = prefix, Favorited = fav };
             if (i < 3) lo.Armor.Add(item);
             else if (i < 6) lo.VanityArmor.Add(item);
             else if (i < 13) lo.Accessories.Add(item);
             else lo.VanityAccessories.Add(item);
         }
-        // Dyes: 10 slots
+        // Dyes: 10 items × 10 bytes each
         lo.ArmorDyes = new List<ItemData>(10);
         for (int i = 0; i < 10; i++)
         {
             int id = r.ReadInt32();
+            int stack = r.ReadInt32();
             byte prefix = r.ReadByte();
-            lo.ArmorDyes.Add(new ItemData { ItemId = id, Prefix = prefix, StackSize = 1 });
+            bool fav = r.ReadBoolean();
+            lo.ArmorDyes.Add(new ItemData { ItemId = id, StackSize = stack, Prefix = prefix, Favorited = fav });
         }
-
-        // Misc equips + dyes: 5 each
-        for (int i = 0; i < 5; i++)
-        {
-            int meId = r.ReadInt32();
-            byte mePrefix = r.ReadByte();
-            lo.MiscEquips.Add(new ItemData { ItemId = meId, Prefix = mePrefix, StackSize = 1 });
-            int mdId = r.ReadInt32();
-            byte mdPrefix = r.ReadByte();
-            lo.MiscEquipDyes.Add(new ItemData { ItemId = mdId, Prefix = mdPrefix, StackSize = 1 });
-        }
+        // Hide flags: 10 bools
+        for (int i = 0; i < 10; i++) r.ReadBoolean();
+        // Misc equips are NOT part of the loadout — skip
         return lo;
     }
 

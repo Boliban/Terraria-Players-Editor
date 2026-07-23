@@ -750,11 +750,13 @@ public partial class MainForm : Form
 
     private async void DoSave(string path)
     {
+        DebugLog.Log($"SAVING to: {path}");
         SetLoading(true);
         try
         {
             CollectAllTabs();
             var bytes = await Task.Run(() => PlrFileWriter.Write(_player!));
+            DebugLog.Log($"SAVED {bytes.Length} bytes (encrypted) to: {path}");
             await Task.Run(() => File.WriteAllBytes(path, bytes));
             _filePath = path;
             statusLabel.Text = string.Format(AppLocale.Get("Status.Saved"), Path.GetFileName(path));
@@ -1169,12 +1171,15 @@ public partial class MainForm : Form
         for (int i = 0; i < 7; i++) Array.Copy(_tempColors[i], colorProps[i], 3);
 
         // Tab 4: Inventory — read from SlotGrids (all three: main, coins, ammo)
+        int invNonEmpty = _gridInventory.Slots.Count(s => s.Item != null && s.Item.ItemId > 0);
+        DebugLog.Log($"CollectAllTabs: Grid inventory has {invNonEmpty} non-empty slots");
         for (int i = 0; i < _gridInventory.Slots.Length && i < _player.MainInventory.Count; i++)
             _player.MainInventory[i] = _gridInventory.Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _gridCoins.Slots.Length && i < _player.Coins.Count; i++)
             _player.Coins[i] = _gridCoins.Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _gridAmmo.Slots.Length && i < _player.Ammo.Count; i++)
             _player.Ammo[i] = _gridAmmo.Slots[i].Item ?? new ItemData();
+        DebugLog.Log($"CollectAllTabs: After collect — MainInventory={_player.MainInventory.Count(x=>x.ItemId>0)} non-empty");
 
         // Tab 5: Unified Equipment — save to active loadout
         CollectEquipToLoadout();

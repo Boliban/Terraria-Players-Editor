@@ -80,7 +80,7 @@ public sealed class PlayerData
     // === Builder / Controller ===
     public bool[] BuilderToggles { get; set; } = new bool[12];
     public int[] DPadRadialBindings { get; set; } = new int[4];
-    public int[] BuilderAccStatus { get; set; } = new int[4];
+    public int[] BuilderAccStatus { get; set; } = new int[12];
 
     // === Loadouts ===
     public int CurrentLoadout { get; set; }
