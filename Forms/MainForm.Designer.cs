@@ -250,6 +250,7 @@ partial class MainForm
     private NumericUpDown _nudBuffType = null!;
     private Label _lblBuffDuration = null!;
     private NumericUpDown _nudBuffDuration = null!;
+    private Label _lblBuffTimeUnit = null!;
     private Button _btnBuffSet = null!;
     private Button _btnBuffClear = null!;
     private SplitContainer _splitInventory = null!;
@@ -259,6 +260,8 @@ partial class MainForm
     private bool _populating;
     private Controls.SlotGrid? _activeEquipGrid;
     private string _activeSlotGrid = "main";
+    private int _cachedBuffType;
+    private int _cachedBuffDur;
 
     private void InitializeComponent()
     {

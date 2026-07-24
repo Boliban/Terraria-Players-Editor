@@ -14,7 +14,6 @@ public class ItemBrowser : UserControl
     private readonly TextBox _txtSearch;
     private readonly DataGridView _dgvItems;
     private readonly ComboBox _cmbCategory;
-    private readonly System.Windows.Forms.Timer _searchDebounce;
     private ItemFilterMode _filterMode = ItemFilterMode.All;
 
     // Buff-granting item categories (exact match on items.json categories)
@@ -45,11 +44,15 @@ public class ItemBrowser : UserControl
             Dock = DockStyle.Fill,
             PlaceholderText = "Search items..."
         };
-        _txtSearch.TextChanged += OnSearchTextChanged;
-
-        // Search debounce timer (300ms delay)
-        _searchDebounce = new System.Windows.Forms.Timer { Interval = 400 };
-        _searchDebounce.Tick += (s, e) => { _searchDebounce.Stop(); ApplyFilter(); };
+        _txtSearch.KeyDown += (s, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                ApplyFilter();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        };
 
         // Category filter
         _cmbCategory = new ComboBox
@@ -67,12 +70,13 @@ public class ItemBrowser : UserControl
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             ReadOnly = true,
+            AllowUserToResizeRows = false,
             RowHeadersVisible = false,
             ScrollBars = ScrollBars.Vertical,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
             BackgroundColor = SystemColors.Window,
-            RowTemplate = { Height = 34 }
+            RowTemplate = { Height = 32 }
         };
         // Enable double buffering on DataGridView to reduce flicker
         var dgvProp = typeof(DataGridView).GetProperty("DoubleBuffered",
@@ -82,15 +86,16 @@ public class ItemBrowser : UserControl
         var iconCol = new DataGridViewImageColumn
         {
             Name = "Icon",
-            Width = 34,
-            ImageLayout = DataGridViewImageCellLayout.Zoom,
+            Width = 32,
+            ImageLayout = DataGridViewImageCellLayout.Normal,
             Resizable = DataGridViewTriState.False,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None
         };
         var nameCol = new DataGridViewTextBoxColumn
         {
             Name = "Name",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+            Width = 200
         };
         var idCol = new DataGridViewTextBoxColumn
         {
@@ -103,6 +108,23 @@ public class ItemBrowser : UserControl
         _dgvItems.Columns.Add(iconCol);
         _dgvItems.Columns.Add(nameCol);
         _dgvItems.Columns.Add(idCol);
+
+        // Dynamically resize Name column to fill remaining space.
+        // Avoids DataGridViewAutoSizeColumnMode.Fill which causes a
+        // layout deadlock with the vertical scrollbar in nested containers.
+        _dgvItems.SizeChanged += (s, e) =>
+        {
+            int fixedWidth = iconCol.Width + idCol.Width;
+            // Check if vertical scrollbar is needed by comparing row count against visible rows
+            int visibleRows = _dgvItems.ClientSize.Height /
+                (_dgvItems.RowTemplate.Height > 0 ? _dgvItems.RowTemplate.Height : 32);
+            bool needsScrollbar = _dgvItems.RowCount > visibleRows;
+            int scrollbarW = needsScrollbar ? SystemInformation.VerticalScrollBarWidth : 0;
+            int newNameWidth = _dgvItems.ClientSize.Width - fixedWidth - scrollbarW - 2;
+            if (newNameWidth > 50)
+                nameCol.Width = newNameWidth;
+        };
+
         _dgvItems.CellDoubleClick += (s, e) =>
         {
             if (e.RowIndex >= 0 && e.RowIndex < _dgvItems.Rows.Count)
@@ -126,7 +148,13 @@ public class ItemBrowser : UserControl
             int newRow = currentRow - (detents * scrollLinesPerDetent);
             newRow = Math.Max(0, Math.Min(newRow, _dgvItems.Rows.Count - 1));
 
-            if (newRow != currentRow)
+            // Skip past invisible rows (filtered out)
+            while (newRow > 0 && !_dgvItems.Rows[newRow].Visible)
+                newRow--;
+            while (newRow < _dgvItems.Rows.Count - 1 && !_dgvItems.Rows[newRow].Visible)
+                newRow++;
+
+            if (newRow != currentRow && _dgvItems.Rows[newRow].Visible)
             {
                 _dgvItems.FirstDisplayedScrollingRowIndex = newRow;
                 ((HandledMouseEventArgs)e).Handled = true;
@@ -141,6 +169,17 @@ public class ItemBrowser : UserControl
         layout.Controls.Add(_cmbCategory, 0, 1);
         layout.Controls.Add(_dgvItems, 0, 2);
         Controls.Add(layout);
+
+        // Refresh scrollbar when this control becomes visible (tab switch, etc.)
+        VisibleChanged += (s, e) =>
+        {
+            if (Visible && _dgvItems.RowCount > 0)
+            {
+                _dgvItems.ScrollBars = ScrollBars.None;
+                _dgvItems.ScrollBars = ScrollBars.Vertical;
+                DebugLog.Log($"[ItemBrowser] VisibleChanged refresh: rows={_dgvItems.RowCount}, clientH={_dgvItems.ClientSize.Height}");
+            }
+        };
     }
 
     /// <summary>Filter mode: show all items, dyes only, or buffs only.</summary>
@@ -161,63 +200,89 @@ public class ItemBrowser : UserControl
     /// <summary>Load all items from ItemDatabase into the list.</summary>
     public void LoadItems()
     {
-        _dgvItems.Rows.Clear();
-        _dgvItems.SuspendLayout();
+        // Collect data first, then populate in one batch to ensure scrollbar is correct.
+        // Using RowCount pre-allocation avoids SuspendLayout/ResumeLayout which can
+        // prevent the DataGridView from properly calculating its scrollbar visibility.
 
         if (_filterMode == ItemFilterMode.BuffOnly)
         {
-            // Load buff entries, not items
             var buffIds = BuffDatabase.GetAllIds();
-            var categories = new HashSet<string> { "All" };
+            var buffData = new List<(int id, string name, string type, Bitmap icon)>();
             foreach (var buffId in buffIds)
             {
-                if (buffId <= 0) continue; // Skip buff ID 0 (None)
-                var name = BuffDatabase.GetName(buffId);
-                var type = BuffDatabase.GetType(buffId);
-                var icon = IconService.GetBuffIcon(buffId) ?? IconService.DefaultIcon;
-                var displayName = $"{name} (ID:{buffId})";
-                var rowIndex = _dgvItems.Rows.Add(icon, displayName, buffId);
-                _dgvItems.Rows[rowIndex].Tag = buffId;
-                // Color-code by buff kind
-                var kind = BuffData.GetBuffKind(buffId);
-                _dgvItems.Rows[rowIndex].DefaultCellStyle.ForeColor = BuffData.GetColor(kind);
-                if (!string.IsNullOrEmpty(type) && type != "Buff")
-                    categories.Add(type);
+                if (buffId <= 0) continue;
+                buffData.Add((buffId, BuffDatabase.GetName(buffId),
+                    BuffDatabase.GetType(buffId),
+                    IconService.GetBuffIcon(buffId) ?? IconService.DefaultIcon));
             }
-            _dgvItems.ResumeLayout();
+
+            _dgvItems.Rows.Clear();
+            _dgvItems.RowCount = buffData.Count;
+
+            var categories = new HashSet<string> { "All" };
+            for (int i = 0; i < buffData.Count; i++)
+            {
+                var d = buffData[i];
+                var row = _dgvItems.Rows[i];
+                row.Cells[0].Value = d.icon;
+                row.Cells[1].Value = $"{d.name} (ID:{d.id})";
+                row.Cells[2].Value = d.id;
+                row.Tag = d.id;
+                var kind = BuffData.GetBuffKind(d.id);
+                row.DefaultCellStyle.ForeColor = BuffData.GetColor(kind);
+                if (!string.IsNullOrEmpty(d.type) && d.type != "Buff")
+                    categories.Add(d.type);
+            }
+
             _cmbCategory.Items.Clear();
             _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
             _cmbCategory.SelectedIndex = 0;
+            // Force scrollbar recalculation after bulk row loading
+            _dgvItems.ScrollBars = ScrollBars.None;
+            _dgvItems.ScrollBars = ScrollBars.Vertical;
+            DebugLog.Log($"[ItemBrowser] LoadItems done: rows={_dgvItems.RowCount}, clientH={_dgvItems.ClientSize.Height}, visibleRows={_dgvItems.ClientSize.Height / (_dgvItems.RowTemplate.Height > 0 ? _dgvItems.RowTemplate.Height : 32)}");
             return;
         }
 
         var itemCategories = new HashSet<string> { "All" };
         var allItems = ItemDatabase.GetAllItems();
+        var itemData = new List<(int id, string name, string cat, Bitmap icon)>();
 
         foreach (var item in allItems)
         {
             var cat = ItemDatabase.GetCategory(item.Id);
-
-            // Apply filter mode
             if (_filterMode == ItemFilterMode.DyeOnly)
             {
                 if (!cat.Equals("Dye", StringComparison.OrdinalIgnoreCase)) continue;
             }
-
-            var icon = IconService.GetItemIcon(item.Id) ?? IconService.DefaultIcon;
-            var rowIndex = _dgvItems.Rows.Add(icon, item.ToString(), item.Id);
-            _dgvItems.Rows[rowIndex].Tag = item.Id;
-
+            itemData.Add((item.Id, item.ToString(), cat,
+                IconService.GetItemIcon(item.Id) ?? IconService.DefaultIcon));
             if (!string.IsNullOrEmpty(cat) && cat != "None")
                 itemCategories.Add(cat);
         }
 
-        _dgvItems.ResumeLayout();
+        _dgvItems.Rows.Clear();
+        _dgvItems.RowCount = itemData.Count;
+
+        for (int i = 0; i < itemData.Count; i++)
+        {
+            var d = itemData[i];
+            var row = _dgvItems.Rows[i];
+            row.Cells[0].Value = d.icon;
+            row.Cells[1].Value = d.name;
+            row.Cells[2].Value = d.id;
+            row.Tag = d.id;
+        }
 
         // Populate category filter
         _cmbCategory.Items.Clear();
         _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
         _cmbCategory.SelectedIndex = 0;
+
+        // Force layout update so scrollbar appears immediately
+        // Force scrollbar recalculation after bulk row loading
+            _dgvItems.ScrollBars = ScrollBars.None;
+            _dgvItems.ScrollBars = ScrollBars.Vertical;
     }
 
     /// <summary>Reload items and apply current text filter.</summary>
@@ -239,12 +304,6 @@ public class ItemBrowser : UserControl
         }
     }
 
-    private void OnSearchTextChanged(object? sender, EventArgs e)
-    {
-        _searchDebounce.Stop();
-        _searchDebounce.Start();
-    }
-
     private void ApplyFilter()
     {
         var query = _txtSearch.Text.Trim();
@@ -259,7 +318,6 @@ public class ItemBrowser : UserControl
         }
 
         bool isNumeric = int.TryParse(query, out int numericQuery);
-        _dgvItems.SuspendLayout();
         foreach (DataGridViewRow row in _dgvItems.Rows)
         {
             if (isNumeric)
@@ -279,7 +337,6 @@ public class ItemBrowser : UserControl
                 row.Visible = text.Contains(query, StringComparison.OrdinalIgnoreCase);
             }
         }
-        _dgvItems.ResumeLayout();
     }
 }
 
