@@ -10,13 +10,15 @@ namespace Terraria_Players_Editor.Controls;
 public class SlotGrid : UserControl
 {
     private readonly TableLayoutPanel _table;
+    private readonly Label? _titleLabel;
     private SlotPanel[] _slots;
     private int _columns;
     private int _rows;
     private int _selectedIndex = -1;
     private bool _enableHotbarColor;
+    private readonly bool _hasTitle;
 
-    public SlotGrid(int columns, int rows, bool enableHotbarColor = false)
+    public SlotGrid(int columns, int rows, bool enableHotbarColor = false, string? gridTitle = null)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
         UpdateStyles();
@@ -24,22 +26,37 @@ public class SlotGrid : UserControl
         _columns = columns;
         _rows = rows;
         _enableHotbarColor = enableHotbarColor;
+        _hasTitle = gridTitle != null;
         int totalSlots = columns * rows;
         int cellSize = 50; // 48px slot + 2px gap
+        int titleH = _hasTitle ? 16 : 0;
 
-        Size = new Size(columns * cellSize + 2, rows * cellSize + 2);
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+        // Title label at top-left (if specified)
+        if (_hasTitle)
+        {
+            _titleLabel = new Label
+            {
+                Text = gridTitle,
+                Font = new Font("Segoe UI", 7.5f, FontStyle.Regular),
+                ForeColor = Color.FromArgb(100, 100, 105),
+                AutoSize = true,
+                Location = new Point(2, 0)
+            };
+            Controls.Add(_titleLabel);
+        }
 
         _table = new TableLayoutPanel
         {
             ColumnCount = columns,
             RowCount = rows,
-            Dock = DockStyle.Fill,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Padding = new Padding(0),
-            Margin = new Padding(0)
+            Margin = new Padding(0),
+            Location = new Point(0, titleH)
         };
 
         for (int c = 0; c < columns; c++)
@@ -88,6 +105,14 @@ public class SlotGrid : UserControl
         }
     }
 
+    /// <summary>Grid title text (shown at top-left). Set via constructor.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string? GridTitle
+    {
+        get => _titleLabel?.Text;
+        set { if (_titleLabel != null) _titleLabel.Text = value; }
+    }
+
     /// <summary>All slot panels in this grid.</summary>
     public SlotPanel[] Slots => _slots;
 
@@ -97,10 +122,17 @@ public class SlotGrid : UserControl
     /// <summary>Fired when a slot is double-clicked.</summary>
     public event EventHandler<int>? SlotDoubleClicked;
 
+    /// <summary>Static event: fired BEFORE any grid selects a slot, so other grids can clear their selection.</summary>
+    public static event Action<SlotGrid>? BeforeAnySlotSelected;
+
     /// <summary>Select a slot by index, deselecting the previous selection.</summary>
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= _slots.Length) return;
+
+        // Notify all listeners that THIS grid is about to select a slot.
+        // Other grids should clear their own selection.
+        BeforeAnySlotSelected?.Invoke(this);
 
         if (_selectedIndex >= 0 && _selectedIndex < _slots.Length)
             _slots[_selectedIndex].Selected = false;

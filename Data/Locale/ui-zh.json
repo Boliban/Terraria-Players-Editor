@@ -1,4 +1,5 @@
 {
+  "App.Title": "Terraria 玩家编辑器",
   "Menu.File": "文件(&F)",
   "Menu.Settings": "设置(&S)",
   "Menu.Open": "打开(&O)...",
@@ -11,6 +12,10 @@
   "Tab.PlayerInfo": "玩家信息",
   "Tab.Stats": "属性",
   "Tab.Appearance": "外观",
+  "Tab.Items": "物品",
+  "Grid.MainInventory": "主物品栏",
+  "Grid.Coins": "钱币",
+  "Grid.Ammo": "弹药",
   "Tab.Inventory": "背包",
   "Tab.Equipment": "装备",
   "Tab.Dyes": "染料",

@@ -31,8 +31,8 @@ public class SlotPanel : UserControl
 
         _slotIndex = slotIndex;
         _normalBackColor = isHotbar
-            ? Color.FromArgb(80, 60, 40)   // Warm brown - hotbar
-            : Color.FromArgb(40, 35, 45);  // Dark purple-gray - normal
+            ? Color.FromArgb(140, 160, 185)   // Light blue-gray - hotbar
+            : Color.FromArgb(185, 180, 190);  // Light gray - normal
         _emptyBackColor = _normalBackColor; // Empty slots match filled slot colors
 
         Size = new Size(48, 48);
@@ -110,8 +110,8 @@ public class SlotPanel : UserControl
         set
         {
             _normalBackColor = value
-                ? Color.FromArgb(80, 60, 40)
-                : Color.FromArgb(40, 35, 45);
+                ? Color.FromArgb(140, 160, 185)
+                : Color.FromArgb(185, 180, 190);
             if (!_selected) BackColor = _normalBackColor;
         }
     }
@@ -217,7 +217,7 @@ public class SlotPanel : UserControl
     {
         base.OnMouseEnter(e);
         if (!_selected)
-            BackColor = Color.FromArgb(60, 80, 100); // Blue hover
+            BackColor = Color.FromArgb(160, 190, 210); // Light blue hover
     }
 
     protected override void OnMouseLeave(EventArgs e)

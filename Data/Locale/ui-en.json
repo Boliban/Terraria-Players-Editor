@@ -1,4 +1,5 @@
 {
+  "App.Title": "Terraria Players Editor",
   "Menu.File": "&File",
   "Menu.Settings": "&Settings",
   "Menu.Open": "&Open...",
@@ -11,6 +12,10 @@
   "Tab.PlayerInfo": "Player Info",
   "Tab.Stats": "Stats",
   "Tab.Appearance": "Appearance",
+  "Tab.Items": "Items",
+  "Grid.MainInventory": "Main Inventory",
+  "Grid.Coins": "Coins",
+  "Grid.Ammo": "Ammo",
   "Tab.Inventory": "Inventory",
   "Tab.Equipment": "Equipment",
   "Tab.Dyes": "Dyes",
