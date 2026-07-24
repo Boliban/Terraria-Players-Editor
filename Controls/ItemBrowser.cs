@@ -17,10 +17,10 @@ public class ItemBrowser : UserControl
     private readonly System.Windows.Forms.Timer _searchDebounce;
     private ItemFilterMode _filterMode = ItemFilterMode.All;
 
-    // Known buff-granting item categories for BuffOnly filter (case-insensitive substring match)
-    private static readonly string[] BuffCategoryPatterns =
+    // Buff-granting item categories (exact match on items.json categories)
+    private static readonly HashSet<string> BuffCategories = new(StringComparer.OrdinalIgnoreCase)
     {
-        "potion", "food", "flask", "buff", "consumable"
+        "Potion", "Consumable"
     };
 
     public ItemBrowser()
@@ -113,6 +113,30 @@ public class ItemBrowser : UserControl
             }
         };
 
+        // Forward mouse wheel from this UserControl to the DataGridView.
+        // WinForms UserControl does not natively pass WM_MOUSEWHEEL to child controls.
+        MouseWheel += (s, e) =>
+        {
+            if (_dgvItems.RowCount == 0 || _dgvItems.Rows.Count == 0) return;
+
+            int scrollLinesPerDetent = SystemInformation.MouseWheelScrollLines;
+            int detents = e.Delta / 120;
+            int currentRow = _dgvItems.FirstDisplayedScrollingRowIndex;
+            if (currentRow < 0) currentRow = 0;
+            int newRow = currentRow - (detents * scrollLinesPerDetent);
+            newRow = Math.Max(0, Math.Min(newRow, _dgvItems.Rows.Count - 1));
+
+            if (newRow != currentRow)
+            {
+                _dgvItems.FirstDisplayedScrollingRowIndex = newRow;
+                ((HandledMouseEventArgs)e).Handled = true;
+            }
+        };
+
+        // Ensure the DataGridView gets focus when the mouse enters its area,
+        // so that native scrolling and keyboard navigation work intuitively.
+        _dgvItems.MouseEnter += (s, e) => _dgvItems.Focus();
+
         layout.Controls.Add(_txtSearch, 0, 0);
         layout.Controls.Add(_cmbCategory, 0, 1);
         layout.Controls.Add(_dgvItems, 0, 2);
@@ -140,7 +164,34 @@ public class ItemBrowser : UserControl
         _dgvItems.Rows.Clear();
         _dgvItems.SuspendLayout();
 
-        var categories = new HashSet<string> { "All" };
+        if (_filterMode == ItemFilterMode.BuffOnly)
+        {
+            // Load buff entries, not items
+            var buffIds = BuffDatabase.GetAllIds();
+            var categories = new HashSet<string> { "All" };
+            foreach (var buffId in buffIds)
+            {
+                if (buffId <= 0) continue; // Skip buff ID 0 (None)
+                var name = BuffDatabase.GetName(buffId);
+                var type = BuffDatabase.GetType(buffId);
+                var icon = IconService.GetBuffIcon(buffId) ?? IconService.DefaultIcon;
+                var displayName = $"{name} (ID:{buffId})";
+                var rowIndex = _dgvItems.Rows.Add(icon, displayName, buffId);
+                _dgvItems.Rows[rowIndex].Tag = buffId;
+                // Color-code by buff kind
+                var kind = BuffData.GetBuffKind(buffId);
+                _dgvItems.Rows[rowIndex].DefaultCellStyle.ForeColor = BuffData.GetColor(kind);
+                if (!string.IsNullOrEmpty(type) && type != "Buff")
+                    categories.Add(type);
+            }
+            _dgvItems.ResumeLayout();
+            _cmbCategory.Items.Clear();
+            _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
+            _cmbCategory.SelectedIndex = 0;
+            return;
+        }
+
+        var itemCategories = new HashSet<string> { "All" };
         var allItems = ItemDatabase.GetAllItems();
 
         foreach (var item in allItems)
@@ -152,23 +203,13 @@ public class ItemBrowser : UserControl
             {
                 if (!cat.Equals("Dye", StringComparison.OrdinalIgnoreCase)) continue;
             }
-            else if (_filterMode == ItemFilterMode.BuffOnly)
-            {
-                bool matched = false;
-                foreach (var pattern in BuffCategoryPatterns)
-                {
-                    if (cat.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-                    { matched = true; break; }
-                }
-                if (!matched) continue;
-            }
 
             var icon = IconService.GetItemIcon(item.Id) ?? IconService.DefaultIcon;
             var rowIndex = _dgvItems.Rows.Add(icon, item.ToString(), item.Id);
             _dgvItems.Rows[rowIndex].Tag = item.Id;
 
             if (!string.IsNullOrEmpty(cat) && cat != "None")
-                categories.Add(cat);
+                itemCategories.Add(cat);
         }
 
         _dgvItems.ResumeLayout();
