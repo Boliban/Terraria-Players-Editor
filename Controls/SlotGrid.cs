@@ -77,6 +77,17 @@ public class SlotGrid : UserControl
         set => SelectSlot(value);
     }
 
+    /// <summary>Whether this grid displays buffs (uses buff icons for all slots).</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool IsBuffGrid
+    {
+        set
+        {
+            foreach (var slot in _slots)
+                slot.IsBuffSlot = value;
+        }
+    }
+
     /// <summary>All slot panels in this grid.</summary>
     public SlotPanel[] Slots => _slots;
 

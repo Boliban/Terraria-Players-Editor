@@ -545,7 +545,7 @@ public partial class MainForm : Form
         right.Controls.Add(_lblBuffTitle, 0, 0);
 
         // Buff modifier
-        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100 };
+        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100, BorderStyle = BorderStyle.FixedSingle };
         _lblBuffType = new Label { Text = AppLocale.Get("Buffs.Type"), Location = new Point(5, 5), Width = 70 };
         _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
@@ -557,7 +557,7 @@ public partial class MainForm : Form
         buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _btnBuffSet, _btnBuffClear]);
         right.Controls.Add(buffMod, 0, 1);
 
-        _gridBuffs = new SlotGrid(11, 4);
+        _gridBuffs = new SlotGrid(11, 4) { IsBuffGrid = true };
         _gridBuffs.SlotSelected += (s, idx) => OnBuffSlotSelected(idx);
         _browserBuffs.ItemSelected += (s, id) => OnBuffBrowserSelect(id);
         right.Controls.Add(_gridBuffs, 0, 2);

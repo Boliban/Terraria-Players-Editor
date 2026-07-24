@@ -14,6 +14,7 @@
     <EmbeddedResource Include="Data\Locale\*.json" />
     <EmbeddedResource Include="Data\icons_items.json" />
     <EmbeddedResource Include="Data\icons_buffs.json" />
+    <EmbeddedResource Include="Data\buffs.json" />
   </ItemGroup>
 
   <ItemGroup>

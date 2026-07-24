@@ -108,6 +108,10 @@ public class SlotPanel : UserControl
         }
     }
 
+    /// <summary>Whether this slot displays a buff (uses buff icons instead of item icons).</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool IsBuffSlot { get; set; }
+
     /// <summary>Update the icon and stack label from current Item data.</summary>
     public void RefreshDisplay()
     {
@@ -119,7 +123,9 @@ public class SlotPanel : UserControl
             return;
         }
 
-        _icon.Image = IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon;
+        _icon.Image = IsBuffSlot
+            ? (IconService.GetBuffIcon(_item.ItemId) ?? IconService.DefaultIcon)
+            : (IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon);
         _stackLabel.Visible = _item.StackSize > 1;
         if (_item.StackSize >= 1000)
         {
