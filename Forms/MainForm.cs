@@ -10,7 +10,7 @@ public partial class MainForm : Form
     private string? _filePath;
 
     private DataGridView? _activeStorageGrid;
-    private ToolStripMenuItem? _langEnItem, _langZhItem;
+    private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem;
 
     // Localized label arrays — used during tab construction
     private static string[] DifficultyNames() => [AppLocale.Get("Diff.Softcore"), AppLocale.Get("Diff.Mediumcore"), AppLocale.Get("Diff.Hardcore"), AppLocale.Get("Diff.Journey")];
@@ -112,6 +112,18 @@ public partial class MainForm : Form
 
         var settingsMenu = new ToolStripMenuItem(AppLocale.Get("Menu.Settings"));
         settingsMenu.DropDownItems.Add(langMenu);
+
+        _animIconItem = new ToolStripMenuItem("动态图标渲染")
+        {
+            Checked = SettingsManager.EnableAnimatedIcons,
+            CheckOnClick = true
+        };
+        _animIconItem.Click += (_, _) =>
+        {
+            SettingsManager.EnableAnimatedIcons = _animIconItem.Checked;
+            SettingsManager.Save();
+        };
+        settingsMenu.DropDownItems.Add(_animIconItem);
 
         var debugItem = new ToolStripMenuItem("Debug Log");
         debugItem.Click += (_, _) =>
@@ -550,11 +562,23 @@ public partial class MainForm : Form
         _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
         _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = Color.Gray };
         _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
         _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
-        _btnBuffSet.Click += (s, e) => OnBuffModSet();
+        void BuffAutoSet()
+        {
+            if (_gridBuffs.SelectedIndex < 0) return;
+            _cachedBuffType = (int)_nudBuffType.Value;
+            _cachedBuffDur = (int)_nudBuffDuration.Value;
+            OnBuffModSet();
+        }
+        _nudBuffType.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; BuffAutoSet(); } };
+        _nudBuffDuration.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; BuffAutoSet(); } };
+        _nudBuffType.Leave += (s, e) => BuffAutoSet();
+        _nudBuffDuration.Leave += (s, e) => BuffAutoSet();
+        _btnBuffSet.Click += (s, e) => BuffAutoSet();
         _btnBuffClear.Click += (s, e) => OnBuffModClear();
-        buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _btnBuffSet, _btnBuffClear]);
+        buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _lblBuffTimeUnit, _btnBuffSet, _btnBuffClear]);
         right.Controls.Add(buffMod, 0, 1);
 
         _gridBuffs = new SlotGrid(11, 4) { IsBuffGrid = true };
@@ -943,6 +967,8 @@ public partial class MainForm : Form
         {
             _nudBuffType.Value = item.ItemId;
             _nudBuffDuration.Value = item.StackSize;
+            _cachedBuffType = item.ItemId;
+            _cachedBuffDur = item.StackSize;
         }
     }
 
@@ -950,8 +976,9 @@ public partial class MainForm : Form
     {
         if (_gridBuffs.SelectedIndex < 0) return;
         var idx = _gridBuffs.SelectedIndex;
+        DebugLog.Log($"[Buff] BrowserSelect: slot={idx}, itemId={itemId}, cachedDur={_cachedBuffDur}");
         _player!.BuffTypes[idx] = itemId;
-        _gridBuffs.SetSlot(idx, new ItemData { ItemId = itemId, StackSize = (int)_nudBuffDuration.Value });
+        _gridBuffs.SetSlot(idx, new ItemData { ItemId = itemId, StackSize = _cachedBuffDur });
         _nudBuffType.Value = itemId;
     }
 
@@ -959,8 +986,9 @@ public partial class MainForm : Form
     {
         if (_gridBuffs.SelectedIndex < 0) return;
         var idx = _gridBuffs.SelectedIndex;
-        var type = (int)_nudBuffType.Value;
-        var dur = (int)_nudBuffDuration.Value;
+        var type = _cachedBuffType;
+        var dur = _cachedBuffDur;
+        DebugLog.Log($"[Buff] ModSet: slot={idx}, type={type}, dur={dur}");
         _player!.BuffTypes[idx] = type;
         _player.BuffTimes[idx] = dur;
         _gridBuffs.SetSlot(idx, new ItemData { ItemId = type, StackSize = dur });

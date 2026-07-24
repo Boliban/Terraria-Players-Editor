@@ -7,6 +7,7 @@ namespace Terraria_Players_Editor.Controls;
 /// <summary>
 /// A single inventory-style slot displaying an item icon, stack count, and selection state.
 /// Mimics Terraria's slot appearance with dark backgrounds and color-coded borders.
+/// Supports animated item icons via a built-in timer.
 /// </summary>
 public class SlotPanel : UserControl
 {
@@ -17,6 +18,11 @@ public class SlotPanel : UserControl
     private ItemData? _item;
     private Color _normalBackColor;
     private readonly Color _emptyBackColor;
+
+    // Animation support
+    private System.Windows.Forms.Timer? _animTimer;
+    private Bitmap[]? _animFrames;
+    private int _animFrameIdx;
 
     public SlotPanel(int slotIndex = 0, bool isHotbar = false)
     {
@@ -38,7 +44,7 @@ public class SlotPanel : UserControl
         _icon = new PictureBox
         {
             Size = new Size(32, 32),
-            Location = new Point(7, 7),
+            Location = new Point(8, 8),
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent,
             Enabled = false
@@ -61,6 +67,8 @@ public class SlotPanel : UserControl
         _icon.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
         _stackLabel.MouseClick += (s, e) => OnMouseClick(e);
         _stackLabel.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
+
+        Disposed += (s, e) => StopAnimation();
     }
 
     /// <summary>Index of this slot within its parent grid.</summary>
@@ -115,6 +123,8 @@ public class SlotPanel : UserControl
     /// <summary>Update the icon and stack label from current Item data.</summary>
     public void RefreshDisplay()
     {
+        StopAnimation();
+
         if (_item == null || _item.IsEmpty)
         {
             _icon.Image = IconService.DefaultIcon;
@@ -123,9 +133,33 @@ public class SlotPanel : UserControl
             return;
         }
 
-        _icon.Image = IsBuffSlot
-            ? (IconService.GetBuffIcon(_item.ItemId) ?? IconService.DefaultIcon)
-            : (IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon);
+        // Check for animation frames first
+        if (!IsBuffSlot && SettingsManager.EnableAnimatedIcons)
+        {
+            var frames = IconService.GetItemFrames(_item.ItemId);
+            if (frames != null && frames.Length > 1)
+            {
+                DebugLog.Log(
+                    $"[SlotPanel] Anim start ID={_item.ItemId}, frames={frames.Length}, enabled={SettingsManager.EnableAnimatedIcons}");
+                _animFrames = frames;
+                _animFrameIdx = 0;
+                _icon.Image = frames[0];
+                StartAnimation();
+            }
+            else
+            {
+                DebugLog.Log(
+                    $"[SlotPanel] No anim ID={_item.ItemId}, frames={frames?.Length ?? 0}, enabled={SettingsManager.EnableAnimatedIcons}");
+                _icon.Image = IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon;
+            }
+        }
+        else
+        {
+            _icon.Image = IsBuffSlot
+                ? (IconService.GetBuffIcon(_item.ItemId) ?? IconService.DefaultIcon)
+                : (IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon);
+        }
+
         _stackLabel.Visible = _item.StackSize > 1;
         if (_item.StackSize >= 1000)
         {
@@ -147,6 +181,36 @@ public class SlotPanel : UserControl
     {
         _item = null;
         RefreshDisplay();
+    }
+
+    private void StartAnimation()
+    {
+        if (_animTimer != null) return;
+        _animTimer = new System.Windows.Forms.Timer { Interval = 150 };
+        _animTimer.Tick += AnimTick;
+        _animTimer.Start();
+        DebugLog.Log($"[SlotPanel] Timer started, interval=150ms");
+    }
+
+    private void StopAnimation()
+    {
+        if (_animTimer != null)
+        {
+            _animTimer.Stop();
+            _animTimer.Dispose();
+            _animTimer = null;
+            DebugLog.Log($"[SlotPanel] Timer stopped");
+        }
+        _animFrames = null;
+        _animFrameIdx = 0;
+    }
+
+    private void AnimTick(object? sender, EventArgs e)
+    {
+        if (_animFrames == null || _animFrames.Length == 0) return;
+        _animFrameIdx = (_animFrameIdx + 1) % _animFrames.Length;
+        _icon.Image = _animFrames[_animFrameIdx];
+        DebugLog.Log($"[SlotPanel] Frame {_animFrameIdx}/{_animFrames.Length}");
     }
 
     protected override void OnMouseEnter(EventArgs e)

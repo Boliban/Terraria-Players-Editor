@@ -4,13 +4,16 @@ namespace Terraria_Players_Editor.Services;
 
 /// <summary>
 /// Persists application settings to %AppData%/TerrariaPlayersEditor/settings.json.
-/// Currently manages language preference.
+/// Manages language preference and animated icon toggle.
 /// </summary>
 public static class SettingsManager
 {
     private static readonly string SettingsDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TerrariaPlayersEditor");
     private static readonly string SettingsFile = Path.Combine(SettingsDir, "settings.json");
+
+    /// <summary>Whether animated item icons should play in SlotPanel and ItemModifier.</summary>
+    public static bool EnableAnimatedIcons { get; set; } = true;
 
     /// <summary>Load saved settings and apply language. Call once at startup before creating UI.</summary>
     public static void Load()
@@ -24,6 +27,7 @@ public static class SettingsManager
                 if (settings != null)
                 {
                     AppLocale.SetLanguage(settings.Language);
+                    EnableAnimatedIcons = settings.EnableAnimatedIcons;
                 }
             }
         }
@@ -39,7 +43,11 @@ public static class SettingsManager
         try
         {
             Directory.CreateDirectory(SettingsDir);
-            var settings = new SettingsData { Language = AppLocale.Current };
+            var settings = new SettingsData
+            {
+                Language = AppLocale.Current,
+                EnableAnimatedIcons = EnableAnimatedIcons
+            };
             var json = JsonSerializer.Serialize(settings);
             File.WriteAllText(SettingsFile, json);
         }
@@ -52,5 +60,6 @@ public static class SettingsManager
     private sealed class SettingsData
     {
         public AppLocale.Lang Language { get; set; }
+        public bool EnableAnimatedIcons { get; set; } = true;
     }
 }
