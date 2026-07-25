@@ -37,7 +37,7 @@ public class SlotPanel : UserControl
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                  ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                 ControlStyles.Opaque | ControlStyles.SupportsTransparentBackColor, true);
+                 ControlStyles.SupportsTransparentBackColor, true);
         UpdateStyles();
 
         _slotIndex = slotIndex;
@@ -52,7 +52,10 @@ public class SlotPanel : UserControl
         BackColor = _normalBackColor;
         BorderStyle = BorderStyle.None;
         Cursor = Cursors.Hand;
-        Margin = new Padding(1);
+        Margin = new Padding(0);
+
+        // Clip the control to its rounded rectangle so corners show parent background
+        UpdateRoundedRegion();
 
         _icon = new PictureBox
         {
@@ -234,35 +237,48 @@ public class SlotPanel : UserControl
         _icon.Image = _animFrames[_animFrameIdx];
     }
 
+    /// <summary>Clip the control region to the rounded rectangle.</summary>
+    private void UpdateRoundedRegion()
+    {
+        if (Width <= 0 || Height <= 0) return;
+        var rect = new Rectangle(0, 0, Width, Height);
+        using var path = Win11Renderer.GetRoundedRectPath(rect, ThemeManager.Spacing.CornerRadius);
+        Region = new Region(path);
+    }
+
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        UpdateRoundedRegion();
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         // Sync BackColor so child controls with Transparent BackColor
-        // (PictureBox, Label) pick up the correct animated fill color.
+        // resolve to the correct fill color.
         BackColor = _currentFill;
 
-        // Fill entire client area with solid color. Together with ControlStyles.Opaque
-        // this guarantees no parent background bleeds through the rounded corners.
-        using (var solidBg = new SolidBrush(_currentFill))
-            e.Graphics.FillRectangle(solidBg, ClientRectangle);
-
-        // Draw child controls — their Transparent backgrounds now resolve to BackColor
-        base.OnPaint(e);
-
         Win11Renderer.BeginHighQuality(e.Graphics);
-        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        // Use full Width×Height so fill and border align with Region clip boundary
+        var rect = new Rectangle(0, 0, Width, Height);
         int radius = ThemeManager.Spacing.CornerRadius;
 
-        // Redraw rounded fill to cover any artifacts from child control painting
+        // Fill the rounded rectangle area with current fill color.
+        // The Region clips everything outside, so corners show the parent background.
         using var fillBrush = new SolidBrush(_currentFill);
         Win11Renderer.FillRoundedRect(e.Graphics, rect, radius, fillBrush);
 
-        // Rounded border on top
-        Color borderColor = _selected
-            ? ThemeManager.SlotSelectedBorder
-            : ThemeManager.SlotBorder;
-        using var borderPen = new Pen(borderColor, _selected ? 2f : 1f);
-        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
+        Win11Renderer.EndHighQuality(e.Graphics);
 
+        // Draw child controls on top of the filled background
+        base.OnPaint(e);
+
+        // Rounded border on top
+        Win11Renderer.BeginHighQuality(e.Graphics);
+        Color borderColor = ThemeManager.ControlInputBorder;
+        float borderWidth = _selected ? 3f : 2f;
+        using var borderPen = new Pen(borderColor, borderWidth);
+        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
         Win11Renderer.EndHighQuality(e.Graphics);
     }
 

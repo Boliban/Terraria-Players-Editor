@@ -41,8 +41,7 @@ public class ItemModifier : UserControl
         BorderStyle = BorderStyle.None;
 
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                 ControlStyles.Opaque, true);
+                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
         UpdateStyles();
 
         // Icon (top-left)
@@ -133,23 +132,16 @@ public class ItemModifier : UserControl
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        // Sync BackColor so child controls see correct background through transparency
-        BackColor = ThemeManager.SurfaceCard;
-
-        // Fill entire client area solid — ensures no parent background bleeds through corners
-        using (var solidBg = new SolidBrush(ThemeManager.SurfaceCard))
-            e.Graphics.FillRectangle(solidBg, ClientRectangle);
+        // Gray border only — no fill
+        Win11Renderer.BeginHighQuality(e.Graphics);
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        int radius = ThemeManager.Spacing.CornerRadius;
+        using var borderPen = new Pen(ThemeManager.ControlInputBorder, 1f);
+        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
+        Win11Renderer.EndHighQuality(e.Graphics);
 
         // Draw child controls on top
         base.OnPaint(e);
-
-        Win11Renderer.BeginHighQuality(e.Graphics);
-        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
-        Win11Renderer.DrawCard(e.Graphics, rect,
-            ThemeManager.Spacing.CornerRadius,
-            ThemeManager.SurfaceCard,
-            ThemeManager.ControlInputBorder);
-        Win11Renderer.EndHighQuality(e.Graphics);
     }
 
     /// <summary>Whether stack controls are visible (hidden for equipment).</summary>

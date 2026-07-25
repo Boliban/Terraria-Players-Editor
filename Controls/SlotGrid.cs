@@ -55,10 +55,9 @@ public class SlotGrid : UserControl
             RowCount = rows,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(0),
+            Padding = new Padding(1),
             Margin = new Padding(0),
-            Location = new Point(0, titleH),
-            BackColor = ThemeManager.SlotBorder
+            Location = new Point(0, titleH)
         };
 
         for (int c = 0; c < columns; c++)
@@ -88,7 +87,6 @@ public class SlotGrid : UserControl
     {
         if (_titleLabel != null)
             _titleLabel.ForeColor = ThemeManager.TextSecondary;
-        _table.BackColor = ThemeManager.SlotBorder;
     }
 
     /// <summary>Number of columns in the grid.</summary>

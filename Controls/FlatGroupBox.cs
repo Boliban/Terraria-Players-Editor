@@ -3,8 +3,7 @@ using Terraria_Players_Editor.Services;
 namespace Terraria_Players_Editor.Controls;
 
 /// <summary>
-/// Flat Win11-style GroupBox with card appearance (rounded corners, flat border).
-/// Replaces the default etched 3D border with clean card styling.
+/// Minimal GroupBox with gray rounded border and title label. No card fill.
 /// </summary>
 public class FlatGroupBox : GroupBox
 {
@@ -13,7 +12,6 @@ public class FlatGroupBox : GroupBox
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                  ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
         UpdateStyles();
-        Font = ThemeManager.Typography.BodyBold;
         ForeColor = ThemeManager.TextPrimary;
         ThemeManager.ThemeChanged += () => ApplyTheme();
     }
@@ -32,15 +30,11 @@ public class FlatGroupBox : GroupBox
         var rect = new Rectangle(0, 8, Width - 1, Height - 9);
         int radius = ThemeManager.Spacing.CornerRadius / 2;
 
-        // Card background
-        using var bgBrush = new SolidBrush(ThemeManager.SurfaceCard);
-        Win11Renderer.FillRoundedRect(e.Graphics, rect, radius, bgBrush);
-
-        // 1px border
+        // Gray border only — no fill
         using var borderPen = new Pen(ThemeManager.ControlInputBorder, 1f);
         Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
 
-        // Title text at top-left, with background to cover the border
+        // Title text at top-left
         if (!string.IsNullOrEmpty(Text))
         {
             var titleSize = TextRenderer.MeasureText(e.Graphics, Text,
@@ -48,8 +42,8 @@ public class FlatGroupBox : GroupBox
             int titleX = ThemeManager.Spacing.PaddingStandard;
             int titleW = titleSize.Width + 10;
 
-            // Cover the border behind the title text
-            using var titleBgBrush = new SolidBrush(ThemeManager.SurfaceCard);
+            // Cover the border behind the title text (use parent's background)
+            using var titleBgBrush = new SolidBrush(BackColor);
             e.Graphics.FillRectangle(titleBgBrush, titleX, 2, titleW, 14);
 
             TextRenderer.DrawText(e.Graphics, Text, ThemeManager.Typography.BodyBold,
@@ -58,5 +52,8 @@ public class FlatGroupBox : GroupBox
         }
 
         Win11Renderer.EndHighQuality(e.Graphics);
+
+        // Draw child controls on top of the border
+        base.OnPaint(e);
     }
 }

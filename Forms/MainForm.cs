@@ -279,32 +279,69 @@ public partial class MainForm : Form
         tabStats = new TabPage("Stats");
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20) };
 
-        grpHealth = new FlatGroupBox { Text = AppLocale.Get("Stats.Health"), Width = 350, Height = 100 };
-        lblHealth = new Label { Text = AppLocale.Get("Stats.Current"), Location = new Point(15, 30), Width = 70 };
-        nudHealth = new NumericUpDown { Location = new Point(90, 28), Width = 100, Minimum = 0, Maximum = 600 };
-        lblMaxHealth = new Label { Text = AppLocale.Get("Stats.Max"), Location = new Point(210, 30), Width = 40 };
-        nudMaxHealth = new NumericUpDown { Location = new Point(250, 28), Width = 80, Minimum = 100, Maximum = 600, Increment = 20 };
-        grpHealth.Controls.AddRange([lblHealth, nudHealth, lblMaxHealth, nudMaxHealth]);
+        // ── Health ──
+        grpHealth = new FlatGroupBox { Text = AppLocale.Get("Stats.Health"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var healthTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 10) };
+        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        lblHealth = new Label { Text = AppLocale.Get("Stats.Current") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudHealth = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 600 };
+        lblMaxHealth = new Label { Text = AppLocale.Get("Stats.Max") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudMaxHealth = new NumericUpDown { Width = 80, Minimum = 100, Maximum = 600, Increment = 20 };
+        healthTbl.Controls.Add(lblHealth, 0, 0);
+        healthTbl.Controls.Add(nudHealth, 1, 0);
+        healthTbl.Controls.Add(lblMaxHealth, 2, 0);
+        healthTbl.Controls.Add(nudMaxHealth, 3, 0);
+        grpHealth.Controls.Add(healthTbl);
 
-        grpMana = new FlatGroupBox { Text = AppLocale.Get("Stats.Mana"), Width = 350, Height = 100 };
-        lblMana = new Label { Text = AppLocale.Get("Stats.Current"), Location = new Point(15, 30), Width = 70 };
-        nudMana = new NumericUpDown { Location = new Point(90, 28), Width = 100, Minimum = 0, Maximum = 400 };
-        lblMaxMana = new Label { Text = AppLocale.Get("Stats.Max"), Location = new Point(210, 30), Width = 40 };
-        nudMaxMana = new NumericUpDown { Location = new Point(250, 28), Width = 80, Minimum = 0, Maximum = 400, Increment = 20 };
-        grpMana.Controls.AddRange([lblMana, nudMana, lblMaxMana, nudMaxMana]);
+        // ── Mana ──
+        grpMana = new FlatGroupBox { Text = AppLocale.Get("Stats.Mana"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var manaTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 10) };
+        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        lblMana = new Label { Text = AppLocale.Get("Stats.Current") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudMana = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 400 };
+        lblMaxMana = new Label { Text = AppLocale.Get("Stats.Max") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudMaxMana = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 400, Increment = 20 };
+        manaTbl.Controls.Add(lblMana, 0, 0);
+        manaTbl.Controls.Add(nudMana, 1, 0);
+        manaTbl.Controls.Add(lblMaxMana, 2, 0);
+        manaTbl.Controls.Add(nudMaxMana, 3, 0);
+        grpMana.Controls.Add(manaTbl);
 
-        grpCounters = new FlatGroupBox { Text = AppLocale.Get("Stats.Counters"), Width = 350, Height = 210 };
-        lblDeathsPvE = new Label { Text = AppLocale.Get("Stats.DeathsPvE"), Location = new Point(15, 30), Width = 100 };
-        nudDeathsPvE = new NumericUpDown { Location = new Point(120, 28), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblDeathsPvP = new Label { Text = AppLocale.Get("Stats.DeathsPvP"), Location = new Point(15, 60), Width = 100 };
-        nudDeathsPvP = new NumericUpDown { Location = new Point(120, 58), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblTaxMoney = new Label { Text = AppLocale.Get("Stats.TaxMoney"), Location = new Point(15, 90), Width = 100 };
-        nudTaxMoney = new NumericUpDown { Location = new Point(120, 88), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblAnglerQuests = new Label { Text = AppLocale.Get("Stats.AnglerQuests"), Location = new Point(15, 120), Width = 100 };
-        nudAnglerQuests = new NumericUpDown { Location = new Point(120, 118), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblGolferScore = new Label { Text = AppLocale.Get("Stats.GolferScore"), Location = new Point(15, 150), Width = 100 };
-        nudGolferScore = new NumericUpDown { Location = new Point(120, 148), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        grpCounters.Controls.AddRange([lblDeathsPvE, nudDeathsPvE, lblDeathsPvP, nudDeathsPvP, lblTaxMoney, nudTaxMoney, lblAnglerQuests, nudAnglerQuests, lblGolferScore, nudGolferScore]);
+        // ── Counters ──
+        grpCounters = new FlatGroupBox { Text = AppLocale.Get("Stats.Counters"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var countersTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(10, 20, 10, 10) };
+        countersTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        countersTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+        for (int c = 0; c < 5; c++) countersTbl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        lblDeathsPvE = new Label { Text = AppLocale.Get("Stats.DeathsPvE") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudDeathsPvE = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblDeathsPvP = new Label { Text = AppLocale.Get("Stats.DeathsPvP") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudDeathsPvP = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblTaxMoney = new Label { Text = AppLocale.Get("Stats.TaxMoney") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudTaxMoney = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblAnglerQuests = new Label { Text = AppLocale.Get("Stats.AnglerQuests") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudAnglerQuests = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblGolferScore = new Label { Text = AppLocale.Get("Stats.GolferScore") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudGolferScore = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+
+        countersTbl.Controls.Add(lblDeathsPvE, 0, 0);
+        countersTbl.Controls.Add(nudDeathsPvE, 1, 0);
+        countersTbl.Controls.Add(lblDeathsPvP, 0, 1);
+        countersTbl.Controls.Add(nudDeathsPvP, 1, 1);
+        countersTbl.Controls.Add(lblTaxMoney, 0, 2);
+        countersTbl.Controls.Add(nudTaxMoney, 1, 2);
+        countersTbl.Controls.Add(lblAnglerQuests, 0, 3);
+        countersTbl.Controls.Add(nudAnglerQuests, 1, 3);
+        countersTbl.Controls.Add(lblGolferScore, 0, 4);
+        countersTbl.Controls.Add(nudGolferScore, 1, 4);
+        grpCounters.Controls.Add(countersTbl);
 
         var leftCol = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10) };
         leftCol.Controls.AddRange([grpHealth, grpMana]);
@@ -323,43 +360,55 @@ public partial class MainForm : Form
         var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(20), AutoScroll = true };
 
         // Hair & Skin row
-        var topRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Height = 40, Width = 1100 };
-        lblHairStyle = new Label { Text = AppLocale.Get("Appearance.HairStyle"), Width = 70, TextAlign = ContentAlignment.MiddleRight };
-        nudHairStyle = new NumericUpDown { Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblHairDye = new Label { Text = AppLocale.Get("Appearance.HairDye"), Width = 70, TextAlign = ContentAlignment.MiddleRight };
-        nudHairDye = new NumericUpDown { Width = 70, Minimum = 0, Maximum = int.MaxValue };
-        lblSkinVariant = new Label { Text = AppLocale.Get("Appearance.Skin"), Width = 50, TextAlign = ContentAlignment.MiddleRight };
+        var topRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Width = 1100 };
+        lblHairStyle = new Label { Text = AppLocale.Get("Appearance.HairStyle") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudHairStyle = new NumericUpDown { Width = 80, Minimum = 0, Maximum = int.MaxValue };
+        lblHairDye = new Label { Text = "  " + AppLocale.Get("Appearance.HairDye") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudHairDye = new NumericUpDown { Width = 80, Minimum = 0, Maximum = int.MaxValue };
+        lblSkinVariant = new Label { Text = "  " + AppLocale.Get("Appearance.Skin") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
         cmbSkinVariant = new ComboBox { Width = 100, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbSkinVariant.Items.AddRange(GenderNames());
         topRow.Controls.AddRange([lblHairStyle, nudHairStyle, lblHairDye, nudHairDye, lblSkinVariant, cmbSkinVariant]);
 
-        // Color pickers
-        grpColors = new FlatGroupBox { Text = AppLocale.Get("Appearance.Colors"), Width = 800, Height = 160 };
-        colorButtons = new FlatButton[7];
+        // Color pickers — each row has 4 label+swatch+button groups inside FlowLayoutPanels
+        grpColors = new FlatGroupBox { Text = AppLocale.Get("Appearance.Colors"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var colorsPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Padding = new Padding(10, 20, 10, 10) };
+        colorButtons = new Button[7];
         colorPanels = new Panel[7];
         lblColors = new Label[7];
         _tempColors = new byte[7][];
-        for (int i = 0; i < 7; i++)
+        for (int row = 0; row < 2; row++)
         {
-            _tempColors[i] = new byte[3];
-            int x = 15 + (i % 4) * 190;
-            int y = 25 + (i / 4) * 60;
-            lblColors[i] = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
-            colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.None, BackColor = Color.White };
-            colorButtons[i] = new FlatButton { Text = AppLocale.Get("Appearance.Pick"), Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
-            int idx = i;
-            colorButtons[i].Click += (_, _) => PickColor(idx);
-            grpColors.Controls.AddRange([lblColors[i], colorPanels[i], colorButtons[i]]);
+            var rowPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            int colsInRow = row == 0 ? 4 : 3;
+            for (int c = 0; c < colsInRow; c++)
+            {
+                int i = row * 4 + c;
+                _tempColors[i] = new byte[3];
+                var group = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(0, 0, 12, 4) };
+                lblColors[i] = new Label { Text = ColorNames()[i] + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+                colorPanels[i] = new Panel { Width = 36, Height = 22, BorderStyle = BorderStyle.None, BackColor = Color.White, Margin = new Padding(2, 0, 2, 0) };
+                colorButtons[i] = new Button { Text = AppLocale.Get("Appearance.Pick"), AutoSize = true, Margin = new Padding(2, 0, 0, 0) };
+                int idx = i;
+                colorButtons[i].Click += (_, _) => PickColor(idx);
+                group.Controls.AddRange([lblColors[i], colorPanels[i], colorButtons[i]]);
+                rowPanel.Controls.Add(group);
+            }
+            colorsPanel.Controls.Add(rowPanel);
         }
+        grpColors.Controls.Add(colorsPanel);
 
         // Visibility toggles
-        grpVisibility = new FlatGroupBox { Text = AppLocale.Get("Appearance.Visibility"), Width = 800, Height = 100 };
+        grpVisibility = new FlatGroupBox { Text = AppLocale.Get("Appearance.Visibility"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var visGrid = new TableLayoutPanel { AutoSize = true, ColumnCount = 5, Padding = new Padding(10, 20, 10, 10) };
+        for (int c = 0; c < 5; c++) visGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
         chkHideVisual = new CheckBox[10];
         for (int i = 0; i < 10; i++)
         {
-            chkHideVisual[i] = new CheckBox { Text = i < HideVisualNames().Length ? HideVisualNames()[i] : $"Visual{i}", Location = new Point(15 + (i % 5) * 155, 25 + (i / 5) * 28), Width = 150 };
-            grpVisibility.Controls.Add(chkHideVisual[i]);
+            chkHideVisual[i] = new CheckBox { Text = i < HideVisualNames().Length ? HideVisualNames()[i] : $"Visual{i}", AutoSize = true };
+            visGrid.Controls.Add(chkHideVisual[i], i % 5, i / 5);
         }
+        grpVisibility.Controls.Add(visGrid);
 
         mainPanel.Controls.AddRange([topRow, grpColors, grpVisibility]);
         tabAppearance.Controls.Add(mainPanel);
@@ -625,8 +674,8 @@ public partial class MainForm : Form
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
         _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
         _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = ThemeManager.TextSecondary };
-        _btnBuffSet = new FlatButton { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
-        _btnBuffClear = new FlatButton { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
+        _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
+        _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
         void BuffAutoSet()
         {
             if (_gridBuffs.SelectedIndex < 0) return;
@@ -662,21 +711,21 @@ public partial class MainForm : Form
         var grpUpgrades = new FlatGroupBox { Text = AppLocale.Get("Tab.Upgrades"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         var upgradesPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
 
-        chkExtraAccessory = new CheckBox { Text = AppLocale.Get("Upgrades.ExtraAccessory"), Width = 400, Margin = new Padding(5) };
-        chkAegisCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.AegisCrystal"), Width = 400, Margin = new Padding(5) };
-        chkAegisFruit = new CheckBox { Text = AppLocale.Get("Upgrades.AegisFruit"), Width = 400, Margin = new Padding(5) };
-        chkArcaneCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.ArcaneCrystal"), Width = 400, Margin = new Padding(5) };
-        chkGalaxyPearl = new CheckBox { Text = AppLocale.Get("Upgrades.GalaxyPearl"), Width = 400, Margin = new Padding(5) };
-        chkGummyWorm = new CheckBox { Text = AppLocale.Get("Upgrades.GummyWorm"), Width = 400, Margin = new Padding(5) };
-        chkAmbrosia = new CheckBox { Text = AppLocale.Get("Upgrades.Ambrosia"), Width = 400, Margin = new Padding(5) };
-        chkArtisanBread = new CheckBox { Text = AppLocale.Get("Upgrades.ArtisanBread"), Width = 400, Margin = new Padding(5) };
-        chkBiomeTorches = new CheckBox { Text = AppLocale.Get("Upgrades.BiomeTorches"), Width = 400, Margin = new Padding(5) };
-        chkUsingBiomeTorches = new CheckBox { Text = AppLocale.Get("Upgrades.UsingBiomeTorches"), Width = 400, Margin = new Padding(5) };
+        chkExtraAccessory = new CheckBox { Text = AppLocale.Get("Upgrades.ExtraAccessory"), AutoSize = true, Margin = new Padding(5) };
+        chkAegisCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.AegisCrystal"), AutoSize = true, Margin = new Padding(5) };
+        chkAegisFruit = new CheckBox { Text = AppLocale.Get("Upgrades.AegisFruit"), AutoSize = true, Margin = new Padding(5) };
+        chkArcaneCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.ArcaneCrystal"), AutoSize = true, Margin = new Padding(5) };
+        chkGalaxyPearl = new CheckBox { Text = AppLocale.Get("Upgrades.GalaxyPearl"), AutoSize = true, Margin = new Padding(5) };
+        chkGummyWorm = new CheckBox { Text = AppLocale.Get("Upgrades.GummyWorm"), AutoSize = true, Margin = new Padding(5) };
+        chkAmbrosia = new CheckBox { Text = AppLocale.Get("Upgrades.Ambrosia"), AutoSize = true, Margin = new Padding(5) };
+        chkArtisanBread = new CheckBox { Text = AppLocale.Get("Upgrades.ArtisanBread"), AutoSize = true, Margin = new Padding(5) };
+        chkBiomeTorches = new CheckBox { Text = AppLocale.Get("Upgrades.BiomeTorches"), AutoSize = true, Margin = new Padding(5) };
+        chkUsingBiomeTorches = new CheckBox { Text = AppLocale.Get("Upgrades.UsingBiomeTorches"), AutoSize = true, Margin = new Padding(5) };
 
-        var cartPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Height = 40, Width = 400, Margin = new Padding(5) };
-        lblSuperCart = new Label { Text = AppLocale.Get("Upgrades.SuperCart"), Width = 110, TextAlign = ContentAlignment.MiddleRight };
+        var cartPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(5) };
+        lblSuperCart = new Label { Text = AppLocale.Get("Upgrades.SuperCart") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
         nudSuperCart = new NumericUpDown { Width = 60, Minimum = 0, Maximum = 2 };
-        chkSuperCartEnabled = new CheckBox { Text = AppLocale.Get("Upgrades.SuperCartEnabled"), Width = 80 };
+        chkSuperCartEnabled = new CheckBox { Text = AppLocale.Get("Upgrades.SuperCartEnabled"), AutoSize = true };
         cartPanel.Controls.AddRange([lblSuperCart, nudSuperCart, chkSuperCartEnabled]);
 
         upgradesPanel.Controls.AddRange([
@@ -690,16 +739,27 @@ public partial class MainForm : Form
         var grpMisc = new FlatGroupBox { Text = AppLocale.Get("Tab.Misc"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         var miscPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
 
-        chkHotbarLocked = new CheckBox { Text = AppLocale.Get("Misc.HotbarLocked"), Width = 200, Margin = new Padding(5) };
+        chkHotbarLocked = new CheckBox { Text = AppLocale.Get("Misc.HotbarLocked"), AutoSize = true, Margin = new Padding(5) };
 
-        grpCooldowns = new FlatGroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 460, Height = 90, Margin = new Padding(0, 5, 0, 0) };
-        lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay"), Location = new Point(15, 22), Width = 110 };
-        nudPotionDelay = new NumericUpDown { Location = new Point(120, 20), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay"), Location = new Point(250, 22), Width = 110 };
-        nudManaPotionDelay = new NumericUpDown { Location = new Point(355, 20), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        lblRestorationCd = new Label { Text = AppLocale.Get("Misc.RestorationCd"), Location = new Point(15, 52), Width = 110 };
-        nudRestorationCd = new NumericUpDown { Location = new Point(120, 50), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        grpCooldowns.Controls.AddRange([lblPotionDelay, nudPotionDelay, lblManaPotionDelay, nudManaPotionDelay, lblRestorationCd, nudRestorationCd]);
+        grpCooldowns = new FlatGroupBox { Text = AppLocale.Get("Misc.Cooldowns"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 5, 0, 0) };
+        var cdTable = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 10) };
+        cdTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        cdTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+        cdTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        cdTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+        lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudPotionDelay = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudManaPotionDelay = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblRestorationCd = new Label { Text = AppLocale.Get("Misc.RestorationCd") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
+        nudRestorationCd = new NumericUpDown { Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        cdTable.Controls.Add(lblPotionDelay, 0, 0);
+        cdTable.Controls.Add(nudPotionDelay, 1, 0);
+        cdTable.Controls.Add(lblManaPotionDelay, 2, 0);
+        cdTable.Controls.Add(nudManaPotionDelay, 3, 0);
+        cdTable.Controls.Add(lblRestorationCd, 0, 1);
+        cdTable.Controls.Add(nudRestorationCd, 1, 1);
+        grpCooldowns.Controls.Add(cdTable);
 
         miscPanel.Controls.AddRange([chkHotbarLocked, grpCooldowns]);
         grpMisc.Controls.Add(miscPanel);
@@ -741,8 +801,8 @@ public partial class MainForm : Form
         dgvSpawnPoints.Columns.Add("Y", AppLocale.Get("Spawn.Y"));
 
         var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(5) };
-        btnAddSpawn = new FlatButton { Text = AppLocale.Get("Spawn.Add"), Width = 130 };
-        btnRemoveSpawn = new FlatButton { Text = AppLocale.Get("Spawn.Remove"), Width = 130 };
+        btnAddSpawn = new Button { Text = AppLocale.Get("Spawn.Add"), Width = 130 };
+        btnRemoveSpawn = new Button { Text = AppLocale.Get("Spawn.Remove"), Width = 130 };
         btnAddSpawn.Click += OnAddSpawnPoint;
         btnRemoveSpawn.Click += OnRemoveSpawnPoint;
         btnPanel.Controls.AddRange([btnAddSpawn, btnRemoveSpawn]);
