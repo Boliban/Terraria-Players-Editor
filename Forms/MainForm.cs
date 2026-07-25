@@ -401,22 +401,21 @@ public partial class MainForm : Form
         _grpEquipmentSection = BuildEquipmentSection();
         _grpStorageSection = BuildStorageSection();
 
-        var div1 = new Panel { Height = 1, Margin = new Padding(0, 4, 0, 4), BackColor = Color.Black };
-        var div2 = new Panel { Height = 1, Margin = new Padding(0, 4, 0, 4), BackColor = Color.Black };
         sectionsLayout.Controls.Add(_grpInventorySection);
-        sectionsLayout.Controls.Add(div1);
         sectionsLayout.Controls.Add(_grpEquipmentSection);
-        sectionsLayout.Controls.Add(div2);
         sectionsLayout.Controls.Add(_grpStorageSection);
 
-        // Stretch dividers to fill the scrollable width (outer panel, not auto-sized inner)
-        void StretchDividers()
+        // Stretch section panels to fill available width
+        _scrollPanelItems.SizeChanged += (s, e) =>
         {
             int w = _scrollPanelItems.ClientSize.Width - 20;
-            if (w > 100) { div1.Width = w; div2.Width = w; }
-        }
-        _scrollPanelItems.SizeChanged += (s, e) => StretchDividers();
-        _scrollPanelItems.Layout += (s, e) => StretchDividers();
+            if (w > 200)
+            {
+                _grpInventorySection.Width = w;
+                _grpEquipmentSection.Width = w;
+                _grpStorageSection.Width = w;
+            }
+        };
         _scrollPanelItems.Controls.Add(sectionsLayout);
         right.Controls.Add(_scrollPanelItems, 0, 1);
         split.Panel2.Controls.Add(right);
@@ -443,32 +442,26 @@ public partial class MainForm : Form
     private FlatGroupBox BuildInventorySection()
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Inventory"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
-        var gridPanel = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 2, Padding = new Padding(5) };
-        gridPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        gridPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
         _gridInventory = new SlotGrid(10, 5, enableHotbarColor: true, gridTitle: AppLocale.Get("Grid.MainInventory"));
         _allItemGrids.Add(_gridInventory);
-        gridPanel.Controls.Add(_gridInventory, 0, 0);
-
-        var coinAmmoPanel = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 5, 0, 0) };
         _gridCoins = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Coins"));
         _allItemGrids.Add(_gridCoins);
-        var grpCoinsNew = new FlatGroupBox { Text = AppLocale.Get("Inventory.Coins"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpCoinsNew.Controls.Add(_gridCoins);
         _gridAmmo = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Ammo"));
         _allItemGrids.Add(_gridAmmo);
-        var grpAmmoNew = new FlatGroupBox { Text = AppLocale.Get("Inventory.Ammo"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpAmmoNew.Controls.Add(_gridAmmo);
-        coinAmmoPanel.Controls.AddRange([grpCoinsNew, grpAmmoNew]);
-        gridPanel.Controls.Add(coinAmmoPanel, 0, 1);
 
+        var innerLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
+        var coinAmmoRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 5, 0, 0) };
+        coinAmmoRow.Controls.Add(_gridCoins);
+        coinAmmoRow.Controls.Add(_gridAmmo);
+        _gridAmmo.Margin = new Padding(100, 0, 0, 0);
+        innerLayout.Controls.Add(_gridInventory);
+        innerLayout.Controls.Add(coinAmmoRow);
+        grp.Controls.Add(innerLayout);
         // Events
         _gridInventory.SlotSelected += (s, idx) => OnGridSlotSelected(_gridInventory, idx, _player?.MainInventory, "inv");
         _gridCoins.SlotSelected += (s, idx) => OnGridSlotSelected(_gridCoins, idx, _player?.Coins, "coins");
         _gridAmmo.SlotSelected += (s, idx) => OnGridSlotSelected(_gridAmmo, idx, _player?.Ammo, "ammo");
 
-        grp.Controls.Add(gridPanel);
         return grp;
     }
 
@@ -476,9 +469,7 @@ public partial class MainForm : Form
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
 
-        var layout = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 2, Padding = new Padding(5) };
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));  // Loadout selector
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));  // Grids
+        var layout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
 
         // Loadout selector
         _loadoutSelector = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 0, 0, 5) };
@@ -489,76 +480,61 @@ public partial class MainForm : Form
         _rbLoadout2.CheckedChanged += (s, e) => { if (_rbLoadout2.Checked) OnLoadoutSwitch(1); };
         _rbLoadout3.CheckedChanged += (s, e) => { if (_rbLoadout3.Checked) OnLoadoutSwitch(2); };
         _loadoutSelector.Controls.AddRange([_rbLoadout1, _rbLoadout2, _rbLoadout3]);
-        layout.Controls.Add(_loadoutSelector, 0, 0);
+        layout.Controls.Add(_loadoutSelector);
 
-        // Equipment grid area — 3-column layout: Dyes | Vanity | Equipment
-        var equipPanel = new TableLayoutPanel { ColumnCount = 3, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
-        equipPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        equipPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        equipPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        // Vertical slot grids
+        _armorDyeSlots = [new SlotGrid(1, 3)]; _armorDyeSlots[0].Tag = "DyeArmor"; _allItemGrids.Add(_armorDyeSlots[0]);
+        _vanitySlots   = [new SlotGrid(1, 3)]; _vanitySlots[0].Tag = "EquipVanity"; _allItemGrids.Add(_vanitySlots[0]);
+        _equipSlots    = [new SlotGrid(1, 3)]; _equipSlots[0].Tag = "EquipArmor"; _allItemGrids.Add(_equipSlots[0]);
+        _accDyeSlots   = [new SlotGrid(1, 7)]; _accDyeSlots[0].Tag = "DyeAcc"; _allItemGrids.Add(_accDyeSlots[0]);
+        _vaccSlots     = [new SlotGrid(1, 7)]; _vaccSlots[0].Tag = "EquipVAcc"; _allItemGrids.Add(_vaccSlots[0]);
+        _accSlots      = [new SlotGrid(1, 7)]; _accSlots[0].Tag = "EquipAcc"; _allItemGrids.Add(_accSlots[0]);
+        _miscDyeSlots  = [new SlotGrid(1, 5)]; _miscDyeSlots[0].Tag = "DyeMisc"; _allItemGrids.Add(_miscDyeSlots[0]);
+        _miscSlots     = [new SlotGrid(1, 5)]; _miscSlots[0].Tag = "EquipMisc"; _allItemGrids.Add(_miscSlots[0]);
 
-        // --- Row 0: Armor (3) ---
-        _armorDyeSlots = [new SlotGrid(3, 1)];
-        _armorDyeSlots[0].Tag = "DyeArmor";
-        _allItemGrids.Add(_armorDyeSlots[0]);
-        var grpArmorDyes = new FlatGroupBox { Text = AppLocale.Get("Dyes.Armor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpArmorDyes.Controls.Add(_armorDyeSlots[0]);
-        equipPanel.Controls.Add(grpArmorDyes, 0, 0);
+        // Column helper: label above slot grid
+        static FlowLayoutPanel Col(string text, SlotGrid grid)
+        {
+            var clean = System.Text.RegularExpressions.Regex.Replace(text, @"\s*\(\d+\)$", "");
+            var lbl = new Label { Text = clean, AutoSize = true,
+                Font = ThemeManager.Typography.Caption, ForeColor = ThemeManager.TextSecondary,
+                Margin = new Padding(0), TextAlign = ContentAlignment.TopCenter };
+            var p = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 4, 0) };
+            p.Controls.Add(lbl);
+            p.Controls.Add(grid);
+            return p;
+        }
 
-        _vanitySlots = [new SlotGrid(3, 1)];
-        _vanitySlots[0].Tag = "EquipVanity";
-        _allItemGrids.Add(_vanitySlots[0]);
-        var grpVanityArmor = new FlatGroupBox { Text = AppLocale.Get("Equip.VanityArmor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpVanityArmor.Controls.Add(_vanitySlots[0]);
-        equipPanel.Controls.Add(grpVanityArmor, 1, 0);
+        // ── Left column: Armor + Equipment ──
+        var leftCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
+        var armorRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+        armorRow.Controls.Add(Col(AppLocale.Get("Dyes.Armor"), _armorDyeSlots[0]));
+        armorRow.Controls.Add(Col(AppLocale.Get("Equip.VanityArmor"), _vanitySlots[0]));
+        armorRow.Controls.Add(Col(AppLocale.Get("Equip.Armor"), _equipSlots[0]));
+        var equipRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+        equipRow.Controls.Add(Col(AppLocale.Get("Dyes.Equipment"), _miscDyeSlots[0]));
+        equipRow.Controls.Add(new Panel { Width = 54, Height = 1 }); // Spacer for missing middle column
+        equipRow.Controls.Add(Col(AppLocale.Get("Equip.Misc"), _miscSlots[0]));
+        leftCol.Controls.Add(armorRow);
+        leftCol.Controls.Add(equipRow);
 
-        _equipSlots = [new SlotGrid(3, 1)];
-        _equipSlots[0].Tag = "EquipArmor";
-        _allItemGrids.Add(_equipSlots[0]);
-        var grpEquipArmor = new FlatGroupBox { Text = AppLocale.Get("Equip.Armor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpEquipArmor.Controls.Add(_equipSlots[0]);
-        equipPanel.Controls.Add(grpEquipArmor, 2, 0);
+        // ── Right column: Accessories ──
+        var rightCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true };
+        var accRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+        accRow.Controls.Add(Col(AppLocale.Get("Dyes.Accessories"), _accDyeSlots[0]));
+        accRow.Controls.Add(Col(AppLocale.Get("Equip.VanityAccessories"), _vaccSlots[0]));
+        accRow.Controls.Add(Col(AppLocale.Get("Equip.Accessories"), _accSlots[0]));
+        rightCol.Controls.Add(accRow);
 
-        // --- Row 1: Accessories (7) ---
-        _accDyeSlots = [new SlotGrid(7, 1)];
-        _accDyeSlots[0].Tag = "DyeAcc";
-        _allItemGrids.Add(_accDyeSlots[0]);
-        var grpAccDyes = new FlatGroupBox { Text = AppLocale.Get("Dyes.Accessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpAccDyes.Controls.Add(_accDyeSlots[0]);
-        equipPanel.Controls.Add(grpAccDyes, 0, 1);
+        // Two columns side by side
+        var columnsPanel = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, Margin = new Padding(0) };
+        columnsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        columnsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        columnsPanel.Controls.Add(leftCol, 0, 0);
+        columnsPanel.Controls.Add(rightCol, 1, 0);
+        layout.Controls.Add(columnsPanel);
 
-        _vaccSlots = [new SlotGrid(7, 1)];
-        _vaccSlots[0].Tag = "EquipVAcc";
-        _allItemGrids.Add(_vaccSlots[0]);
-        var grpVAcc = new FlatGroupBox { Text = AppLocale.Get("Equip.VanityAccessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpVAcc.Controls.Add(_vaccSlots[0]);
-        equipPanel.Controls.Add(grpVAcc, 1, 1);
-
-        _accSlots = [new SlotGrid(7, 1)];
-        _accSlots[0].Tag = "EquipAcc";
-        _allItemGrids.Add(_accSlots[0]);
-        var grpAcc = new FlatGroupBox { Text = AppLocale.Get("Equip.Accessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpAcc.Controls.Add(_accSlots[0]);
-        equipPanel.Controls.Add(grpAcc, 2, 1);
-
-        // --- Row 2: Equipment/Misc (5) ---
-        _miscDyeSlots = [new SlotGrid(5, 1)];
-        _miscDyeSlots[0].Tag = "DyeMisc";
-        _allItemGrids.Add(_miscDyeSlots[0]);
-        var grpMiscDyes = new FlatGroupBox { Text = AppLocale.Get("Dyes.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpMiscDyes.Controls.Add(_miscDyeSlots[0]);
-        equipPanel.Controls.Add(grpMiscDyes, 0, 2);
-
-        _miscSlots = [new SlotGrid(5, 1)];
-        _miscSlots[0].Tag = "EquipMisc";
-        _allItemGrids.Add(_miscSlots[0]);
-        var grpMisc = new FlatGroupBox { Text = AppLocale.Get("Equip.Misc"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        grpMisc.Controls.Add(_miscSlots[0]);
-        equipPanel.Controls.Add(grpMisc, 2, 2);
-
-        layout.Controls.Add(equipPanel, 0, 1);
-
-        // Wire all equip slot grids to the same handler
+        // Wire all equip slot grids
         void WireEquipGrid(SlotGrid g) => g.SlotSelected += (s, idx) => OnGridSlotSelected(g, idx, null, "equip");
         foreach (var grid in _equipSlots) WireEquipGrid(grid);
         foreach (var grid in _vanitySlots) WireEquipGrid(grid);

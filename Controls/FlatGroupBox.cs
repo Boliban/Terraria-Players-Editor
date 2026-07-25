@@ -1,14 +1,17 @@
+using System.ComponentModel;
 using Terraria_Players_Editor.Services;
 
 namespace Terraria_Players_Editor.Controls;
 
 /// <summary>
-/// Minimal section container — inherits Panel for compatibility but adds no border.
-/// Provides a bold title label above the content.
+/// Section container with bold title, divider line, and content.
 /// </summary>
 public class FlatGroupBox : Panel
 {
     private readonly Label _titleLabel;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Color DividerColor { get; set; } = Color.Black;
 
     public FlatGroupBox()
     {
@@ -42,10 +45,25 @@ public class FlatGroupBox : Panel
         base.OnControlAdded(e);
         if (e.Control != _titleLabel)
         {
-            // Position added content below the title label
-            e.Control.Location = new Point(0, _titleLabel.Bottom + 2);
-            // Push title to back so it doesn't cover content
+            e.Control.Location = new Point(0, _titleLabel.Bottom + 3);
             _titleLabel.SendToBack();
         }
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        if (_titleLabel.Visible)
+        {
+            int y = _titleLabel.Bottom + 1;
+            using var pen = new Pen(DividerColor, 1f);
+            e.Graphics.DrawLine(pen, 0, y, Width - 1, y);
+        }
+    }
+
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        Invalidate();
     }
 }

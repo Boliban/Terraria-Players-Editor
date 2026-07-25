@@ -32,8 +32,9 @@ public class SlotGrid : UserControl
         int cellSize = 50; // 48px slot + 2px gap
         int titleH = _hasTitle ? 16 : 0;
 
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        AutoSize = false;
+        Width = columns * cellSize;
+        Height = titleH + rows * cellSize;
 
         // Title label at top-left (if specified)
         if (_hasTitle)
@@ -51,11 +52,7 @@ public class SlotGrid : UserControl
 
         _table = new TableLayoutPanel
         {
-            ColumnCount = columns,
-            RowCount = rows,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(1),
+            Padding = new Padding(0),
             Margin = new Padding(0),
             Location = new Point(0, titleH)
         };
@@ -64,6 +61,9 @@ public class SlotGrid : UserControl
             _table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, cellSize));
         for (int r = 0; r < rows; r++)
             _table.RowStyles.Add(new RowStyle(SizeType.Absolute, cellSize));
+
+        _table.Width = columns * cellSize;
+        _table.Height = rows * cellSize;
 
         _slots = new SlotPanel[totalSlots];
         for (int i = 0; i < totalSlots; i++)
