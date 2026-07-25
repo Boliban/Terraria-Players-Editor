@@ -41,7 +41,8 @@ public class ItemModifier : UserControl
         BorderStyle = BorderStyle.None;
 
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
+                 ControlStyles.Opaque, true);
         UpdateStyles();
 
         // Icon (top-left)
@@ -132,7 +133,10 @@ public class ItemModifier : UserControl
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        // Fill solid background first for clean anti-aliased edges
+        // Sync BackColor so child controls see correct background through transparency
+        BackColor = ThemeManager.SurfaceCard;
+
+        // Fill entire client area solid — ensures no parent background bleeds through corners
         using (var solidBg = new SolidBrush(ThemeManager.SurfaceCard))
             e.Graphics.FillRectangle(solidBg, ClientRectangle);
 

@@ -35,7 +35,9 @@ public class SlotPanel : UserControl
 
     public SlotPanel(int slotIndex = 0, bool isHotbar = false)
     {
-        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
+                 ControlStyles.Opaque | ControlStyles.SupportsTransparentBackColor, true);
         UpdateStyles();
 
         _slotIndex = slotIndex;
@@ -234,23 +236,27 @@ public class SlotPanel : UserControl
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        // Fill entire control background first so anti-aliased rounded edges
-        // blend with our own color rather than the parent container's color.
+        // Sync BackColor so child controls with Transparent BackColor
+        // (PictureBox, Label) pick up the correct animated fill color.
+        BackColor = _currentFill;
+
+        // Fill entire client area with solid color. Together with ControlStyles.Opaque
+        // this guarantees no parent background bleeds through the rounded corners.
         using (var solidBg = new SolidBrush(_currentFill))
             e.Graphics.FillRectangle(solidBg, ClientRectangle);
 
-        // Draw child controls on top of the filled background
+        // Draw child controls — their Transparent backgrounds now resolve to BackColor
         base.OnPaint(e);
 
         Win11Renderer.BeginHighQuality(e.Graphics);
         var rect = new Rectangle(0, 0, Width - 1, Height - 1);
         int radius = ThemeManager.Spacing.CornerRadius;
 
-        // Rounded fill on top of the solid background
+        // Redraw rounded fill to cover any artifacts from child control painting
         using var fillBrush = new SolidBrush(_currentFill);
         Win11Renderer.FillRoundedRect(e.Graphics, rect, radius, fillBrush);
 
-        // Border
+        // Rounded border on top
         Color borderColor = _selected
             ? ThemeManager.SlotSelectedBorder
             : ThemeManager.SlotBorder;
