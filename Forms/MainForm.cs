@@ -74,6 +74,13 @@ public partial class MainForm : Form
             tab.BackColor = ThemeManager.SurfaceBackground;
         tabControl.BackColor = ThemeManager.SurfaceBackground;
 
+        // Storage sub-tab pages
+        subPiggyBank.BackColor = ThemeManager.SurfaceBackground;
+        subSafe.BackColor = ThemeManager.SurfaceBackground;
+        subDefenderForge.BackColor = ThemeManager.SurfaceBackground;
+        subVoidVault.BackColor = ThemeManager.SurfaceBackground;
+        if (tabStorageSub != null) tabStorageSub.BackColor = ThemeManager.SurfaceBackground;
+
         Invalidate(true);
     }
 
@@ -156,11 +163,8 @@ public partial class MainForm : Form
         tabControl = new TabControl
         {
             Dock = DockStyle.Fill,
-            DrawMode = TabDrawMode.OwnerDrawFixed,
             BackColor = ThemeManager.SurfaceBackground
         };
-        tabControl.DrawItem += OnDrawTabItem;
-        tabControl.SelectedIndexChanged += OnTabIndexChanged;
 
         var pages = new TabPage[]
         {
@@ -181,63 +185,6 @@ public partial class MainForm : Form
 
         Controls.Add(tabControl);
         tabControl.BringToFront();
-    }
-
-    /// <summary>Owner-draw tab headers with Win11-style flat design and animated accent indicator.</summary>
-    private void OnDrawTabItem(object? sender, DrawItemEventArgs e)
-    {
-        if (e.Index < 0 || e.Index >= tabControl.TabPages.Count) return;
-
-        var tab = tabControl.TabPages[e.Index];
-        var rect = e.Bounds;
-        bool selected = tabControl.SelectedIndex == e.Index;
-
-        // Fill tab strip background behind all tabs
-        using (var stripBg = new SolidBrush(ThemeManager.SurfaceBackground))
-            e.Graphics.FillRectangle(stripBg, e.Bounds);
-
-        // Tab background
-        var bg = selected ? ThemeManager.SurfaceContainer : ThemeManager.SurfaceBackground;
-        using var bgBrush = new SolidBrush(bg);
-        e.Graphics.FillRectangle(bgBrush, new Rectangle(rect.X, rect.Y + 2, rect.Width, rect.Height - 2));
-
-        // Animated selection indicator: 3px accent bar at bottom
-        if (selected && _tabIndicatorX > 0)
-        {
-            int indicatorH = 3;
-            int indicatorW = Math.Max(20, rect.Width - 16);
-            var indicatorRect = new Rectangle(
-                (int)_tabIndicatorX + 4,
-                rect.Bottom - indicatorH - 1,
-                indicatorW,
-                indicatorH);
-            using var accentBrush = new SolidBrush(ThemeManager.AccentPrimary);
-            e.Graphics.FillRectangle(accentBrush, indicatorRect);
-        }
-
-        // Text
-        TextRenderer.DrawText(e.Graphics, tab.Text, ThemeManager.Typography.Body,
-            rect, selected ? ThemeManager.TextPrimary : ThemeManager.TextSecondary,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-    }
-
-    /// <summary>Animate the tab selection indicator when the selected tab changes.</summary>
-    private void OnTabIndexChanged(object? sender, EventArgs e)
-    {
-        int newIdx = tabControl.SelectedIndex;
-        if (newIdx < 0 || newIdx >= tabControl.TabPages.Count) return;
-
-        // Get the rectangle of the newly selected tab
-        var tabRect = tabControl.GetTabRect(newIdx);
-        float targetX = tabRect.X;
-        float startX = _prevTabIndex >= 0 ? tabControl.GetTabRect(_prevTabIndex).X : targetX;
-
-        _tabIndicatorAnim?.Cancel();
-        _tabIndicatorAnim = AnimationEngine.Instance.Animate(
-            startX, targetX, 250, EasingFunction.EaseOutCubic,
-            v => { _tabIndicatorX = v; tabControl.Invalidate(); });
-
-        _prevTabIndex = newIdx;
     }
 
     #endregion
@@ -453,7 +400,23 @@ public partial class MainForm : Form
         _grpInventorySection = BuildInventorySection();
         _grpEquipmentSection = BuildEquipmentSection();
         _grpStorageSection = BuildStorageSection();
-        sectionsLayout.Controls.AddRange([_grpInventorySection, _grpEquipmentSection, _grpStorageSection]);
+
+        var div1 = new Panel { Height = 1, Margin = new Padding(0, 4, 0, 4), BackColor = Color.Black };
+        var div2 = new Panel { Height = 1, Margin = new Padding(0, 4, 0, 4), BackColor = Color.Black };
+        sectionsLayout.Controls.Add(_grpInventorySection);
+        sectionsLayout.Controls.Add(div1);
+        sectionsLayout.Controls.Add(_grpEquipmentSection);
+        sectionsLayout.Controls.Add(div2);
+        sectionsLayout.Controls.Add(_grpStorageSection);
+
+        // Stretch dividers to fill the scrollable width (outer panel, not auto-sized inner)
+        void StretchDividers()
+        {
+            int w = _scrollPanelItems.ClientSize.Width - 20;
+            if (w > 100) { div1.Width = w; div2.Width = w; }
+        }
+        _scrollPanelItems.SizeChanged += (s, e) => StretchDividers();
+        _scrollPanelItems.Layout += (s, e) => StretchDividers();
         _scrollPanelItems.Controls.Add(sectionsLayout);
         right.Controls.Add(_scrollPanelItems, 0, 1);
         split.Panel2.Controls.Add(right);
@@ -477,7 +440,7 @@ public partial class MainForm : Form
         return tabItems;
     }
 
-    private GroupBox BuildInventorySection()
+    private FlatGroupBox BuildInventorySection()
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Inventory"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         var gridPanel = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 2, Padding = new Padding(5) };
@@ -509,7 +472,7 @@ public partial class MainForm : Form
         return grp;
     }
 
-    private GroupBox BuildEquipmentSection()
+    private FlatGroupBox BuildEquipmentSection()
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
 
@@ -610,17 +573,17 @@ public partial class MainForm : Form
         return grp;
     }
 
-    private GroupBox BuildStorageSection()
+    private FlatGroupBox BuildStorageSection()
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Storage"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         var layout = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 1, Padding = new Padding(5) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        tabStorageSub = new TabControl { Width = 540, Height = 230 };
-        subPiggyBank = new TabPage(AppLocale.Get("Storage.PiggyBank"));
-        subSafe = new TabPage(AppLocale.Get("Storage.Safe"));
-        subDefenderForge = new TabPage(AppLocale.Get("Storage.DefenderForge"));
-        subVoidVault = new TabPage(AppLocale.Get("Storage.VoidVault"));
+        tabStorageSub = new TabControl { Width = 512, Height = 230, BackColor = ThemeManager.SurfaceBackground };
+        subPiggyBank = new TabPage(AppLocale.Get("Storage.PiggyBank")) { BackColor = ThemeManager.SurfaceBackground };
+        subSafe = new TabPage(AppLocale.Get("Storage.Safe")) { BackColor = ThemeManager.SurfaceBackground };
+        subDefenderForge = new TabPage(AppLocale.Get("Storage.DefenderForge")) { BackColor = ThemeManager.SurfaceBackground };
+        subVoidVault = new TabPage(AppLocale.Get("Storage.VoidVault")) { BackColor = ThemeManager.SurfaceBackground };
 
         _gridPiggy = new SlotGrid(10, 4); subPiggyBank.Controls.Add(_gridPiggy);
         _allItemGrids.Add(_gridPiggy);

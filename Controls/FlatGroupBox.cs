@@ -3,57 +3,49 @@ using Terraria_Players_Editor.Services;
 namespace Terraria_Players_Editor.Controls;
 
 /// <summary>
-/// Minimal GroupBox with gray rounded border and title label. No card fill.
+/// Minimal section container — inherits Panel for compatibility but adds no border.
+/// Provides a bold title label above the content.
 /// </summary>
-public class FlatGroupBox : GroupBox
+public class FlatGroupBox : Panel
 {
+    private readonly Label _titleLabel;
+
     public FlatGroupBox()
     {
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
-        UpdateStyles();
-        ForeColor = ThemeManager.TextPrimary;
-        ThemeManager.ThemeChanged += () => ApplyTheme();
-    }
+        BorderStyle = BorderStyle.None;
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-    /// <summary>Re-apply theme colors and invalidate.</summary>
-    public void ApplyTheme()
-    {
-        ForeColor = ThemeManager.TextPrimary;
-        Invalidate();
-    }
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        Win11Renderer.BeginHighQuality(e.Graphics);
-
-        var rect = new Rectangle(0, 8, Width - 1, Height - 9);
-        int radius = ThemeManager.Spacing.CornerRadius / 2;
-
-        // Gray border only — no fill
-        using var borderPen = new Pen(ThemeManager.ControlInputBorder, 1f);
-        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
-
-        // Title text at top-left
-        if (!string.IsNullOrEmpty(Text))
+        _titleLabel = new Label
         {
-            var titleSize = TextRenderer.MeasureText(e.Graphics, Text,
-                ThemeManager.Typography.BodyBold, new Size(Width, 20));
-            int titleX = ThemeManager.Spacing.PaddingStandard;
-            int titleW = titleSize.Width + 10;
+            AutoSize = true,
+            Font = ThemeManager.Typography.BodyBold,
+            ForeColor = ThemeManager.TextPrimary,
+            Location = new Point(0, 0)
+        };
+        Controls.Add(_titleLabel);
 
-            // Cover the border behind the title text (use parent's background)
-            using var titleBgBrush = new SolidBrush(BackColor);
-            e.Graphics.FillRectangle(titleBgBrush, titleX, 2, titleW, 14);
+        ThemeManager.ThemeChanged += () =>
+        {
+            _titleLabel.ForeColor = ThemeManager.TextPrimary;
+        };
+    }
 
-            TextRenderer.DrawText(e.Graphics, Text, ThemeManager.Typography.BodyBold,
-                new Rectangle(titleX + 4, 0, titleW, 18), ThemeManager.TextPrimary,
-                TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+    public override string Text
+    {
+        get => _titleLabel.Text;
+        set => _titleLabel.Text = value ?? "";
+    }
+
+    protected override void OnControlAdded(ControlEventArgs e)
+    {
+        base.OnControlAdded(e);
+        if (e.Control != _titleLabel)
+        {
+            // Position added content below the title label
+            e.Control.Location = new Point(0, _titleLabel.Bottom + 2);
+            // Push title to back so it doesn't cover content
+            _titleLabel.SendToBack();
         }
-
-        Win11Renderer.EndHighQuality(e.Graphics);
-
-        // Draw child controls on top of the border
-        base.OnPaint(e);
     }
 }

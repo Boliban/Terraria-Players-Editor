@@ -38,11 +38,7 @@ public class ItemModifier : UserControl
     {
         Width = 400;
         Height = 130;
-        BorderStyle = BorderStyle.None;
-
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
-        UpdateStyles();
+        BorderStyle = BorderStyle.FixedSingle;
 
         // Icon (top-left)
         _icon = new PictureBox
@@ -128,20 +124,6 @@ public class ItemModifier : UserControl
         _icon.BackColor = ThemeManager.IconModifierBg;
         _lblId.ForeColor = ThemeManager.TextSecondary;
         Invalidate();
-    }
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        // Gray border only — no fill
-        Win11Renderer.BeginHighQuality(e.Graphics);
-        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
-        int radius = ThemeManager.Spacing.CornerRadius;
-        using var borderPen = new Pen(ThemeManager.ControlInputBorder, 1f);
-        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
-        Win11Renderer.EndHighQuality(e.Graphics);
-
-        // Draw child controls on top
-        base.OnPaint(e);
     }
 
     /// <summary>Whether stack controls are visible (hidden for equipment).</summary>

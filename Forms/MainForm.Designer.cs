@@ -39,17 +39,17 @@ partial class MainForm
 
     // === Tab 2: Stats ===
     private TabPage tabStats = null!;
-    private GroupBox grpHealth = null!;
+    private Panel grpHealth = null!;
     private Label lblHealth = null!;
     private NumericUpDown nudHealth = null!;
     private Label lblMaxHealth = null!;
     private NumericUpDown nudMaxHealth = null!;
-    private GroupBox grpMana = null!;
+    private Panel grpMana = null!;
     private Label lblMana = null!;
     private NumericUpDown nudMana = null!;
     private Label lblMaxMana = null!;
     private NumericUpDown nudMaxMana = null!;
-    private GroupBox grpCounters = null!;
+    private Panel grpCounters = null!;
     private Label lblDeathsPvE = null!;
     private NumericUpDown nudDeathsPvE = null!;
     private Label lblDeathsPvP = null!;
@@ -69,10 +69,10 @@ partial class MainForm
     private NumericUpDown nudHairDye = null!;
     private Label lblSkinVariant = null!;
     private ComboBox cmbSkinVariant = null!;
-    private GroupBox grpColors = null!;
+    private Panel grpColors = null!;
     private Button[] colorButtons = null!;
     private Panel[] colorPanels = null!;
-    private GroupBox grpVisibility = null!;
+    private Panel grpVisibility = null!;
     private CheckBox[] chkHideVisual = null!;
 
     // === Tab 4: Items (merged: Inventory + Equipment + Storage) ===
@@ -81,9 +81,9 @@ partial class MainForm
     private Controls.ItemModifier _modItems = null!;
     private SplitContainer _splitItems = null!;
     private Panel _scrollPanelItems = null!;
-    private GroupBox _grpInventorySection = null!;
-    private GroupBox _grpEquipmentSection = null!;
-    private GroupBox _grpStorageSection = null!;
+    private Panel _grpInventorySection = null!;
+    private Panel _grpEquipmentSection = null!;
+    private Panel _grpStorageSection = null!;
 
     // Inventory grids
     private Controls.SlotGrid _gridInventory = null!;
@@ -159,9 +159,9 @@ partial class MainForm
 
     // === Tab 8: Misc ===
     private CheckBox chkHotbarLocked = null!;
-    private GroupBox grpHideInfo = null!;
+    private Panel grpHideInfo = null!;
     private CheckBox[] chkHideInfo = null!;
-    private GroupBox grpCooldowns = null!;
+    private Panel grpCooldowns = null!;
     private Label lblPotionDelay = null!;
     private NumericUpDown nudPotionDelay = null!;
     private Label lblManaPotionDelay = null!;
@@ -178,11 +178,6 @@ partial class MainForm
     private int _cachedBuffType;
     private int _cachedBuffDur;
     private bool _populating;
-
-    // Tab indicator slide animation
-    private int _prevTabIndex = -1;
-    private float _tabIndicatorX;
-    private Services.Animation? _tabIndicatorAnim;
 
     private void InitializeComponent()
     {

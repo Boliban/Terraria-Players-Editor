@@ -1,14 +1,12 @@
 using System.ComponentModel;
 using Terraria_Players_Editor.Models;
 using Terraria_Players_Editor.Services;
-using System.Diagnostics;
 
 namespace Terraria_Players_Editor.Controls;
 
 /// <summary>
 /// A single inventory-style slot displaying an item icon, stack count, and selection state.
-/// Mimics Terraria's slot appearance with dark backgrounds and color-coded borders.
-/// Supports animated item icons via a built-in timer.
+/// Uses clean square shape with minimal gray borders. Animates fill color on hover/select.
 /// </summary>
 public class SlotPanel : UserControl
 {
@@ -25,19 +23,18 @@ public class SlotPanel : UserControl
     private Bitmap[]? _animFrames;
     private int _animFrameIdx;
 
-    // Hover state for custom OnPaint
+    // Hover state
     private bool _hovered;
     private bool _isHotbar;
 
-    // Smooth color transition animation
+    // Smooth color transition
     private Color _currentFill;
     private Animation? _fillAnimation;
 
     public SlotPanel(int slotIndex = 0, bool isHotbar = false)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
-                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                 ControlStyles.SupportsTransparentBackColor, true);
+                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
         UpdateStyles();
 
         _slotIndex = slotIndex;
@@ -45,7 +42,7 @@ public class SlotPanel : UserControl
         _normalBackColor = isHotbar
             ? ThemeManager.SlotHotbar
             : ThemeManager.SlotNormal;
-        _emptyBackColor = _normalBackColor; // Empty slots match filled slot colors
+        _emptyBackColor = _normalBackColor;
         _currentFill = _normalBackColor;
 
         Size = new Size(48, 48);
@@ -53,9 +50,6 @@ public class SlotPanel : UserControl
         BorderStyle = BorderStyle.None;
         Cursor = Cursors.Hand;
         Margin = new Padding(0);
-
-        // Clip the control to its rounded rectangle so corners show parent background
-        UpdateRoundedRegion();
 
         _icon = new PictureBox
         {
@@ -100,7 +94,6 @@ public class SlotPanel : UserControl
         Invalidate();
     }
 
-    /// <summary>Index of this slot within its parent grid.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int SlotIndex
     {
@@ -108,7 +101,6 @@ public class SlotPanel : UserControl
         set => _slotIndex = value;
     }
 
-    /// <summary>Whether this slot is currently selected (gold border).</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool Selected
     {
@@ -120,7 +112,6 @@ public class SlotPanel : UserControl
         }
     }
 
-    /// <summary>The item data displayed in this slot.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public ItemData? Item
     {
@@ -132,7 +123,6 @@ public class SlotPanel : UserControl
         }
     }
 
-    /// <summary>Whether this is a hotbar slot (special background color).</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool IsHotbar
     {
@@ -147,11 +137,9 @@ public class SlotPanel : UserControl
         }
     }
 
-    /// <summary>Whether this slot displays a buff (uses buff icons instead of item icons).</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool IsBuffSlot { get; set; }
 
-    /// <summary>Update the icon and stack label from current Item data.</summary>
     public void RefreshDisplay()
     {
         StopAnimation();
@@ -164,7 +152,6 @@ public class SlotPanel : UserControl
             return;
         }
 
-        // Check for animation frames first
         if (!IsBuffSlot && SettingsManager.EnableAnimatedIcons)
         {
             var frames = IconService.GetItemFrames(_item.ItemId);
@@ -188,22 +175,15 @@ public class SlotPanel : UserControl
         }
 
         _stackLabel.Visible = _item.StackSize > 1;
-        if (_item.StackSize >= 1000)
-        {
-            _stackLabel.Font = ThemeManager.Typography.SlotStackSmall;
-            _stackLabel.Text = _item.StackSize.ToString();
-        }
-        else
-        {
-            _stackLabel.Font = ThemeManager.Typography.SlotStack;
-            _stackLabel.Text = _item.StackSize.ToString();
-        }
+        _stackLabel.Font = _item.StackSize >= 1000
+            ? ThemeManager.Typography.SlotStackSmall
+            : ThemeManager.Typography.SlotStack;
+        _stackLabel.Text = _item.StackSize.ToString();
         _stackLabel.Location = new Point(Width - _stackLabel.PreferredWidth - 2,
             Height - _stackLabel.PreferredHeight);
         TransitionFill(GetTargetFill());
     }
 
-    /// <summary>Clear this slot to empty state.</summary>
     public void Clear()
     {
         _item = null;
@@ -237,52 +217,24 @@ public class SlotPanel : UserControl
         _icon.Image = _animFrames[_animFrameIdx];
     }
 
-    /// <summary>Clip the control region to the rounded rectangle.</summary>
-    private void UpdateRoundedRegion()
-    {
-        if (Width <= 0 || Height <= 0) return;
-        var rect = new Rectangle(0, 0, Width, Height);
-        using var path = Win11Renderer.GetRoundedRectPath(rect, ThemeManager.Spacing.CornerRadius);
-        Region = new Region(path);
-    }
-
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        UpdateRoundedRegion();
-    }
-
     protected override void OnPaint(PaintEventArgs e)
     {
-        // Sync BackColor so child controls with Transparent BackColor
-        // resolve to the correct fill color.
         BackColor = _currentFill;
 
-        Win11Renderer.BeginHighQuality(e.Graphics);
-        // Use full Width×Height so fill and border align with Region clip boundary
-        var rect = new Rectangle(0, 0, Width, Height);
-        int radius = ThemeManager.Spacing.CornerRadius;
+        // Fill entire control with solid color
+        using (var fillBrush = new SolidBrush(_currentFill))
+            e.Graphics.FillRectangle(fillBrush, ClientRectangle);
 
-        // Fill the rounded rectangle area with current fill color.
-        // The Region clips everything outside, so corners show the parent background.
-        using var fillBrush = new SolidBrush(_currentFill);
-        Win11Renderer.FillRoundedRect(e.Graphics, rect, radius, fillBrush);
-
-        Win11Renderer.EndHighQuality(e.Graphics);
-
-        // Draw child controls on top of the filled background
+        // Child controls on top
         base.OnPaint(e);
 
-        // Rounded border on top
-        Win11Renderer.BeginHighQuality(e.Graphics);
-        Color borderColor = ThemeManager.ControlInputBorder;
-        float borderWidth = _selected ? 3f : 2f;
-        using var borderPen = new Pen(borderColor, borderWidth);
-        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
-        Win11Renderer.EndHighQuality(e.Graphics);
+        // Simple rect border — gray, thicker when selected
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        float borderW = _selected ? 2f : 1f;
+        using var borderPen = new Pen(ThemeManager.ControlInputBorder, borderW);
+        e.Graphics.DrawRectangle(borderPen, rect);
     }
 
-    /// <summary>Animate the fill color to a target via AnimationEngine.</summary>
     private void TransitionFill(Color target)
     {
         _fillAnimation?.Cancel();
@@ -291,15 +243,11 @@ public class SlotPanel : UserControl
             c => { _currentFill = c; Invalidate(); });
     }
 
-    /// <summary>Get the target fill color for the current state.</summary>
     private Color GetTargetFill()
     {
-        if (_selected)
-            return ThemeManager.SlotSelectedFill;
-        if (_hovered)
-            return ThemeManager.SlotHover;
-        if (_item != null && !_item.IsEmpty)
-            return _normalBackColor;
+        if (_selected) return ThemeManager.SlotSelectedFill;
+        if (_hovered) return ThemeManager.SlotHover;
+        if (_item != null && !_item.IsEmpty) return _normalBackColor;
         return _emptyBackColor;
     }
 
