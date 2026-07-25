@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Terraria_Players_Editor.Models;
+using Terraria_Players_Editor.Services;
 
 namespace Terraria_Players_Editor.Controls;
 
@@ -40,8 +41,8 @@ public class SlotGrid : UserControl
             _titleLabel = new Label
             {
                 Text = gridTitle,
-                Font = new Font("Segoe UI", 7.5f, FontStyle.Regular),
-                ForeColor = Color.FromArgb(100, 100, 105),
+                Font = ThemeManager.Typography.Caption,
+                ForeColor = ThemeManager.TextSecondary,
                 AutoSize = true,
                 Location = new Point(2, 0)
             };

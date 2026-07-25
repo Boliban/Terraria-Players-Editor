@@ -39,8 +39,14 @@ public partial class MainForm : Form
         Text = "Terraria Players Editor";
         ClientSize = new Size(1200, 800);
         StartPosition = FormStartPosition.CenterScreen;
-        Font = new Font("Segoe UI", 9f);
+        Font = ThemeManager.Typography.Body;
         MinimumSize = new Size(800, 500);
+        BackColor = ThemeManager.SurfaceBackground;
+
+        // Enable double buffering to reduce flicker during resize and child repaints
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+            ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+        UpdateStyles();
 
         BuildMenu();
         BuildStatusBar();
@@ -56,7 +62,10 @@ public partial class MainForm : Form
 
     private void BuildMenu()
     {
-        menuStrip = new MenuStrip();
+        menuStrip = new MenuStrip
+        {
+            Renderer = new FlatMenuRenderer()
+        };
         fileMenu = new ToolStripMenuItem(AppLocale.Get("Menu.File"));
         openMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Open"), null, OnOpen) { ShortcutKeys = Keys.Control | Keys.O };
         saveMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Save"), null, OnSave) { ShortcutKeys = Keys.Control | Keys.S };
@@ -83,6 +92,19 @@ public partial class MainForm : Form
         };
         settingsMenu.DropDownItems.Add(_animIconItem);
 
+        var darkModeItem = new ToolStripMenuItem("Dark Mode")
+        {
+            Checked = SettingsManager.DarkMode,
+            CheckOnClick = true
+        };
+        darkModeItem.Click += (_, _) =>
+        {
+            SettingsManager.DarkMode = darkModeItem.Checked;
+            SettingsManager.Save();
+            ThemeManager.ApplyTheme(darkModeItem.Checked);
+        };
+        settingsMenu.DropDownItems.Add(darkModeItem);
+
         var debugItem = new ToolStripMenuItem("Debug Log");
         debugItem.Click += (_, _) =>
         {
@@ -100,7 +122,11 @@ public partial class MainForm : Form
 
     private void BuildStatusBar()
     {
-        statusStrip = new StatusStrip();
+        statusStrip = new StatusStrip
+        {
+            Renderer = new FlatMenuRenderer(),
+            BackColor = ThemeManager.SurfaceBackground
+        };
         statusLabel = new ToolStripStatusLabel(AppLocale.Get("Status.Ready"));
         statusProgress = new ToolStripProgressBar { Visible = false, Width = 120 };
         statusStrip.Items.Add(statusLabel);
@@ -112,8 +138,11 @@ public partial class MainForm : Form
     {
         tabControl = new TabControl
         {
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            DrawMode = TabDrawMode.OwnerDrawFixed
         };
+        tabControl.DrawItem += OnDrawTabItem;
+        tabControl.SelectedIndexChanged += OnTabIndexChanged;
 
         tabControl.TabPages.AddRange([
             BuildPlayerInfoTab(),
@@ -128,6 +157,59 @@ public partial class MainForm : Form
 
         Controls.Add(tabControl);
         tabControl.BringToFront();
+    }
+
+    /// <summary>Owner-draw tab headers with Win11-style flat design and animated accent indicator.</summary>
+    private void OnDrawTabItem(object? sender, DrawItemEventArgs e)
+    {
+        if (e.Index < 0 || e.Index >= tabControl.TabPages.Count) return;
+
+        var tab = tabControl.TabPages[e.Index];
+        var rect = e.Bounds;
+        bool selected = tabControl.SelectedIndex == e.Index;
+
+        // Background
+        var bg = selected ? ThemeManager.SurfaceContainer : ThemeManager.SurfaceBackground;
+        using var bgBrush = new SolidBrush(bg);
+        e.Graphics.FillRectangle(bgBrush, rect);
+
+        // Animated selection indicator: 3px accent bar at bottom
+        if (selected && _tabIndicatorX > 0)
+        {
+            int indicatorH = 3;
+            int indicatorW = Math.Max(20, rect.Width - 16);
+            var indicatorRect = new Rectangle(
+                (int)_tabIndicatorX + 4,
+                rect.Bottom - indicatorH - 1,
+                indicatorW,
+                indicatorH);
+            using var accentBrush = new SolidBrush(ThemeManager.AccentPrimary);
+            e.Graphics.FillRectangle(accentBrush, indicatorRect);
+        }
+
+        // Text
+        TextRenderer.DrawText(e.Graphics, tab.Text, ThemeManager.Typography.Body,
+            rect, selected ? ThemeManager.TextPrimary : ThemeManager.TextSecondary,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+    }
+
+    /// <summary>Animate the tab selection indicator when the selected tab changes.</summary>
+    private void OnTabIndexChanged(object? sender, EventArgs e)
+    {
+        int newIdx = tabControl.SelectedIndex;
+        if (newIdx < 0 || newIdx >= tabControl.TabPages.Count) return;
+
+        // Get the rectangle of the newly selected tab
+        var tabRect = tabControl.GetTabRect(newIdx);
+        float targetX = tabRect.X;
+        float startX = _prevTabIndex >= 0 ? tabControl.GetTabRect(_prevTabIndex).X : targetX;
+
+        _tabIndicatorAnim?.Cancel();
+        _tabIndicatorAnim = AnimationEngine.Instance.Animate(
+            startX, targetX, 250, EasingFunction.EaseOutCubic,
+            v => { _tabIndicatorX = v; tabControl.Invalidate(); });
+
+        _prevTabIndex = newIdx;
     }
 
     #endregion
@@ -169,21 +251,21 @@ public partial class MainForm : Form
         tabStats = new TabPage("Stats");
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20) };
 
-        grpHealth = new GroupBox { Text = AppLocale.Get("Stats.Health"), Width = 350, Height = 100 };
+        grpHealth = new FlatGroupBox { Text = AppLocale.Get("Stats.Health"), Width = 350, Height = 100 };
         lblHealth = new Label { Text = AppLocale.Get("Stats.Current"), Location = new Point(15, 30), Width = 70 };
         nudHealth = new NumericUpDown { Location = new Point(90, 28), Width = 100, Minimum = 0, Maximum = 600 };
         lblMaxHealth = new Label { Text = AppLocale.Get("Stats.Max"), Location = new Point(210, 30), Width = 40 };
         nudMaxHealth = new NumericUpDown { Location = new Point(250, 28), Width = 80, Minimum = 100, Maximum = 600, Increment = 20 };
         grpHealth.Controls.AddRange([lblHealth, nudHealth, lblMaxHealth, nudMaxHealth]);
 
-        grpMana = new GroupBox { Text = AppLocale.Get("Stats.Mana"), Width = 350, Height = 100 };
+        grpMana = new FlatGroupBox { Text = AppLocale.Get("Stats.Mana"), Width = 350, Height = 100 };
         lblMana = new Label { Text = AppLocale.Get("Stats.Current"), Location = new Point(15, 30), Width = 70 };
         nudMana = new NumericUpDown { Location = new Point(90, 28), Width = 100, Minimum = 0, Maximum = 400 };
         lblMaxMana = new Label { Text = AppLocale.Get("Stats.Max"), Location = new Point(210, 30), Width = 40 };
         nudMaxMana = new NumericUpDown { Location = new Point(250, 28), Width = 80, Minimum = 0, Maximum = 400, Increment = 20 };
         grpMana.Controls.AddRange([lblMana, nudMana, lblMaxMana, nudMaxMana]);
 
-        grpCounters = new GroupBox { Text = AppLocale.Get("Stats.Counters"), Width = 350, Height = 210 };
+        grpCounters = new FlatGroupBox { Text = AppLocale.Get("Stats.Counters"), Width = 350, Height = 210 };
         lblDeathsPvE = new Label { Text = AppLocale.Get("Stats.DeathsPvE"), Location = new Point(15, 30), Width = 100 };
         nudDeathsPvE = new NumericUpDown { Location = new Point(120, 28), Width = 100, Minimum = 0, Maximum = int.MaxValue };
         lblDeathsPvP = new Label { Text = AppLocale.Get("Stats.DeathsPvP"), Location = new Point(15, 60), Width = 100 };
@@ -224,8 +306,8 @@ public partial class MainForm : Form
         topRow.Controls.AddRange([lblHairStyle, nudHairStyle, lblHairDye, nudHairDye, lblSkinVariant, cmbSkinVariant]);
 
         // Color pickers
-        grpColors = new GroupBox { Text = AppLocale.Get("Appearance.Colors"), Width = 800, Height = 160 };
-        colorButtons = new Button[7];
+        grpColors = new FlatGroupBox { Text = AppLocale.Get("Appearance.Colors"), Width = 800, Height = 160 };
+        colorButtons = new FlatButton[7];
         colorPanels = new Panel[7];
         lblColors = new Label[7];
         _tempColors = new byte[7][];
@@ -236,14 +318,14 @@ public partial class MainForm : Form
             int y = 25 + (i / 4) * 60;
             lblColors[i] = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
             colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White };
-            colorButtons[i] = new Button { Text = AppLocale.Get("Appearance.Pick"), Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
+            colorButtons[i] = new FlatButton { Text = AppLocale.Get("Appearance.Pick"), Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
             int idx = i;
             colorButtons[i].Click += (_, _) => PickColor(idx);
             grpColors.Controls.AddRange([lblColors[i], colorPanels[i], colorButtons[i]]);
         }
 
         // Visibility toggles
-        grpVisibility = new GroupBox { Text = AppLocale.Get("Appearance.Visibility"), Width = 800, Height = 100 };
+        grpVisibility = new FlatGroupBox { Text = AppLocale.Get("Appearance.Visibility"), Width = 800, Height = 100 };
         chkHideVisual = new CheckBox[10];
         chkHideMisc = new CheckBox[5];
         for (int i = 0; i < 10; i++)
@@ -321,7 +403,7 @@ public partial class MainForm : Form
 
     private GroupBox BuildInventorySection()
     {
-        var grp = new GroupBox { Text = AppLocale.Get("Tab.Inventory"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
+        var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Inventory"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         var gridPanel = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 2, Padding = new Padding(5) };
         gridPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         gridPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -333,11 +415,11 @@ public partial class MainForm : Form
         var coinAmmoPanel = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 5, 0, 0) };
         _gridCoins = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Coins"));
         _allItemGrids.Add(_gridCoins);
-        var grpCoinsNew = new GroupBox { Text = AppLocale.Get("Inventory.Coins"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpCoinsNew = new FlatGroupBox { Text = AppLocale.Get("Inventory.Coins"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpCoinsNew.Controls.Add(_gridCoins);
         _gridAmmo = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Ammo"));
         _allItemGrids.Add(_gridAmmo);
-        var grpAmmoNew = new GroupBox { Text = AppLocale.Get("Inventory.Ammo"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpAmmoNew = new FlatGroupBox { Text = AppLocale.Get("Inventory.Ammo"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpAmmoNew.Controls.Add(_gridAmmo);
         coinAmmoPanel.Controls.AddRange([grpCoinsNew, grpAmmoNew]);
         gridPanel.Controls.Add(coinAmmoPanel, 0, 1);
@@ -353,7 +435,7 @@ public partial class MainForm : Form
 
     private GroupBox BuildEquipmentSection()
     {
-        var grp = new GroupBox { Text = AppLocale.Get("Tab.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
+        var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
 
         var layout = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 2, Padding = new Padding(5) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));  // Loadout selector
@@ -380,21 +462,21 @@ public partial class MainForm : Form
         _armorDyeSlots = [new SlotGrid(3, 1)];
         _armorDyeSlots[0].Tag = "DyeArmor";
         _allItemGrids.Add(_armorDyeSlots[0]);
-        var grpArmorDyes = new GroupBox { Text = AppLocale.Get("Dyes.Armor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpArmorDyes = new FlatGroupBox { Text = AppLocale.Get("Dyes.Armor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpArmorDyes.Controls.Add(_armorDyeSlots[0]);
         equipPanel.Controls.Add(grpArmorDyes, 0, 0);
 
         _vanitySlots = [new SlotGrid(3, 1)];
         _vanitySlots[0].Tag = "EquipVanity";
         _allItemGrids.Add(_vanitySlots[0]);
-        var grpVanityArmor = new GroupBox { Text = AppLocale.Get("Equip.VanityArmor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpVanityArmor = new FlatGroupBox { Text = AppLocale.Get("Equip.VanityArmor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpVanityArmor.Controls.Add(_vanitySlots[0]);
         equipPanel.Controls.Add(grpVanityArmor, 1, 0);
 
         _equipSlots = [new SlotGrid(3, 1)];
         _equipSlots[0].Tag = "EquipArmor";
         _allItemGrids.Add(_equipSlots[0]);
-        var grpEquipArmor = new GroupBox { Text = AppLocale.Get("Equip.Armor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpEquipArmor = new FlatGroupBox { Text = AppLocale.Get("Equip.Armor"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpEquipArmor.Controls.Add(_equipSlots[0]);
         equipPanel.Controls.Add(grpEquipArmor, 2, 0);
 
@@ -402,21 +484,21 @@ public partial class MainForm : Form
         _accDyeSlots = [new SlotGrid(7, 1)];
         _accDyeSlots[0].Tag = "DyeAcc";
         _allItemGrids.Add(_accDyeSlots[0]);
-        var grpAccDyes = new GroupBox { Text = AppLocale.Get("Dyes.Accessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpAccDyes = new FlatGroupBox { Text = AppLocale.Get("Dyes.Accessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpAccDyes.Controls.Add(_accDyeSlots[0]);
         equipPanel.Controls.Add(grpAccDyes, 0, 1);
 
         _vaccSlots = [new SlotGrid(7, 1)];
         _vaccSlots[0].Tag = "EquipVAcc";
         _allItemGrids.Add(_vaccSlots[0]);
-        var grpVAcc = new GroupBox { Text = AppLocale.Get("Equip.VanityAccessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpVAcc = new FlatGroupBox { Text = AppLocale.Get("Equip.VanityAccessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpVAcc.Controls.Add(_vaccSlots[0]);
         equipPanel.Controls.Add(grpVAcc, 1, 1);
 
         _accSlots = [new SlotGrid(7, 1)];
         _accSlots[0].Tag = "EquipAcc";
         _allItemGrids.Add(_accSlots[0]);
-        var grpAcc = new GroupBox { Text = AppLocale.Get("Equip.Accessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpAcc = new FlatGroupBox { Text = AppLocale.Get("Equip.Accessories"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpAcc.Controls.Add(_accSlots[0]);
         equipPanel.Controls.Add(grpAcc, 2, 1);
 
@@ -424,14 +506,14 @@ public partial class MainForm : Form
         _miscDyeSlots = [new SlotGrid(5, 1)];
         _miscDyeSlots[0].Tag = "DyeMisc";
         _allItemGrids.Add(_miscDyeSlots[0]);
-        var grpMiscDyes = new GroupBox { Text = AppLocale.Get("Dyes.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpMiscDyes = new FlatGroupBox { Text = AppLocale.Get("Dyes.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpMiscDyes.Controls.Add(_miscDyeSlots[0]);
         equipPanel.Controls.Add(grpMiscDyes, 0, 2);
 
         _miscSlots = [new SlotGrid(5, 1)];
         _miscSlots[0].Tag = "EquipMisc";
         _allItemGrids.Add(_miscSlots[0]);
-        var grpMisc = new GroupBox { Text = AppLocale.Get("Equip.Misc"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        var grpMisc = new FlatGroupBox { Text = AppLocale.Get("Equip.Misc"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         grpMisc.Controls.Add(_miscSlots[0]);
         equipPanel.Controls.Add(grpMisc, 2, 2);
 
@@ -454,7 +536,7 @@ public partial class MainForm : Form
 
     private GroupBox BuildStorageSection()
     {
-        var grp = new GroupBox { Text = AppLocale.Get("Tab.Storage"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
+        var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Storage"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         var layout = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 1, Padding = new Padding(5) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -515,9 +597,9 @@ public partial class MainForm : Form
         _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
         _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = Color.Gray };
-        _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
-        _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
+        _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = ThemeManager.TextSecondary };
+        _btnBuffSet = new FlatButton { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
+        _btnBuffClear = new FlatButton { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
         void BuffAutoSet()
         {
             if (_gridBuffs.SelectedIndex < 0) return;
@@ -590,8 +672,8 @@ public partial class MainForm : Form
         dgvSpawnPoints.Columns.Add("Y", AppLocale.Get("Spawn.Y"));
 
         var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(5) };
-        btnAddSpawn = new Button { Text = AppLocale.Get("Spawn.Add"), Width = 130 };
-        btnRemoveSpawn = new Button { Text = AppLocale.Get("Spawn.Remove"), Width = 130 };
+        btnAddSpawn = new FlatButton { Text = AppLocale.Get("Spawn.Add"), Width = 130 };
+        btnRemoveSpawn = new FlatButton { Text = AppLocale.Get("Spawn.Remove"), Width = 130 };
         btnAddSpawn.Click += OnAddSpawnPoint;
         btnRemoveSpawn.Click += OnRemoveSpawnPoint;
         btnPanel.Controls.AddRange([btnAddSpawn, btnRemoveSpawn]);
@@ -609,7 +691,7 @@ public partial class MainForm : Form
 
         chkHotbarLocked = new CheckBox { Text = AppLocale.Get("Misc.HotbarLocked"), Width = 200, Margin = new Padding(5, 5, 5, 15) };
 
-        grpHideInfo = new GroupBox { Text = AppLocale.Get("Misc.HideInfo"), Width = 700, Height = 160 };
+        grpHideInfo = new FlatGroupBox { Text = AppLocale.Get("Misc.HideInfo"), Width = 700, Height = 160 };
         chkHideInfo = new CheckBox[13];
         for (int i = 0; i < 13; i++)
         {
@@ -622,7 +704,7 @@ public partial class MainForm : Form
             grpHideInfo.Controls.Add(chkHideInfo[i]);
         }
 
-        grpCooldowns = new GroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 460, Height = 200 };
+        grpCooldowns = new FlatGroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 460, Height = 200 };
         lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay"), Location = new Point(15, 30), Width = 110 };
         nudPotionDelay = new NumericUpDown { Location = new Point(120, 28), Width = 120, Minimum = 0, Maximum = int.MaxValue };
         lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay"), Location = new Point(15, 60), Width = 110 };

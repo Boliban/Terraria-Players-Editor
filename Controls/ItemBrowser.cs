@@ -75,7 +75,7 @@ public class ItemBrowser : UserControl
             ScrollBars = ScrollBars.Vertical,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
-            BackgroundColor = SystemColors.Window,
+            BackgroundColor = ThemeManager.SurfaceCard,
             RowTemplate = { Height = 32 }
         };
         // Enable double buffering on DataGridView to reduce flicker
@@ -170,6 +170,14 @@ public class ItemBrowser : UserControl
         layout.Controls.Add(_dgvItems, 0, 2);
         Controls.Add(layout);
 
+        // Apply theme colors to DataGridView
+        _dgvItems.DefaultCellStyle.BackColor = ThemeManager.SurfaceCard;
+        _dgvItems.DefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
+        _dgvItems.ColumnHeadersDefaultCellStyle.BackColor = ThemeManager.SurfaceBackground;
+        _dgvItems.ColumnHeadersDefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
+        _dgvItems.GridColor = ThemeManager.ControlInputBorder;
+        _dgvItems.EnableHeadersVisualStyles = false;
+
         // Refresh scrollbar when this control becomes visible (tab switch, etc.)
         VisibleChanged += (s, e) =>
         {
@@ -177,7 +185,6 @@ public class ItemBrowser : UserControl
             {
                 _dgvItems.ScrollBars = ScrollBars.None;
                 _dgvItems.ScrollBars = ScrollBars.Vertical;
-                DebugLog.Log($"[ItemBrowser] VisibleChanged refresh: rows={_dgvItems.RowCount}, clientH={_dgvItems.ClientSize.Height}");
             }
         };
     }
@@ -240,7 +247,6 @@ public class ItemBrowser : UserControl
             // Force scrollbar recalculation after bulk row loading
             _dgvItems.ScrollBars = ScrollBars.None;
             _dgvItems.ScrollBars = ScrollBars.Vertical;
-            DebugLog.Log($"[ItemBrowser] LoadItems done: rows={_dgvItems.RowCount}, clientH={_dgvItems.ClientSize.Height}, visibleRows={_dgvItems.ClientSize.Height / (_dgvItems.RowTemplate.Height > 0 ? _dgvItems.RowTemplate.Height : 32)}");
             return;
         }
 

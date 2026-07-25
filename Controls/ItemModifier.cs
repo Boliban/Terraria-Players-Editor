@@ -38,7 +38,11 @@ public class ItemModifier : UserControl
     {
         Width = 400;
         Height = 130;
-        BorderStyle = BorderStyle.FixedSingle;
+        BorderStyle = BorderStyle.None;
+
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                 ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+        UpdateStyles();
 
         // Icon (top-left)
         _icon = new PictureBox
@@ -47,7 +51,7 @@ public class ItemModifier : UserControl
             Location = new Point(10, 6),
             SizeMode = PictureBoxSizeMode.Zoom,
             BorderStyle = BorderStyle.FixedSingle,
-            BackColor = Color.FromArgb(40, 35, 45)
+            BackColor = ThemeManager.IconModifierBg
         };
 
         // Name + ID labels
@@ -55,13 +59,13 @@ public class ItemModifier : UserControl
         {
             Location = new Point(52, 8),
             AutoSize = true,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+            Font = ThemeManager.Typography.BodyBold
         };
         _lblId = new Label
         {
             Location = new Point(52, 28),
             AutoSize = true,
-            ForeColor = Color.Gray
+            ForeColor = ThemeManager.TextSecondary
         };
 
         // Item search + set button (row 1)
@@ -117,6 +121,20 @@ public class ItemModifier : UserControl
         Disposed += (s, e) => StopAnimation();
     }
 
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        // Draw child controls first
+        base.OnPaint(e);
+
+        Win11Renderer.BeginHighQuality(e.Graphics);
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        Win11Renderer.DrawCard(e.Graphics, rect,
+            ThemeManager.Spacing.CornerRadius,
+            ThemeManager.SurfaceCard,
+            ThemeManager.ControlInputBorder);
+        Win11Renderer.EndHighQuality(e.Graphics);
+    }
+
     /// <summary>Whether stack controls are visible (hidden for equipment).</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool ShowStack
@@ -164,8 +182,6 @@ public class ItemModifier : UserControl
             var frames = IconService.GetItemFrames(item.ItemId);
             if (frames != null && frames.Length > 1)
             {
-                DebugLog.Log(
-                    $"[ItemMod] Anim start ID={item.ItemId}, frames={frames.Length}");
                 _animFrames = frames;
                 _animFrameIdx = 0;
                 _icon.Image = frames[0];

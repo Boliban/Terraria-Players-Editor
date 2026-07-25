@@ -15,6 +15,9 @@ public static class SettingsManager
     /// <summary>Whether animated item icons should play in SlotPanel and ItemModifier.</summary>
     public static bool EnableAnimatedIcons { get; set; } = true;
 
+    /// <summary>Whether dark mode is active.</summary>
+    public static bool DarkMode { get; set; } = false;
+
     /// <summary>Load saved settings and apply language. Call once at startup before creating UI.</summary>
     public static void Load()
     {
@@ -28,6 +31,7 @@ public static class SettingsManager
                 {
                     AppLocale.SetLanguage(settings.Language);
                     EnableAnimatedIcons = settings.EnableAnimatedIcons;
+                    DarkMode = settings.DarkMode;
                 }
             }
         }
@@ -46,7 +50,8 @@ public static class SettingsManager
             var settings = new SettingsData
             {
                 Language = AppLocale.Current,
-                EnableAnimatedIcons = EnableAnimatedIcons
+                EnableAnimatedIcons = EnableAnimatedIcons,
+                DarkMode = DarkMode
             };
             var json = JsonSerializer.Serialize(settings);
             File.WriteAllText(SettingsFile, json);
@@ -61,5 +66,6 @@ public static class SettingsManager
     {
         public AppLocale.Lang Language { get; set; }
         public bool EnableAnimatedIcons { get; set; } = true;
+        public bool DarkMode { get; set; } = false;
     }
 }

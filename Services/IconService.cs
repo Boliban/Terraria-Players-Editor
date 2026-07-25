@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace Terraria_Players_Editor.Services;
@@ -74,8 +75,6 @@ public static class IconService
     {
         EnsureLoaded();
         var has = ItemFrames.TryGetValue(itemId, out var frames);
-        if (has)
-            DebugLog.Log($"[IconService] GetItemFrames({itemId}) -> {frames!.Length} frames");
         return has ? frames : null;
     }
 
@@ -337,37 +336,62 @@ public static class IconService
     /// Scan the image for frame boundaries by detecting fully-transparent horizontal rows.
     /// Returns Y-positions where content begins/ends.
     /// </summary>
+    /// <summary>
+    /// Scan the image for frame boundaries by detecting fully-transparent horizontal rows.
+    /// Uses LockBits for fast direct pixel access (10-50x faster than GetPixel).
+    /// Returns Y-positions where content begins/ends.
+    /// </summary>
     private static List<int> FindFrameBoundaries(Bitmap src)
     {
         var boundaries = new List<int>();
-        bool inContent = false;
+        var rect = new Rectangle(0, 0, src.Width, src.Height);
+        var data = src.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly,
+            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-        for (int y = 0; y < src.Height; y++)
+        try
         {
-            bool rowHasContent = false;
-            for (int x = 0; x < src.Width; x++)
+            int stride = data.Stride;
+            int width = src.Width;
+            int bytesPerPixel = 4;
+            int alphaOffset = 3; // ARGB format: bytes are B,G,R,A
+            int totalBytes = stride * src.Height;
+            byte[] pixels = new byte[totalBytes];
+            Marshal.Copy(data.Scan0, pixels, 0, totalBytes);
+
+            bool inContent = false;
+            for (int y = 0; y < src.Height; y++)
             {
-                if (src.GetPixel(x, y).A > 0)
+                bool rowHasContent = false;
+                int rowOffset = y * stride;
+                // Only check alpha byte of each pixel
+                for (int x = 0; x < width; x++)
                 {
-                    rowHasContent = true;
-                    break;
+                    if (pixels[rowOffset + x * bytesPerPixel + alphaOffset] > 0)
+                    {
+                        rowHasContent = true;
+                        break;
+                    }
+                }
+
+                if (rowHasContent && !inContent)
+                {
+                    boundaries.Add(y);
+                    inContent = true;
+                }
+                else if (!rowHasContent && inContent)
+                {
+                    boundaries.Add(y);
+                    inContent = false;
                 }
             }
 
-            if (rowHasContent && !inContent)
-            {
-                boundaries.Add(y);
-                inContent = true;
-            }
-            else if (!rowHasContent && inContent)
-            {
-                boundaries.Add(y);
-                inContent = false;
-            }
+            if (inContent)
+                boundaries.Add(src.Height);
         }
-
-        if (inContent)
-            boundaries.Add(src.Height);
+        finally
+        {
+            src.UnlockBits(data);
+        }
 
         return boundaries;
     }

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Terraria_Players_Editor.Models;
 using Terraria_Players_Editor.Services;
+using System.Diagnostics;
 
 namespace Terraria_Players_Editor.Controls;
 
@@ -17,12 +18,19 @@ public class SlotPanel : UserControl
     private int _slotIndex;
     private ItemData? _item;
     private Color _normalBackColor;
-    private readonly Color _emptyBackColor;
+    private Color _emptyBackColor;
 
     // Animation support
     private System.Windows.Forms.Timer? _animTimer;
     private Bitmap[]? _animFrames;
     private int _animFrameIdx;
+
+    // Hover state for custom OnPaint
+    private bool _hovered;
+
+    // Smooth color transition animation
+    private Color _currentFill;
+    private Animation? _fillAnimation;
 
     public SlotPanel(int slotIndex = 0, bool isHotbar = false)
     {
@@ -31,13 +39,14 @@ public class SlotPanel : UserControl
 
         _slotIndex = slotIndex;
         _normalBackColor = isHotbar
-            ? Color.FromArgb(140, 160, 185)   // Light blue-gray - hotbar
-            : Color.FromArgb(185, 180, 190);  // Light gray - normal
+            ? ThemeManager.SlotHotbar
+            : ThemeManager.SlotNormal;
         _emptyBackColor = _normalBackColor; // Empty slots match filled slot colors
+        _currentFill = _normalBackColor;
 
         Size = new Size(48, 48);
         BackColor = _normalBackColor;
-        BorderStyle = BorderStyle.FixedSingle;
+        BorderStyle = BorderStyle.None;
         Cursor = Cursors.Hand;
         Margin = new Padding(1);
 
@@ -53,7 +62,7 @@ public class SlotPanel : UserControl
         _stackLabel = new Label
         {
             AutoSize = true,
-            Font = new Font("Segoe UI", 6.5f, FontStyle.Bold),
+            Font = ThemeManager.Typography.SlotStack,
             ForeColor = Color.White,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.BottomRight,
@@ -87,7 +96,7 @@ public class SlotPanel : UserControl
         set
         {
             _selected = value;
-            BackColor = value ? Color.Gold : _normalBackColor;
+            TransitionFill(GetTargetFill());
         }
     }
 
@@ -110,9 +119,10 @@ public class SlotPanel : UserControl
         set
         {
             _normalBackColor = value
-                ? Color.FromArgb(140, 160, 185)
-                : Color.FromArgb(185, 180, 190);
-            if (!_selected) BackColor = _normalBackColor;
+                ? ThemeManager.SlotHotbar
+                : ThemeManager.SlotNormal;
+            _emptyBackColor = _normalBackColor;
+            if (!_selected) TransitionFill(GetTargetFill());
         }
     }
 
@@ -129,7 +139,7 @@ public class SlotPanel : UserControl
         {
             _icon.Image = IconService.DefaultIcon;
             _stackLabel.Visible = false;
-            BackColor = _selected ? Color.Gold : _emptyBackColor;
+            TransitionFill(GetTargetFill());
             return;
         }
 
@@ -139,8 +149,6 @@ public class SlotPanel : UserControl
             var frames = IconService.GetItemFrames(_item.ItemId);
             if (frames != null && frames.Length > 1)
             {
-                DebugLog.Log(
-                    $"[SlotPanel] Anim start ID={_item.ItemId}, frames={frames.Length}, enabled={SettingsManager.EnableAnimatedIcons}");
                 _animFrames = frames;
                 _animFrameIdx = 0;
                 _icon.Image = frames[0];
@@ -148,8 +156,6 @@ public class SlotPanel : UserControl
             }
             else
             {
-                DebugLog.Log(
-                    $"[SlotPanel] No anim ID={_item.ItemId}, frames={frames?.Length ?? 0}, enabled={SettingsManager.EnableAnimatedIcons}");
                 _icon.Image = IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon;
             }
         }
@@ -163,17 +169,17 @@ public class SlotPanel : UserControl
         _stackLabel.Visible = _item.StackSize > 1;
         if (_item.StackSize >= 1000)
         {
-            _stackLabel.Font = new Font("Segoe UI", 5.5f, FontStyle.Bold);
+            _stackLabel.Font = ThemeManager.Typography.SlotStackSmall;
             _stackLabel.Text = _item.StackSize.ToString();
         }
         else
         {
-            _stackLabel.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+            _stackLabel.Font = ThemeManager.Typography.SlotStack;
             _stackLabel.Text = _item.StackSize.ToString();
         }
         _stackLabel.Location = new Point(Width - _stackLabel.PreferredWidth - 2,
             Height - _stackLabel.PreferredHeight);
-        if (!_selected) BackColor = _normalBackColor;
+        TransitionFill(GetTargetFill());
     }
 
     /// <summary>Clear this slot to empty state.</summary>
@@ -189,7 +195,6 @@ public class SlotPanel : UserControl
         _animTimer = new System.Windows.Forms.Timer { Interval = 150 };
         _animTimer.Tick += AnimTick;
         _animTimer.Start();
-        DebugLog.Log($"[SlotPanel] Timer started, interval=150ms");
     }
 
     private void StopAnimation()
@@ -199,7 +204,6 @@ public class SlotPanel : UserControl
             _animTimer.Stop();
             _animTimer.Dispose();
             _animTimer = null;
-            DebugLog.Log($"[SlotPanel] Timer stopped");
         }
         _animFrames = null;
         _animFrameIdx = 0;
@@ -210,25 +214,65 @@ public class SlotPanel : UserControl
         if (_animFrames == null || _animFrames.Length == 0) return;
         _animFrameIdx = (_animFrameIdx + 1) % _animFrames.Length;
         _icon.Image = _animFrames[_animFrameIdx];
-        DebugLog.Log($"[SlotPanel] Frame {_animFrameIdx}/{_animFrames.Length}");
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        // Draw child controls first (PictureBox + Label)
+        base.OnPaint(e);
+
+        Win11Renderer.BeginHighQuality(e.Graphics);
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        int radius = ThemeManager.Spacing.CornerRadius;
+
+        // Use animated fill color
+        using var fillBrush = new SolidBrush(_currentFill);
+        Win11Renderer.FillRoundedRect(e.Graphics, rect, radius, fillBrush);
+
+        // Border
+        Color borderColor = _selected
+            ? ThemeManager.SlotSelectedBorder
+            : ThemeManager.SlotBorder;
+        using var borderPen = new Pen(borderColor, _selected ? 2f : 1f);
+        Win11Renderer.DrawRoundedRect(e.Graphics, rect, radius, borderPen);
+
+        Win11Renderer.EndHighQuality(e.Graphics);
+    }
+
+    /// <summary>Animate the fill color to a target via AnimationEngine.</summary>
+    private void TransitionFill(Color target)
+    {
+        _fillAnimation?.Cancel();
+        if (_currentFill == target) return;
+
+        _fillAnimation = AnimationEngine.Instance.AnimateColor(
+            _currentFill, target, 200, EasingFunction.EaseOutCubic,
+            c => { _currentFill = c; Invalidate(); });
+    }
+
+    /// <summary>Get the target fill color for the current state.</summary>
+    private Color GetTargetFill()
+    {
+        if (_selected)
+            return ThemeManager.SlotSelectedFill;
+        if (_hovered)
+            return ThemeManager.SlotHover;
+        if (_item != null && !_item.IsEmpty)
+            return _normalBackColor;
+        return _emptyBackColor;
     }
 
     protected override void OnMouseEnter(EventArgs e)
     {
         base.OnMouseEnter(e);
-        if (!_selected)
-            BackColor = Color.FromArgb(160, 190, 210); // Light blue hover
+        _hovered = true;
+        TransitionFill(GetTargetFill());
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if (!_selected)
-        {
-            // Only restore color if mouse truly left the control bounds
-            var mousePos = PointToClient(MousePosition);
-            if (!ClientRectangle.Contains(mousePos))
-                BackColor = _item != null && !_item.IsEmpty ? _normalBackColor : _emptyBackColor;
-        }
+        _hovered = false;
+        TransitionFill(GetTargetFill());
     }
 }

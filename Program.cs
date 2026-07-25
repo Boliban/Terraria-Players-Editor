@@ -14,13 +14,19 @@ namespace Terraria_Players_Editor
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
 
-            // Load persisted settings (language) before creating UI
+            // Load persisted settings before creating UI
             SettingsManager.Load();
+
+            // Initialize the theme system with saved dark mode preference
+            ThemeManager.ApplyTheme(dark: SettingsManager.DarkMode);
 
             // Auto-save settings when language changes
             AppLocale.LanguageChanged += () => SettingsManager.Save();
 
             Application.Run(new MainForm());
+
+            // Cleanup theme resources on shutdown
+            ThemeManager.Shutdown();
         }
     }
 }

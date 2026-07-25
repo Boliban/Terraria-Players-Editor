@@ -181,6 +181,11 @@ partial class MainForm
     private int _cachedBuffDur;
     private bool _populating;
 
+    // Tab indicator slide animation
+    private int _prevTabIndex = -1;
+    private float _tabIndicatorX;
+    private Services.Animation? _tabIndicatorAnim;
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
