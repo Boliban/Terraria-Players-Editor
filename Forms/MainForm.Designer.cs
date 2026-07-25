@@ -74,7 +74,6 @@ partial class MainForm
     private Panel[] colorPanels = null!;
     private GroupBox grpVisibility = null!;
     private CheckBox[] chkHideVisual = null!;
-    private CheckBox[] chkHideMisc = null!;
 
     // === Tab 4: Items (merged: Inventory + Equipment + Storage) ===
     private TabPage tabItems = null!;
@@ -159,7 +158,6 @@ partial class MainForm
     private Button btnRemoveSpawn = null!;
 
     // === Tab 8: Misc ===
-    private TabPage tabMisc = null!;
     private CheckBox chkHotbarLocked = null!;
     private GroupBox grpHideInfo = null!;
     private CheckBox[] chkHideInfo = null!;

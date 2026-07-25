@@ -119,11 +119,24 @@ public class ItemModifier : UserControl
         ]);
 
         Disposed += (s, e) => StopAnimation();
+        ThemeManager.ThemeChanged += () => ApplyTheme();
+    }
+
+    /// <summary>Re-apply theme colors and invalidate.</summary>
+    public void ApplyTheme()
+    {
+        _icon.BackColor = ThemeManager.IconModifierBg;
+        _lblId.ForeColor = ThemeManager.TextSecondary;
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        // Draw child controls first
+        // Fill solid background first for clean anti-aliased edges
+        using (var solidBg = new SolidBrush(ThemeManager.SurfaceCard))
+            e.Graphics.FillRectangle(solidBg, ClientRectangle);
+
+        // Draw child controls on top
         base.OnPaint(e);
 
         Win11Renderer.BeginHighQuality(e.Graphics);

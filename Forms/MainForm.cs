@@ -52,12 +52,29 @@ public partial class MainForm : Form
         BuildStatusBar();
         BuildTabControl();
 
+        // Theme change handler
+        ThemeManager.ThemeChanged += OnThemeChanged;
+
         // Set SplitterDistance after form is shown (controls have proper sizes)
         Shown += (s, e) =>
         {
             _splitItems.SplitterDistance = 300;
             _splitBuffs.SplitterDistance = 280;
         };
+    }
+
+    /// <summary>Handle theme change by refreshing all colors.</summary>
+    private void OnThemeChanged()
+    {
+        BackColor = ThemeManager.SurfaceBackground;
+        statusStrip.BackColor = ThemeManager.SurfaceBackground;
+
+        // Refresh all TabPage backgrounds
+        foreach (TabPage tab in tabControl.TabPages)
+            tab.BackColor = ThemeManager.SurfaceBackground;
+        tabControl.BackColor = ThemeManager.SurfaceBackground;
+
+        Invalidate(true);
     }
 
     private void BuildMenu()
@@ -139,21 +156,28 @@ public partial class MainForm : Form
         tabControl = new TabControl
         {
             Dock = DockStyle.Fill,
-            DrawMode = TabDrawMode.OwnerDrawFixed
+            DrawMode = TabDrawMode.OwnerDrawFixed,
+            BackColor = ThemeManager.SurfaceBackground
         };
         tabControl.DrawItem += OnDrawTabItem;
         tabControl.SelectedIndexChanged += OnTabIndexChanged;
 
-        tabControl.TabPages.AddRange([
+        var pages = new TabPage[]
+        {
             BuildPlayerInfoTab(),
             BuildStatsTab(),
             BuildAppearanceTab(),
             BuildItemsTab(),
             BuildBuffsTab(),
-            BuildUpgradesTab(),
-            BuildSpawnPointsTab(),
-            BuildMiscTab()
-        ]);
+            BuildUpgradesMiscTab(),
+            BuildSpawnPointsTab()
+        };
+
+        // Set tab page backgrounds
+        foreach (var page in pages)
+            page.BackColor = ThemeManager.SurfaceBackground;
+
+        tabControl.TabPages.AddRange(pages);
 
         Controls.Add(tabControl);
         tabControl.BringToFront();
@@ -168,10 +192,14 @@ public partial class MainForm : Form
         var rect = e.Bounds;
         bool selected = tabControl.SelectedIndex == e.Index;
 
-        // Background
+        // Fill tab strip background behind all tabs
+        using (var stripBg = new SolidBrush(ThemeManager.SurfaceBackground))
+            e.Graphics.FillRectangle(stripBg, e.Bounds);
+
+        // Tab background
         var bg = selected ? ThemeManager.SurfaceContainer : ThemeManager.SurfaceBackground;
         using var bgBrush = new SolidBrush(bg);
-        e.Graphics.FillRectangle(bgBrush, rect);
+        e.Graphics.FillRectangle(bgBrush, new Rectangle(rect.X, rect.Y + 2, rect.Width, rect.Height - 2));
 
         // Animated selection indicator: 3px accent bar at bottom
         if (selected && _tabIndicatorX > 0)
@@ -317,7 +345,7 @@ public partial class MainForm : Form
             int x = 15 + (i % 4) * 190;
             int y = 25 + (i / 4) * 60;
             lblColors[i] = new Label { Text = ColorNames()[i] + ":", Location = new Point(x, y), Width = 40, TextAlign = ContentAlignment.MiddleRight };
-            colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White };
+            colorPanels[i] = new Panel { Location = new Point(x + 45, y), Width = 40, Height = 24, BorderStyle = BorderStyle.None, BackColor = Color.White };
             colorButtons[i] = new FlatButton { Text = AppLocale.Get("Appearance.Pick"), Location = new Point(x + 90, y - 1), Width = 55, Height = 26 };
             int idx = i;
             colorButtons[i].Click += (_, _) => PickColor(idx);
@@ -327,7 +355,6 @@ public partial class MainForm : Form
         // Visibility toggles
         grpVisibility = new FlatGroupBox { Text = AppLocale.Get("Appearance.Visibility"), Width = 800, Height = 100 };
         chkHideVisual = new CheckBox[10];
-        chkHideMisc = new CheckBox[5];
         for (int i = 0; i < 10; i++)
         {
             chkHideVisual[i] = new CheckBox { Text = i < HideVisualNames().Length ? HideVisualNames()[i] : $"Visual{i}", Location = new Point(15 + (i % 5) * 155, 25 + (i / 5) * 28), Width = 150 };
@@ -592,7 +619,7 @@ public partial class MainForm : Form
         right.Controls.Add(_lblBuffTitle, 0, 0);
 
         // Buff modifier
-        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100, BorderStyle = BorderStyle.FixedSingle };
+        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100, BorderStyle = BorderStyle.None, BackColor = ThemeManager.SurfaceCard };
         _lblBuffType = new Label { Text = AppLocale.Get("Buffs.Type"), Location = new Point(5, 5), Width = 70 };
         _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
@@ -626,10 +653,14 @@ public partial class MainForm : Form
         return tabBuffs;
     }
 
-    private TabPage BuildUpgradesTab()
+    private TabPage BuildUpgradesMiscTab()
     {
-        tabUpgrades = new TabPage("Upgrades");
+        tabUpgrades = new TabPage(AppLocale.Get("Tab.UpgradesMisc"));
         var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(20), AutoScroll = true };
+
+        // ── Upgrades section ──
+        var grpUpgrades = new FlatGroupBox { Text = AppLocale.Get("Tab.Upgrades"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
+        var upgradesPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
 
         chkExtraAccessory = new CheckBox { Text = AppLocale.Get("Upgrades.ExtraAccessory"), Width = 400, Margin = new Padding(5) };
         chkAegisCrystal = new CheckBox { Text = AppLocale.Get("Upgrades.AegisCrystal"), Width = 400, Margin = new Padding(5) };
@@ -648,12 +679,50 @@ public partial class MainForm : Form
         chkSuperCartEnabled = new CheckBox { Text = AppLocale.Get("Upgrades.SuperCartEnabled"), Width = 80 };
         cartPanel.Controls.AddRange([lblSuperCart, nudSuperCart, chkSuperCartEnabled]);
 
-        mainPanel.Controls.AddRange([
+        upgradesPanel.Controls.AddRange([
             chkExtraAccessory, chkAegisCrystal, chkAegisFruit, chkArcaneCrystal,
             chkGalaxyPearl, chkGummyWorm, chkAmbrosia, chkArtisanBread,
             chkBiomeTorches, chkUsingBiomeTorches, cartPanel
         ]);
+        grpUpgrades.Controls.Add(upgradesPanel);
 
+        // ── Misc section ──
+        var grpMisc = new FlatGroupBox { Text = AppLocale.Get("Tab.Misc"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
+        var miscPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
+
+        chkHotbarLocked = new CheckBox { Text = AppLocale.Get("Misc.HotbarLocked"), Width = 200, Margin = new Padding(5) };
+
+        grpCooldowns = new FlatGroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 460, Height = 90, Margin = new Padding(0, 5, 0, 0) };
+        lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay"), Location = new Point(15, 22), Width = 110 };
+        nudPotionDelay = new NumericUpDown { Location = new Point(120, 20), Width = 120, Minimum = 0, Maximum = int.MaxValue };
+        lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay"), Location = new Point(250, 22), Width = 110 };
+        nudManaPotionDelay = new NumericUpDown { Location = new Point(355, 20), Width = 100, Minimum = 0, Maximum = int.MaxValue };
+        lblRestorationCd = new Label { Text = AppLocale.Get("Misc.RestorationCd"), Location = new Point(15, 52), Width = 110 };
+        nudRestorationCd = new NumericUpDown { Location = new Point(120, 50), Width = 120, Minimum = 0, Maximum = int.MaxValue };
+        grpCooldowns.Controls.AddRange([lblPotionDelay, nudPotionDelay, lblManaPotionDelay, nudManaPotionDelay, lblRestorationCd, nudRestorationCd]);
+
+        miscPanel.Controls.AddRange([chkHotbarLocked, grpCooldowns]);
+        grpMisc.Controls.Add(miscPanel);
+
+        // ── Hide Info section ──
+        grpHideInfo = new FlatGroupBox { Text = AppLocale.Get("Misc.HideInfo"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
+        var hidePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
+        var hideGrid = new TableLayoutPanel { ColumnCount = 4, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        chkHideInfo = new CheckBox[13];
+        for (int i = 0; i < 13; i++)
+        {
+            chkHideInfo[i] = new CheckBox
+            {
+                Text = i < HideInfoNames().Length ? HideInfoNames()[i] : $"Info{i}",
+                AutoSize = true,
+                Margin = new Padding(5)
+            };
+            hideGrid.Controls.Add(chkHideInfo[i], i % 4, i / 4);
+        }
+        hidePanel.Controls.Add(hideGrid);
+        grpHideInfo.Controls.Add(hidePanel);
+
+        mainPanel.Controls.AddRange([grpUpgrades, grpMisc, grpHideInfo]);
         tabUpgrades.Controls.Add(mainPanel);
         return tabUpgrades;
     }
@@ -665,7 +734,7 @@ public partial class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 85));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 15));
 
-        dgvSpawnPoints = new DataGridView { Dock = DockStyle.Fill, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AllowUserToAddRows = false };
+        dgvSpawnPoints = new DataGridView { Dock = DockStyle.Fill, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AllowUserToAddRows = false, BackgroundColor = ThemeManager.SurfaceCard };
         dgvSpawnPoints.Columns.Add("WorldId", AppLocale.Get("Spawn.WorldId"));
         dgvSpawnPoints.Columns.Add("WorldName", AppLocale.Get("Spawn.WorldName"));
         dgvSpawnPoints.Columns.Add("X", AppLocale.Get("Spawn.X"));
@@ -682,40 +751,6 @@ public partial class MainForm : Form
         layout.Controls.Add(btnPanel, 0, 1);
         tabSpawnPoints.Controls.Add(layout);
         return tabSpawnPoints;
-    }
-
-    private TabPage BuildMiscTab()
-    {
-        tabMisc = new TabPage("Misc");
-        var mainPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(20), AutoScroll = true };
-
-        chkHotbarLocked = new CheckBox { Text = AppLocale.Get("Misc.HotbarLocked"), Width = 200, Margin = new Padding(5, 5, 5, 15) };
-
-        grpHideInfo = new FlatGroupBox { Text = AppLocale.Get("Misc.HideInfo"), Width = 700, Height = 160 };
-        chkHideInfo = new CheckBox[13];
-        for (int i = 0; i < 13; i++)
-        {
-            chkHideInfo[i] = new CheckBox
-            {
-                Text = i < HideInfoNames().Length ? HideInfoNames()[i] : $"Info{i}",
-                Location = new Point(15 + (i % 4) * 170, 25 + (i / 4) * 30),
-                Width = 160
-            };
-            grpHideInfo.Controls.Add(chkHideInfo[i]);
-        }
-
-        grpCooldowns = new FlatGroupBox { Text = AppLocale.Get("Misc.Cooldowns"), Width = 460, Height = 200 };
-        lblPotionDelay = new Label { Text = AppLocale.Get("Misc.PotionDelay"), Location = new Point(15, 30), Width = 110 };
-        nudPotionDelay = new NumericUpDown { Location = new Point(120, 28), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        lblManaPotionDelay = new Label { Text = AppLocale.Get("Misc.ManaPotionDelay"), Location = new Point(15, 60), Width = 110 };
-        nudManaPotionDelay = new NumericUpDown { Location = new Point(120, 58), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        lblRestorationCd = new Label { Text = AppLocale.Get("Misc.RestorationCd"), Location = new Point(15, 90), Width = 110 };
-        nudRestorationCd = new NumericUpDown { Location = new Point(120, 88), Width = 120, Minimum = 0, Maximum = int.MaxValue };
-        grpCooldowns.Controls.AddRange([lblPotionDelay, nudPotionDelay, lblManaPotionDelay, nudManaPotionDelay, lblRestorationCd, nudRestorationCd]);
-
-        mainPanel.Controls.AddRange([chkHotbarLocked, grpHideInfo, grpCooldowns]);
-        tabMisc.Controls.Add(mainPanel);
-        return tabMisc;
     }
 
     #endregion
@@ -1072,7 +1107,7 @@ public partial class MainForm : Form
         }
         _gridBuffs.SetItems(buffItems);
 
-        // Tab 6: Upgrades
+        // Tab 6: Upgrades + Misc
         chkExtraAccessory.Checked = _player.Upgrades.ExtraAccessory;
         chkAegisCrystal.Checked = _player.Upgrades.UsedAegisCrystal;
         chkAegisFruit.Checked = _player.Upgrades.UsedAegisFruit;
@@ -1085,18 +1120,16 @@ public partial class MainForm : Form
         chkUsingBiomeTorches.Checked = _player.Upgrades.UsingBiomeTorches;
         nudSuperCart.Value = ClampNud(nudSuperCart, _player.Upgrades.UnlockedSuperCart);
         chkSuperCartEnabled.Checked = _player.Upgrades.EnabledSuperCart;
-
-        // Tab 7: Spawn Points
-        dgvSpawnPoints.Rows.Clear();
-        foreach (var sp in _player.SpawnPoints)
-            dgvSpawnPoints.Rows.Add(sp.WorldId, sp.WorldName, sp.X, sp.Y);
-
-        // Tab 8: Misc
         chkHotbarLocked.Checked = _player.HotbarLocked;
         for (int i = 0; i < 13; i++) chkHideInfo[i].Checked = i < _player.HideInfo.Length && _player.HideInfo[i];
         nudPotionDelay.Value = ClampNud(nudPotionDelay, _player.PotionDelay);
         nudManaPotionDelay.Value = ClampNud(nudManaPotionDelay, _player.ManaPotionDelay);
         nudRestorationCd.Value = ClampNud(nudRestorationCd, _player.RestorationPotionCd);
+
+        // Tab 7: Spawn Points
+        dgvSpawnPoints.Rows.Clear();
+        foreach (var sp in _player.SpawnPoints)
+            dgvSpawnPoints.Rows.Add(sp.WorldId, sp.WorldName, sp.X, sp.Y);
 
         // Populate item combos in shared modifier
         _modItems.PopulateItems();
@@ -1222,7 +1255,7 @@ public partial class MainForm : Form
             _player.BuffTimes[i] = bItem?.StackSize ?? 0;
         }
 
-        // Tab 6: Upgrades
+        // Tab 6: Upgrades + Misc
         _player.Upgrades.ExtraAccessory = chkExtraAccessory.Checked;
         _player.Upgrades.UsedAegisCrystal = chkAegisCrystal.Checked;
         _player.Upgrades.UsedAegisFruit = chkAegisFruit.Checked;
@@ -1235,6 +1268,11 @@ public partial class MainForm : Form
         _player.Upgrades.UsingBiomeTorches = chkUsingBiomeTorches.Checked;
         _player.Upgrades.UnlockedSuperCart = (byte)nudSuperCart.Value;
         _player.Upgrades.EnabledSuperCart = chkSuperCartEnabled.Checked;
+        _player.HotbarLocked = chkHotbarLocked.Checked;
+        for (int i = 0; i < 13; i++) _player.HideInfo[i] = chkHideInfo[i].Checked;
+        _player.PotionDelay = (int)nudPotionDelay.Value;
+        _player.ManaPotionDelay = (int)nudManaPotionDelay.Value;
+        _player.RestorationPotionCd = (int)nudRestorationCd.Value;
 
         // Tab 7: Spawn Points
         _player.SpawnPoints.Clear();
@@ -1243,13 +1281,6 @@ public partial class MainForm : Form
             if (row.IsNewRow) continue;
             _player.SpawnPoints.Add(new SpawnPointData { WorldId = GetCellInt(row, 0), WorldName = GetCellStr(row, 1), X = GetCellInt(row, 2), Y = GetCellInt(row, 3) });
         }
-
-        // Tab 8: Misc
-        _player.HotbarLocked = chkHotbarLocked.Checked;
-        for (int i = 0; i < 13; i++) _player.HideInfo[i] = chkHideInfo[i].Checked;
-        _player.PotionDelay = (int)nudPotionDelay.Value;
-        _player.ManaPotionDelay = (int)nudManaPotionDelay.Value;
-        _player.RestorationPotionCd = (int)nudRestorationCd.Value;
     }
 
     #endregion
@@ -1341,9 +1372,8 @@ public partial class MainForm : Form
         tabAppearance.Text = L("Tab.Appearance");
         tabItems.Text = L("Tab.Items");
         tabBuffs.Text = L("Tab.Buffs");
-        tabUpgrades.Text = L("Tab.Upgrades");
+        tabUpgrades.Text = L("Tab.UpgradesMisc");
         tabSpawnPoints.Text = L("Tab.SpawnPoints");
-        tabMisc.Text = L("Tab.Misc");
 
         // Tab 1: Player Info
         lblPlayerName.Text = L("Info.Name");
@@ -1423,7 +1453,7 @@ public partial class MainForm : Form
         _btnBuffSet.Text = L("Storage.Set");
         _btnBuffClear.Text = L("Storage.Clear");
 
-        // Tab 6: Upgrades
+        // Tab 6: Upgrades + Misc
         chkExtraAccessory.Text = L("Upgrades.ExtraAccessory");
         chkAegisCrystal.Text = L("Upgrades.AegisCrystal");
         chkAegisFruit.Text = L("Upgrades.AegisFruit");
@@ -1436,16 +1466,6 @@ public partial class MainForm : Form
         chkUsingBiomeTorches.Text = L("Upgrades.UsingBiomeTorches");
         lblSuperCart.Text = L("Upgrades.SuperCart");
         chkSuperCartEnabled.Text = L("Upgrades.SuperCartEnabled");
-
-        // Tab 7: Spawn Points
-        btnAddSpawn.Text = L("Spawn.Add");
-        btnRemoveSpawn.Text = L("Spawn.Remove");
-        dgvSpawnPoints.Columns["WorldId"]!.HeaderText = L("Spawn.WorldId");
-        dgvSpawnPoints.Columns["WorldName"]!.HeaderText = L("Spawn.WorldName");
-        dgvSpawnPoints.Columns["X"]!.HeaderText = L("Spawn.X");
-        dgvSpawnPoints.Columns["Y"]!.HeaderText = L("Spawn.Y");
-
-        // Tab 8: Misc
         chkHotbarLocked.Text = L("Misc.HotbarLocked");
         grpHideInfo.Text = L("Misc.HideInfo");
         for (int i = 0; i < chkHideInfo.Length; i++)
@@ -1458,6 +1478,14 @@ public partial class MainForm : Form
         lblPotionDelay.Text = L("Misc.PotionDelay");
         lblManaPotionDelay.Text = L("Misc.ManaPotionDelay");
         lblRestorationCd.Text = L("Misc.RestorationCd");
+
+        // Tab 7: Spawn Points
+        btnAddSpawn.Text = L("Spawn.Add");
+        btnRemoveSpawn.Text = L("Spawn.Remove");
+        dgvSpawnPoints.Columns["WorldId"]!.HeaderText = L("Spawn.WorldId");
+        dgvSpawnPoints.Columns["WorldName"]!.HeaderText = L("Spawn.WorldName");
+        dgvSpawnPoints.Columns["X"]!.HeaderText = L("Spawn.X");
+        dgvSpawnPoints.Columns["Y"]!.HeaderText = L("Spawn.Y");
 
         // Repopulate data if player is loaded (refresh display text with new language)
         if (_player != null)

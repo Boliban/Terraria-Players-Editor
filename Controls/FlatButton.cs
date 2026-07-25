@@ -25,6 +25,16 @@ public class FlatButton : Button
                  ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
         UpdateStyles();
         _currentBg = ThemeManager.ControlButtonBg;
+        ThemeManager.ThemeChanged += () => ApplyTheme();
+    }
+
+    /// <summary>Re-apply theme colors and invalidate.</summary>
+    public void ApplyTheme()
+    {
+        BackColor = ThemeManager.ControlButtonBg;
+        ForeColor = ThemeManager.TextPrimary;
+        _currentBg = ThemeManager.ControlButtonBg;
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -51,7 +61,6 @@ public class FlatButton : Button
     private void TransitionBg(Color target)
     {
         _bgAnimation?.Cancel();
-        if (_currentBg == target) return;
         _bgAnimation = AnimationEngine.Instance.AnimateColor(
             _currentBg, target, 150, EasingFunction.EaseOutCubic,
             c => { _currentBg = c; Invalidate(); });

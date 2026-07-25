@@ -57,6 +57,15 @@ public class AnimationEngine : IDisposable
         return anim;
     }
 
+    /// <summary>Remove an animation from the active list (called by Animation.Cancel).</summary>
+    internal void RemoveAnimation(Animation anim)
+    {
+        lock (_active)
+        {
+            _active.Remove(anim);
+        }
+    }
+
     private void StartAnimation(Animation anim)
     {
         anim.StartTime = Environment.TickCount;
@@ -88,6 +97,13 @@ public class AnimationEngine : IDisposable
 
         foreach (var anim in snapshot)
         {
+            // Skip animations that have been cancelled or already completed
+            if (anim.IsCompleted)
+            {
+                _pendingRemoval.Add(anim);
+                continue;
+            }
+
             anim.ElapsedMs = now - anim.StartTime;
             float t = anim.DurationMs > 0
                 ? Math.Clamp(anim.ElapsedMs / (float)anim.DurationMs, 0f, 1f)
@@ -203,7 +219,8 @@ public class Animation
     public void Cancel()
     {
         IsCompleted = true;
-        // It will be cleaned up on the next tick
+        // Synchronously remove from active list so callbacks stop immediately
+        AnimationEngine.Instance.RemoveAnimation(this);
     }
 }
 

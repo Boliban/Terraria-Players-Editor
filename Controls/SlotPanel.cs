@@ -27,6 +27,7 @@ public class SlotPanel : UserControl
 
     // Hover state for custom OnPaint
     private bool _hovered;
+    private bool _isHotbar;
 
     // Smooth color transition animation
     private Color _currentFill;
@@ -38,6 +39,7 @@ public class SlotPanel : UserControl
         UpdateStyles();
 
         _slotIndex = slotIndex;
+        _isHotbar = isHotbar;
         _normalBackColor = isHotbar
             ? ThemeManager.SlotHotbar
             : ThemeManager.SlotNormal;
@@ -78,6 +80,19 @@ public class SlotPanel : UserControl
         _stackLabel.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
 
         Disposed += (s, e) => StopAnimation();
+        ThemeManager.ThemeChanged += () => ApplyTheme();
+    }
+
+    /// <summary>Re-read cached theme colors and invalidate for repaint.</summary>
+    public void ApplyTheme()
+    {
+        _normalBackColor = _isHotbar
+            ? ThemeManager.SlotHotbar
+            : ThemeManager.SlotNormal;
+        _emptyBackColor = _normalBackColor;
+        BackColor = _normalBackColor;
+        _currentFill = GetTargetFill();
+        Invalidate();
     }
 
     /// <summary>Index of this slot within its parent grid.</summary>
@@ -118,6 +133,7 @@ public class SlotPanel : UserControl
     {
         set
         {
+            _isHotbar = value;
             _normalBackColor = value
                 ? ThemeManager.SlotHotbar
                 : ThemeManager.SlotNormal;
@@ -218,14 +234,19 @@ public class SlotPanel : UserControl
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        // Draw child controls first (PictureBox + Label)
+        // Fill entire control background first so anti-aliased rounded edges
+        // blend with our own color rather than the parent container's color.
+        using (var solidBg = new SolidBrush(_currentFill))
+            e.Graphics.FillRectangle(solidBg, ClientRectangle);
+
+        // Draw child controls on top of the filled background
         base.OnPaint(e);
 
         Win11Renderer.BeginHighQuality(e.Graphics);
         var rect = new Rectangle(0, 0, Width - 1, Height - 1);
         int radius = ThemeManager.Spacing.CornerRadius;
 
-        // Use animated fill color
+        // Rounded fill on top of the solid background
         using var fillBrush = new SolidBrush(_currentFill);
         Win11Renderer.FillRoundedRect(e.Graphics, rect, radius, fillBrush);
 
@@ -243,8 +264,6 @@ public class SlotPanel : UserControl
     private void TransitionFill(Color target)
     {
         _fillAnimation?.Cancel();
-        if (_currentFill == target) return;
-
         _fillAnimation = AnimationEngine.Instance.AnimateColor(
             _currentFill, target, 200, EasingFunction.EaseOutCubic,
             c => { _currentFill = c; Invalidate(); });

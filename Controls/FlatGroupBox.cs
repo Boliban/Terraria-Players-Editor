@@ -15,6 +15,14 @@ public class FlatGroupBox : GroupBox
         UpdateStyles();
         Font = ThemeManager.Typography.BodyBold;
         ForeColor = ThemeManager.TextPrimary;
+        ThemeManager.ThemeChanged += () => ApplyTheme();
+    }
+
+    /// <summary>Re-apply theme colors and invalidate.</summary>
+    public void ApplyTheme()
+    {
+        ForeColor = ThemeManager.TextPrimary;
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)

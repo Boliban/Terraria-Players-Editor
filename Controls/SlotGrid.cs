@@ -57,7 +57,8 @@ public class SlotGrid : UserControl
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Padding = new Padding(0),
             Margin = new Padding(0),
-            Location = new Point(0, titleH)
+            Location = new Point(0, titleH),
+            BackColor = ThemeManager.SlotBorder
         };
 
         for (int c = 0; c < columns; c++)
@@ -79,6 +80,15 @@ public class SlotGrid : UserControl
         }
 
         Controls.Add(_table);
+        ThemeManager.ThemeChanged += () => ApplyTheme();
+    }
+
+    /// <summary>Re-apply theme colors to title label.</summary>
+    public void ApplyTheme()
+    {
+        if (_titleLabel != null)
+            _titleLabel.ForeColor = ThemeManager.TextSecondary;
+        _table.BackColor = ThemeManager.SlotBorder;
     }
 
     /// <summary>Number of columns in the grid.</summary>

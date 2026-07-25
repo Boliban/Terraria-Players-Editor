@@ -171,12 +171,9 @@ public class ItemBrowser : UserControl
         Controls.Add(layout);
 
         // Apply theme colors to DataGridView
-        _dgvItems.DefaultCellStyle.BackColor = ThemeManager.SurfaceCard;
-        _dgvItems.DefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
-        _dgvItems.ColumnHeadersDefaultCellStyle.BackColor = ThemeManager.SurfaceBackground;
-        _dgvItems.ColumnHeadersDefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
-        _dgvItems.GridColor = ThemeManager.ControlInputBorder;
+        ApplyDgvTheme();
         _dgvItems.EnableHeadersVisualStyles = false;
+        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); _dgvItems.Invalidate(); };
 
         // Refresh scrollbar when this control becomes visible (tab switch, etc.)
         VisibleChanged += (s, e) =>
@@ -308,6 +305,17 @@ public class ItemBrowser : UserControl
                 row.Cells[1].Value = ItemDatabase.GetName(itemId);
             }
         }
+    }
+
+    /// <summary>Apply theme colors to the DataGridView.</summary>
+    private void ApplyDgvTheme()
+    {
+        _dgvItems.BackgroundColor = ThemeManager.SurfaceCard;
+        _dgvItems.DefaultCellStyle.BackColor = ThemeManager.SurfaceCard;
+        _dgvItems.DefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
+        _dgvItems.ColumnHeadersDefaultCellStyle.BackColor = ThemeManager.SurfaceBackground;
+        _dgvItems.ColumnHeadersDefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
+        _dgvItems.GridColor = ThemeManager.ControlInputBorder;
     }
 
     private void ApplyFilter()
