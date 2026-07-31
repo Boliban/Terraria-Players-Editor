@@ -81,6 +81,8 @@
   "Equip.VanityArmor": "时装盔甲(3)",
   "Equip.Accessories": "饰品(7)",
   "Equip.VanityAccessories": "时装饰品(7)",
+  "Equip.VanityArmorRemap": "饰品5-7(3)",
+  "Equip.AccessoriesRemap": "时装+饰品1-4(7)",
   "Equip.Misc": "装备",
   "Equip.Helmet": "头盔:",
   "Equip.Chestplate": "胸甲:",

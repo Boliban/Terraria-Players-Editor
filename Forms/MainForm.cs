@@ -509,7 +509,7 @@ public partial class MainForm : Form
         var leftCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
         var armorRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
         armorRow.Controls.Add(Col(AppLocale.Get("Dyes.Armor"), _armorDyeSlots[0]));
-        armorRow.Controls.Add(Col(AppLocale.Get("Equip.VanityArmor"), _vanitySlots[0]));
+        armorRow.Controls.Add(Col(AppLocale.Get("Equip.VanityArmorRemap"), _vanitySlots[0]));
         armorRow.Controls.Add(Col(AppLocale.Get("Equip.Armor"), _equipSlots[0]));
         var equipRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
         equipRow.Controls.Add(Col(AppLocale.Get("Dyes.Equipment"), _miscDyeSlots[0]));
@@ -523,7 +523,7 @@ public partial class MainForm : Form
         var accRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
         accRow.Controls.Add(Col(AppLocale.Get("Dyes.Accessories"), _accDyeSlots[0]));
         accRow.Controls.Add(Col(AppLocale.Get("Equip.VanityAccessories"), _vaccSlots[0]));
-        accRow.Controls.Add(Col(AppLocale.Get("Equip.Accessories"), _accSlots[0]));
+        accRow.Controls.Add(Col(AppLocale.Get("Equip.AccessoriesRemap"), _accSlots[0]));
         rightCol.Controls.Add(accRow);
 
         // Two columns side by side
@@ -1171,8 +1171,12 @@ public partial class MainForm : Form
         else return;
 
         for (int i = 0; i < _equipSlots[0].Slots.Length && i < armor.Count; i++) armor[i] = _equipSlots[0].Slots[i].Item ?? new ItemData();
-        for (int i = 0; i < _vanitySlots[0].Slots.Length && i < vanity.Count; i++) vanity[i] = _vanitySlots[0].Slots[i].Item ?? new ItemData();
-        for (int i = 0; i < _accSlots[0].Slots.Length && i < acc.Count; i++) acc[i] = _accSlots[0].Slots[i].Item ?? new ItemData();
+        // Vanity armor collected from _accSlots[0] positions 0-2
+        for (int i = 0; i < 3 && i < vanity.Count; i++) vanity[i] = _accSlots[0].Slots[i].Item ?? new ItemData();
+        // Accessories[0..3] from _accSlots[0] positions 3-6
+        for (int i = 0; i < 4 && i < acc.Count; i++) acc[i] = _accSlots[0].Slots[i + 3].Item ?? new ItemData();
+        // Accessories[4..6] from _vanitySlots[0] positions 0-2
+        for (int i = 0; i < 3 && (i + 4) < acc.Count; i++) acc[i + 4] = _vanitySlots[0].Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _vaccSlots[0].Slots.Length && i < vacc.Count; i++) vacc[i] = _vaccSlots[0].Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _miscSlots[0].Slots.Length && i < misc.Count; i++) misc[i] = _miscSlots[0].Slots[i].Item ?? new ItemData();
         // Collect dyes
@@ -1185,8 +1189,8 @@ public partial class MainForm : Form
         List<ItemData> vacc, List<ItemData> misc, List<ItemData> armorDyes, List<ItemData> miscDyes)
     {
         _equipSlots[0].SetItems(armor);
-        _vanitySlots[0].SetItems(vanity);
-        _accSlots[0].SetItems(acc);
+        _vanitySlots[0].SetItems(acc.Skip(4).Take(3).ToList());
+        _accSlots[0].SetItems(vanity.Take(3).Concat(acc.Take(4)).ToList());
         _vaccSlots[0].SetItems(vacc);
         _miscSlots[0].SetItems(misc);
         _armorDyeSlots[0].SetItems(armorDyes.Take(3).ToList());
