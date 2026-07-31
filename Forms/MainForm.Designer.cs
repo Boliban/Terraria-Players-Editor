@@ -169,6 +169,11 @@ partial class MainForm
     private Label lblRestorationCd = null!;
     private NumericUpDown nudRestorationCd = null!;
 
+    // Equipment column labels (for language switching)
+    private Label _lblArmorDye = null!, _lblVanityArmor = null!, _lblArmor = null!;
+    private Label _lblMiscDye = null!, _lblMisc = null!;
+    private Label _lblAccDye = null!, _lblVAcc = null!, _lblAcc = null!;
+
     // Shared modifier tracking
     private Controls.SlotGrid? _activeModGrid;
     private List<ItemData>? _activeModList;

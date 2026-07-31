@@ -504,10 +504,10 @@ public partial class MainForm : Form
         _miscSlots     = [new SlotGrid(1, 5)]; _miscSlots[0].Tag = "EquipMisc"; _allItemGrids.Add(_miscSlots[0]);
 
         // Column helper: label above slot grid
-        static FlowLayoutPanel Col(string text, SlotGrid grid)
+        static FlowLayoutPanel Col(string text, SlotGrid grid, out Label lbl)
         {
             var clean = System.Text.RegularExpressions.Regex.Replace(text, @"\s*\(\d+\)$", "");
-            var lbl = new Label { Text = clean, AutoSize = true,
+            lbl = new Label { Text = clean, AutoSize = true,
                 Font = ThemeManager.Typography.Caption, ForeColor = ThemeManager.TextSecondary,
                 Margin = new Padding(0), TextAlign = ContentAlignment.TopCenter };
             var p = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 4, 0) };
@@ -519,22 +519,22 @@ public partial class MainForm : Form
         // ── Left column: Armor + Equipment ──
         var leftCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
         var armorRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-        armorRow.Controls.Add(Col(AppLocale.Get("Dyes.Armor"), _armorDyeSlots[0]));
-        armorRow.Controls.Add(Col(AppLocale.Get("Equip.VanityArmorRemap"), _vanitySlots[0]));
-        armorRow.Controls.Add(Col(AppLocale.Get("Equip.Armor"), _equipSlots[0]));
+        armorRow.Controls.Add(Col(AppLocale.Get("Dyes.Armor"), _armorDyeSlots[0], out _lblArmorDye));
+        armorRow.Controls.Add(Col(AppLocale.Get("Equip.VanityArmorRemap"), _vanitySlots[0], out _lblVanityArmor));
+        armorRow.Controls.Add(Col(AppLocale.Get("Equip.Armor"), _equipSlots[0], out _lblArmor));
         var equipRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
-        equipRow.Controls.Add(Col(AppLocale.Get("Dyes.Equipment"), _miscDyeSlots[0]));
+        equipRow.Controls.Add(Col(AppLocale.Get("Dyes.Equipment"), _miscDyeSlots[0], out _lblMiscDye));
         equipRow.Controls.Add(new Panel { Width = 54, Height = 1 }); // Spacer for missing middle column
-        equipRow.Controls.Add(Col(AppLocale.Get("Equip.Misc"), _miscSlots[0]));
+        equipRow.Controls.Add(Col(AppLocale.Get("Equip.Misc"), _miscSlots[0], out _lblMisc));
         leftCol.Controls.Add(armorRow);
         leftCol.Controls.Add(equipRow);
 
         // ── Right column: Accessories ──
         var rightCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true };
         var accRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-        accRow.Controls.Add(Col(AppLocale.Get("Dyes.Accessories"), _accDyeSlots[0]));
-        accRow.Controls.Add(Col(AppLocale.Get("Equip.VanityAccessories"), _vaccSlots[0]));
-        accRow.Controls.Add(Col(AppLocale.Get("Equip.AccessoriesRemap"), _accSlots[0]));
+        accRow.Controls.Add(Col(AppLocale.Get("Dyes.Accessories"), _accDyeSlots[0], out _lblAccDye));
+        accRow.Controls.Add(Col(AppLocale.Get("Equip.VanityAccessories"), _vaccSlots[0], out _lblVAcc));
+        accRow.Controls.Add(Col(AppLocale.Get("Equip.AccessoriesRemap"), _accSlots[0], out _lblAcc));
         rightCol.Controls.Add(accRow);
 
         // Two columns side by side
@@ -1543,6 +1543,16 @@ public partial class MainForm : Form
         // Tab 4: Items — section titles + modifier + loadout + grid titles
         _grpInventorySection.Text = L("Tab.Inventory");
         _grpEquipmentSection.Text = L("Tab.Equipment");
+        // Equipment column labels (strip "(N)" suffix via regex, same as Col() helper)
+        var re = new System.Text.RegularExpressions.Regex(@"\s*\(\d+\)$");
+        _lblArmorDye.Text = re.Replace(L("Dyes.Armor"), "");
+        _lblVanityArmor.Text = re.Replace(L("Equip.VanityArmorRemap"), "");
+        _lblArmor.Text = re.Replace(L("Equip.Armor"), "");
+        _lblMiscDye.Text = re.Replace(L("Dyes.Equipment"), "");
+        _lblMisc.Text = re.Replace(L("Equip.Misc"), "");
+        _lblAccDye.Text = re.Replace(L("Dyes.Accessories"), "");
+        _lblVAcc.Text = re.Replace(L("Equip.VanityAccessories"), "");
+        _lblAcc.Text = re.Replace(L("Equip.AccessoriesRemap"), "");
         _grpStorageSection.Text = L("Tab.Storage");
         _modItems.RefreshLocale();
         _gridInventory.GridTitle = L("Grid.MainInventory");
