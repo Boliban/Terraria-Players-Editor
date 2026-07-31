@@ -64,7 +64,7 @@ public class SlotPanel : UserControl
         {
             AutoSize = true,
             Font = ThemeManager.Typography.SlotStack,
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.IsDarkMode ? Color.White : Color.Black,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.BottomRight,
             Visible = false
@@ -72,14 +72,17 @@ public class SlotPanel : UserControl
 
         Controls.Add(_icon);
         Controls.Add(_stackLabel);
+        _stackLabel.BringToFront();
 
         _icon.MouseClick += (s, e) => OnMouseClick(e);
         _icon.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
         _stackLabel.MouseClick += (s, e) => OnMouseClick(e);
         _stackLabel.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
+        Click += (s, e) => DebugLog.Log($"[SlotPanel] Click slotIdx={_slotIndex}");
+        MouseClick += (s, e) => DebugLog.Log($"[SlotPanel] MouseClick slotIdx={_slotIndex} btn={e.Button}");
 
         Disposed += (s, e) => StopAnimation();
-        ThemeManager.ThemeChanged += () => ApplyTheme();
+        ThemeManager.ThemeChanged += () => { ApplyTheme(); _stackLabel.ForeColor = ThemeManager.IsDarkMode ? Color.White : Color.Black; };
     }
 
     /// <summary>Re-read cached theme colors and invalidate for repaint.</summary>
@@ -181,6 +184,7 @@ public class SlotPanel : UserControl
         _stackLabel.Text = _item.StackSize.ToString();
         _stackLabel.Location = new Point(Width - _stackLabel.PreferredWidth - 2,
             Height - _stackLabel.PreferredHeight);
+        _stackLabel.BringToFront();
         TransitionFill(GetTargetFill());
     }
 
@@ -215,6 +219,18 @@ public class SlotPanel : UserControl
         if (_animFrames == null || _animFrames.Length == 0) return;
         _animFrameIdx = (_animFrameIdx + 1) % _animFrames.Length;
         _icon.Image = _animFrames[_animFrameIdx];
+    }
+
+    protected override void OnClick(EventArgs e)
+    {
+        DebugLog.Log($"[SlotPanel] OnClick override slotIdx={_slotIndex}");
+        base.OnClick(e);
+    }
+
+    protected override void OnMouseDown(MouseEventArgs e)
+    {
+        DebugLog.Log($"[SlotPanel] OnMouseDown slotIdx={_slotIndex} btn={e.Button}");
+        base.OnMouseDown(e);
     }
 
     protected override void OnPaint(PaintEventArgs e)

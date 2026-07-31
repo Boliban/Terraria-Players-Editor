@@ -139,6 +139,8 @@ public class SlotGrid : UserControl
     {
         if (index < 0 || index >= _slots.Length) return;
 
+        DebugLog.Log($"[SlotGrid] SelectSlot grid={Tag} idx={index} itemId={_slots[index].Item?.ItemId} prefix={_slots[index].Item?.Prefix}");
+
         // Notify all listeners that THIS grid is about to select a slot.
         // Other grids should clear their own selection.
         BeforeAnySlotSelected?.Invoke(this);

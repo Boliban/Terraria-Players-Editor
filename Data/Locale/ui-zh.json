@@ -6,6 +6,7 @@
   "Menu.Save": "保存(&S)",
   "Menu.SaveAs": "另存为(&A)...",
   "Menu.Exit": "退出(&X)",
+  "Menu.Refresh": "刷新(&R)",
   "Menu.Language": "语言(&L)",
   "Menu.LangEN": "English",
   "Menu.LangZH": "中文",

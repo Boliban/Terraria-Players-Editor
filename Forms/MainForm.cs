@@ -1,3 +1,4 @@
+using System.IO;
 using Terraria_Players_Editor.Controls;
 using Terraria_Players_Editor.Models;
 using Terraria_Players_Editor.Services;
@@ -9,7 +10,10 @@ public partial class MainForm : Form
     private PlayerData? _player;
     private string? _filePath;
 
-    private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem;
+    private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem, _refreshMenuItem, _contextRefreshItem;
+
+    // Right-click context menu
+    private ContextMenuStrip? _contextMenu;
 
     // Localized label arrays — used during tab construction
     private static string[] DifficultyNames() => [AppLocale.Get("Diff.Softcore"), AppLocale.Get("Diff.Mediumcore"), AppLocale.Get("Diff.Hardcore"), AppLocale.Get("Diff.Journey")];
@@ -94,6 +98,7 @@ public partial class MainForm : Form
         openMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Open"), null, OnOpen) { ShortcutKeys = Keys.Control | Keys.O };
         saveMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Save"), null, OnSave) { ShortcutKeys = Keys.Control | Keys.S };
         saveAsMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.SaveAs"), null, OnSaveAs) { ShortcutKeys = Keys.Control | Keys.Shift | Keys.S };
+        _refreshMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Refresh"), null, OnRefresh) { ShortcutKeys = Keys.Control | Keys.R };
         exitMenuItem = new ToolStripMenuItem(AppLocale.Get("Menu.Exit"), null, (_, _) => Close());
 
         var langMenu = new ToolStripMenuItem(AppLocale.Get("Menu.Language"));
@@ -138,10 +143,16 @@ public partial class MainForm : Form
         };
         settingsMenu.DropDownItems.Add(debugItem);
 
-        fileMenu.DropDownItems.AddRange([openMenuItem, saveMenuItem, new ToolStripSeparator(), saveAsMenuItem, new ToolStripSeparator(), exitMenuItem]);
+        fileMenu.DropDownItems.AddRange([openMenuItem, _refreshMenuItem!, saveMenuItem, new ToolStripSeparator(), saveAsMenuItem, new ToolStripSeparator(), exitMenuItem]);
         menuStrip.Items.Add(fileMenu);
         menuStrip.Items.Add(settingsMenu);
         Controls.Add(menuStrip);
+
+        // Right-click context menu with Refresh
+        _contextMenu = new ContextMenuStrip();
+        _contextRefreshItem = new ToolStripMenuItem(AppLocale.Get("Menu.Refresh"), null, OnRefresh) { ShortcutKeys = Keys.Control | Keys.R };
+        _contextMenu.Items.Add(_contextRefreshItem);
+        ContextMenuStrip = _contextMenu;
     }
 
     private void BuildStatusBar()
@@ -442,11 +453,11 @@ public partial class MainForm : Form
     private FlatGroupBox BuildInventorySection()
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Inventory"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
-        _gridInventory = new SlotGrid(10, 5, enableHotbarColor: true, gridTitle: AppLocale.Get("Grid.MainInventory"));
+        _gridInventory = new SlotGrid(10, 5, enableHotbarColor: true, gridTitle: AppLocale.Get("Grid.MainInventory")) { Tag = "Inv" };
         _allItemGrids.Add(_gridInventory);
-        _gridCoins = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Coins"));
+        _gridCoins = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Coins")) { Tag = "Coins" };
         _allItemGrids.Add(_gridCoins);
-        _gridAmmo = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Ammo"));
+        _gridAmmo = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Ammo")) { Tag = "Ammo" };
         _allItemGrids.Add(_gridAmmo);
 
         var innerLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
@@ -534,8 +545,8 @@ public partial class MainForm : Form
         columnsPanel.Controls.Add(rightCol, 1, 0);
         layout.Controls.Add(columnsPanel);
 
-        // Wire all equip slot grids
-        void WireEquipGrid(SlotGrid g) => g.SlotSelected += (s, idx) => OnGridSlotSelected(g, idx, null, "equip");
+        // Wire all equip slot grids + attach right-click context menu
+        void WireEquipGrid(SlotGrid g) { g.SlotSelected += (s, idx) => OnGridSlotSelected(g, idx, null, "equip"); g.ContextMenuStrip = _contextMenu; }
         foreach (var grid in _equipSlots) WireEquipGrid(grid);
         foreach (var grid in _vanitySlots) WireEquipGrid(grid);
         foreach (var grid in _accSlots) WireEquipGrid(grid);
@@ -561,13 +572,13 @@ public partial class MainForm : Form
         subDefenderForge = new TabPage(AppLocale.Get("Storage.DefenderForge")) { BackColor = ThemeManager.SurfaceBackground };
         subVoidVault = new TabPage(AppLocale.Get("Storage.VoidVault")) { BackColor = ThemeManager.SurfaceBackground };
 
-        _gridPiggy = new SlotGrid(10, 4); subPiggyBank.Controls.Add(_gridPiggy);
+        _gridPiggy = new SlotGrid(10, 4) { Tag = "Piggy" }; subPiggyBank.Controls.Add(_gridPiggy);
         _allItemGrids.Add(_gridPiggy);
-        _gridSafe = new SlotGrid(10, 4); subSafe.Controls.Add(_gridSafe);
+        _gridSafe = new SlotGrid(10, 4) { Tag = "Safe" }; subSafe.Controls.Add(_gridSafe);
         _allItemGrids.Add(_gridSafe);
-        _gridDefender = new SlotGrid(10, 4); subDefenderForge.Controls.Add(_gridDefender);
+        _gridDefender = new SlotGrid(10, 4) { Tag = "Defender" }; subDefenderForge.Controls.Add(_gridDefender);
         _allItemGrids.Add(_gridDefender);
-        _gridVoid = new SlotGrid(10, 4); subVoidVault.Controls.Add(_gridVoid);
+        _gridVoid = new SlotGrid(10, 4) { Tag = "Void" }; subVoidVault.Controls.Add(_gridVoid);
         _allItemGrids.Add(_gridVoid);
 
         // Storage slot handlers
@@ -631,7 +642,7 @@ public partial class MainForm : Form
         buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _lblBuffTimeUnit, _btnBuffSet, _btnBuffClear]);
         right.Controls.Add(buffMod, 0, 1);
 
-        _gridBuffs = new SlotGrid(11, 4) { IsBuffGrid = true };
+        _gridBuffs = new SlotGrid(11, 4) { IsBuffGrid = true, Tag = "Buffs" };
         _gridBuffs.SlotSelected += (s, idx) => OnBuffSlotSelected(idx);
         _browserBuffs.ItemSelected += (s, id) => OnBuffBrowserSelect(id);
         right.Controls.Add(_gridBuffs, 0, 2);
@@ -755,6 +766,88 @@ public partial class MainForm : Form
     #endregion
 
     #region File Operations
+
+    // Trace logging — writes directly to trace.log regardless of DebugLog setting
+    private static readonly string TracePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "trace.log");
+    private static void TraceLog(string msg)
+    {
+        try { File.AppendAllText(TracePath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); } catch { }
+    }
+
+    private void OnRefresh(object? sender, EventArgs e)
+    {
+        TraceLog("[OnRefresh] === START ===");
+        if (_player == null) { TraceLog("[OnRefresh] no player, abort"); return; }
+        if (string.IsNullOrEmpty(_filePath)) { TraceLog("[OnRefresh] no file path, fallback to Open"); OnOpen(sender, e); return; }
+
+        // Save current slot selection to restore after refresh
+        var savedGrid = _activeModGrid;
+        var savedSlotIdx = savedGrid?.SelectedIndex ?? -1;
+        TraceLog($"[OnRefresh] saving selection: grid={savedGrid?.Tag} idx={savedSlotIdx}");
+
+        // Sync any pending grid edits, then clear stale modifier references
+        CollectEquipToLoadout();
+        _activeModGrid = null;
+        _activeModList = null;
+        _activeModContext = "";
+        TraceLog("[OnRefresh] state cleared");
+
+        SetLoading(true);
+        try
+        {
+            var fileBytes = File.ReadAllBytes(_filePath);
+            byte[] decrypted;
+            try
+            {
+                decrypted = PlrCrypto.Decrypt(fileBytes);
+            }
+            catch
+            {
+                decrypted = fileBytes;
+            }
+            PlayerData player;
+            try
+            {
+                player = PlrFileReader.Read(decrypted);
+            }
+            catch
+            {
+                player = PlrFileReaderLegacy.Read(decrypted);
+            }
+
+            _player = player;
+            PopulateAllTabs();
+            // Force refresh all equip slot displays after repopulation
+            foreach (var g in _equipSlots) g.RefreshAll();
+            foreach (var g in _vanitySlots) g.RefreshAll();
+            foreach (var g in _accSlots) g.RefreshAll();
+            foreach (var g in _vaccSlots) g.RefreshAll();
+            foreach (var g in _miscSlots) g.RefreshAll();
+            foreach (var g in _armorDyeSlots) g.RefreshAll();
+            foreach (var g in _accDyeSlots) g.RefreshAll();
+            foreach (var g in _miscDyeSlots) g.RefreshAll();
+            TraceLog("[OnRefresh] PopulateAllTabs + RefreshAll done");
+
+            // Restore previous slot selection
+            if (savedGrid != null && savedSlotIdx >= 0 && savedSlotIdx < savedGrid.Slots.Length)
+            {
+                savedGrid.SelectSlot(savedSlotIdx);
+                TraceLog($"[OnRefresh] restored selection: grid={savedGrid.Tag} idx={savedSlotIdx}");
+            }
+            statusLabel.Text = string.Format(AppLocale.Get("Status.Loaded"), Path.GetFileName(_filePath), player.Name, player.FileVersion);
+        }
+        catch (Exception ex)
+        {
+            TraceLog($"[OnRefresh] ERROR: {ex.Message}");
+            MessageBox.Show(string.Format(AppLocale.Get("Dialog.LoadError"), ex.Message), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            statusLabel.Text = AppLocale.Get("Status.Failed");
+        }
+        finally
+        {
+            SetLoading(false);
+            TraceLog("[OnRefresh] === END ===");
+        }
+    }
 
     private async void OnOpen(object? sender, EventArgs e)
     {
@@ -907,31 +1000,35 @@ public partial class MainForm : Form
                 break;
         }
 
-        var item = list != null && slotIdx < list.Count ? list[slotIdx] : new ItemData();
+        // For equipment slots (list is null), read the current item from the grid slot
+        var item = list != null && slotIdx < list.Count ? list[slotIdx]
+            : (slotIdx < grid.Slots.Length ? (grid.Slots[slotIdx].Item ?? new ItemData()) : new ItemData());
+        TraceLog($"[SlotSelect] ctx={context} grid={grid.Tag} idx={slotIdx} itemId={item.ItemId} prefix={item.Prefix} SLOT_Item={grid.Slots[slotIdx].Item?.ItemId}:{grid.Slots[slotIdx].Item?.Prefix}");
         _modItems.LoadFromSlot(slotIdx, item);
     }
 
     /// <summary>Unified Set handler for the shared modifier.</summary>
     private void OnModSet(object? sender, int slotIdx)
     {
-        if (_player == null || _activeModGrid == null || _activeModList == null || slotIdx < 0) return;
+        if (_player == null || _activeModGrid == null || slotIdx < 0) return;
         var item = _modItems.BuildItemData();
-        if (slotIdx < _activeModList.Count)
-        {
+        TraceLog($"[OnModSet] grid={_activeModGrid.Tag} idx={slotIdx} itemId={item.ItemId} prefix={item.Prefix} listNull={_activeModList == null}");
+        // Write to backing list if available (inv/coins/ammo/storage);
+        // equipment slots have null list — write grid, then sync back to data model immediately
+        if (_activeModList != null && slotIdx < _activeModList.Count)
             _activeModList[slotIdx] = item;
-            _activeModGrid.SetSlot(slotIdx, item);
-        }
+        _activeModGrid.SetSlot(slotIdx, item);
+        if (_activeModList == null) { TraceLog("[OnModSet] sync -> CollectEquipToLoadout"); CollectEquipToLoadout(); }
     }
 
     /// <summary>Unified Clear handler for the shared modifier.</summary>
     private void OnModClear(object? sender, int slotIdx)
     {
-        if (_player == null || _activeModGrid == null || _activeModList == null || slotIdx < 0) return;
-        if (slotIdx < _activeModList.Count)
-        {
+        if (_player == null || _activeModGrid == null || slotIdx < 0) return;
+        if (_activeModList != null && slotIdx < _activeModList.Count)
             _activeModList[slotIdx] = new ItemData();
-            _activeModGrid.SetSlot(slotIdx, new ItemData());
-        }
+        _activeModGrid.SetSlot(slotIdx, new ItemData());
+        if (_activeModList == null) CollectEquipToLoadout();
     }
 
     /// <summary>Unified browser item select handler.</summary>
@@ -944,6 +1041,7 @@ public partial class MainForm : Form
             _activeModList[idx] = item;
         _activeModGrid.SetSlot(idx, item);
         _modItems.LoadFromSlot(idx, item);
+        if (_activeModList == null) CollectEquipToLoadout();
     }
 
     private void OnLoadoutSwitch(int loadoutIdx)
@@ -1149,6 +1247,7 @@ public partial class MainForm : Form
     private void CollectEquipToLoadout()
     {
         if (_player == null) return;
+        DebugLog.Log($"[CollectEquip] START loadout={_activeLoadout} populating={_populating}");
         List<ItemData> armor, vanity, acc, vacc, misc, armorDyes, miscDyes;
         if (_activeLoadout == 0)
         {
@@ -1173,24 +1272,32 @@ public partial class MainForm : Form
         for (int i = 0; i < _equipSlots[0].Slots.Length && i < armor.Count; i++) armor[i] = _equipSlots[0].Slots[i].Item ?? new ItemData();
         // Vanity armor collected from _accSlots[0] positions 0-2
         for (int i = 0; i < 3 && i < vanity.Count; i++) vanity[i] = _accSlots[0].Slots[i].Item ?? new ItemData();
+        TraceLog($"[Collect] vanitySlots: [0]={_accSlots[0].Slots[0].Item?.ItemId}:{_accSlots[0].Slots[0].Item?.Prefix} [1]={_accSlots[0].Slots[1].Item?.ItemId}:{_accSlots[0].Slots[1].Item?.Prefix} [2]={_accSlots[0].Slots[2].Item?.ItemId}:{_accSlots[0].Slots[2].Item?.Prefix}");
         // Accessories[0..3] from _accSlots[0] positions 3-6
         for (int i = 0; i < 4 && i < acc.Count; i++) acc[i] = _accSlots[0].Slots[i + 3].Item ?? new ItemData();
+        TraceLog($"[Collect] accGrid[3..6]: [3]={_accSlots[0].Slots[3].Item?.ItemId}:{_accSlots[0].Slots[3].Item?.Prefix} [4]={_accSlots[0].Slots[4].Item?.ItemId}:{_accSlots[0].Slots[4].Item?.Prefix} [5]={_accSlots[0].Slots[5].Item?.ItemId}:{_accSlots[0].Slots[5].Item?.Prefix} [6]={_accSlots[0].Slots[6].Item?.ItemId}:{_accSlots[0].Slots[6].Item?.Prefix}");
         // Accessories[4..6] from _vanitySlots[0] positions 0-2
         for (int i = 0; i < 3 && (i + 4) < acc.Count; i++) acc[i + 4] = _vanitySlots[0].Slots[i].Item ?? new ItemData();
+        TraceLog($"[Collect] vanityGrid[0..2]: [0]={_vanitySlots[0].Slots[0].Item?.ItemId}:{_vanitySlots[0].Slots[0].Item?.Prefix} [1]={_vanitySlots[0].Slots[1].Item?.ItemId}:{_vanitySlots[0].Slots[1].Item?.Prefix} [2]={_vanitySlots[0].Slots[2].Item?.ItemId}:{_vanitySlots[0].Slots[2].Item?.Prefix}");
+        TraceLog($"[Collect] RESULT: vanity[0]={vanity[0].ItemId}:{vanity[0].Prefix} acc[0]={acc[0].ItemId}:{acc[0].Prefix} acc[4]={acc[4].ItemId}:{acc[4].Prefix}");
         for (int i = 0; i < _vaccSlots[0].Slots.Length && i < vacc.Count; i++) vacc[i] = _vaccSlots[0].Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _miscSlots[0].Slots.Length && i < misc.Count; i++) misc[i] = _miscSlots[0].Slots[i].Item ?? new ItemData();
         // Collect dyes
         for (int i = 0; i < _armorDyeSlots[0].Slots.Length && i < 3; i++) { if (i < armorDyes.Count) armorDyes[i] = _armorDyeSlots[0].Slots[i].Item ?? new ItemData(); }
         for (int i = 0; i < _accDyeSlots[0].Slots.Length && i < 7; i++) { var idx = i + 3; if (idx < armorDyes.Count) armorDyes[idx] = _accDyeSlots[0].Slots[i].Item ?? new ItemData(); }
         for (int i = 0; i < _miscDyeSlots[0].Slots.Length && i < miscDyes.Count; i++) miscDyes[i] = _miscDyeSlots[0].Slots[i].Item ?? new ItemData();
+        DebugLog.Log($"[CollectEquip] END vanity[0]={vanity[0].ItemId}:{vanity[0].Prefix} acc[0]={acc[0].ItemId}:{acc[0].Prefix} acc[4]={acc[4].ItemId}:{acc[4].Prefix} acc[5]={acc[5].ItemId}:{acc[5].Prefix} acc[6]={acc[6].ItemId}:{acc[6].Prefix}");
     }
 
     private void PopulateEquipFromData(List<ItemData> armor, List<ItemData> vanity, List<ItemData> acc,
         List<ItemData> vacc, List<ItemData> misc, List<ItemData> armorDyes, List<ItemData> miscDyes)
     {
+        TraceLog($"[PopEquip] INPUT: vanity[0]={vanity[0].ItemId}:{vanity[0].Prefix} acc[0]={acc[0].ItemId}:{acc[0].Prefix} acc[4]={acc[4].ItemId}:{acc[4].Prefix} acc[5]={acc[5].ItemId}:{acc[5].Prefix} acc[6]={acc[6].ItemId}:{acc[6].Prefix}");
         _equipSlots[0].SetItems(armor);
         _vanitySlots[0].SetItems(acc.Skip(4).Take(3).ToList());
         _accSlots[0].SetItems(vanity.Take(3).Concat(acc.Take(4)).ToList());
+        // Verify: read back from grids
+        TraceLog($"[PopEquip] AFTER: vanityGrid[0]={_vanitySlots[0].Slots[0].Item?.ItemId}:{_vanitySlots[0].Slots[0].Item?.Prefix} vanityGrid[1]={_vanitySlots[0].Slots[1].Item?.ItemId}:{_vanitySlots[0].Slots[1].Item?.Prefix} accGrid[0]={_accSlots[0].Slots[0].Item?.ItemId}:{_accSlots[0].Slots[0].Item?.Prefix} accGrid[3]={_accSlots[0].Slots[3].Item?.ItemId}:{_accSlots[0].Slots[3].Item?.Prefix}");
         _vaccSlots[0].SetItems(vacc);
         _miscSlots[0].SetItems(misc);
         _armorDyeSlots[0].SetItems(armorDyes.Take(3).ToList());
@@ -1356,6 +1463,8 @@ public partial class MainForm : Form
         saveMenuItem.Text = L("Menu.Save");
         saveAsMenuItem.Text = L("Menu.SaveAs");
         exitMenuItem.Text = L("Menu.Exit");
+        if (_refreshMenuItem != null) _refreshMenuItem.Text = L("Menu.Refresh");
+        if (_contextRefreshItem != null) _contextRefreshItem.Text = L("Menu.Refresh");
         if (menuStrip.Items.Count > 1)
         {
             var settingsMenu = (ToolStripMenuItem)menuStrip.Items[1];

@@ -29,6 +29,9 @@ public class ItemModifier : UserControl
     private int _cachedStack = 1;
     private byte _cachedPrefix;
 
+    // Guard to suppress events during LoadFromSlot
+    private bool _suppressEvents;
+
     // Animation support
     private System.Windows.Forms.Timer? _animTimer;
     private Bitmap[]? _animFrames;
@@ -99,6 +102,8 @@ public class ItemModifier : UserControl
         _cmbItemSearch.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; DoSet(); } };
         _nudStack.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; DoSet(); } };
         _cmbPrefix.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; DoSet(); } };
+        _cmbPrefix.SelectedIndexChanged += (s, e) => { if (!_suppressEvents) DoSet(); };
+        _cmbPrefix.DropDownClosed += (s, e) => { if (!_suppressEvents) DoSet(); };
         _nudStack.Leave += (s, e) => DoSet();
         _cmbPrefix.Leave += (s, e) => DoSet();
         _chkFavorite.CheckedChanged += (s, e) => DoSet();
@@ -162,6 +167,10 @@ public class ItemModifier : UserControl
     /// <summary>Load item data into the modifier controls.</summary>
     public void LoadFromSlot(int slotIndex, ItemData item)
     {
+        Services.DebugLog.Log($"[ItemMod] LoadFromSlot idx={slotIndex} itemId={item.ItemId} prefix={item.Prefix} stack={item.StackSize}");
+        _suppressEvents = true;
+        try
+        {
         StopAnimation();
 
         _currentSlotIndex = slotIndex;
@@ -201,6 +210,8 @@ public class ItemModifier : UserControl
         if (_cmbPrefix.Items.Count > 0 && item.Prefix < _cmbPrefix.Items.Count)
             _cmbPrefix.SelectedIndex = item.Prefix;
         _cachedPrefix = (byte)_cmbPrefix.SelectedIndex;
+        }
+        finally { _suppressEvents = false; }
     }
 
     private void StartAnimation()
@@ -268,9 +279,13 @@ public class ItemModifier : UserControl
     /// <summary>Populate the prefix combo with localized prefix names.</summary>
     public void PopulatePrefixes()
     {
+        Services.DebugLog.Log("[ItemMod] PopulatePrefixes — clearing and repopulating");
+        _suppressEvents = true;
         _cmbPrefix.Items.Clear();
         foreach (var kv in PrefixData.All)
             _cmbPrefix.Items.Add(PrefixData.GetName(kv.Key));
+        _suppressEvents = false;
+        Services.DebugLog.Log($"[ItemMod] PopulatePrefixes done — {_cmbPrefix.Items.Count} items, selectedIndex={_cmbPrefix.SelectedIndex}");
     }
 
     /// <summary>Refresh display text (for language switching).</summary>
