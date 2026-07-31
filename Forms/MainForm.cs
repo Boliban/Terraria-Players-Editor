@@ -59,12 +59,27 @@ public partial class MainForm : Form
         // Theme change handler
         ThemeManager.ThemeChanged += OnThemeChanged;
 
+        // Strip backgrounds from labels and containers
+        SoakLabelBackgrounds(this);
+
         // Set SplitterDistance after form is shown (controls have proper sizes)
         Shown += (s, e) =>
         {
             _splitItems.SplitterDistance = 300;
             _splitBuffs.SplitterDistance = 280;
         };
+    }
+
+    /// <summary>Recursively remove backgrounds from Labels and transparent containers.</summary>
+    private static void SoakLabelBackgrounds(Control parent)
+    {
+        foreach (Control c in parent.Controls)
+        {
+            if (c is Label || c is FlowLayoutPanel || c is TableLayoutPanel || c is Panel)
+                c.BackColor = Color.Transparent;
+            if (c.HasChildren)
+                SoakLabelBackgrounds(c);
+        }
     }
 
     /// <summary>Handle theme change by refreshing all colors.</summary>
@@ -85,6 +100,7 @@ public partial class MainForm : Form
         subVoidVault.BackColor = ThemeManager.SurfaceBackground;
         if (tabStorageSub != null) tabStorageSub.BackColor = ThemeManager.SurfaceBackground;
 
+        SoakLabelBackgrounds(this);
         Invalidate(true);
     }
 

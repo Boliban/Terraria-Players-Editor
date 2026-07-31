@@ -401,8 +401,6 @@ public static class IconService
         var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bmp);
         g.Clear(Color.Transparent);
-        using var pen = new Pen(Color.Gray, 1);
-        g.DrawRectangle(pen, 1, 1, 29, 29);
         return bmp;
     }
 }
