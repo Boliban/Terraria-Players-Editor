@@ -64,7 +64,8 @@ public class ItemModifier : UserControl
         {
             Location = new Point(52, 28),
             AutoSize = true,
-            ForeColor = ThemeManager.TextSecondary
+            ForeColor = ThemeManager.TextSecondary,
+            Tag = "secondary"
         };
 
         // Item search + set button (row 1)

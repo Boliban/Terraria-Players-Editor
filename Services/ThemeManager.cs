@@ -93,6 +93,10 @@ public static class ThemeManager
     public static void ApplyTheme(bool dark)
     {
         _darkMode = dark;
+
+        // Sync system color mode (applied at startup; runtime switch restarts the app)
+        Application.SetColorMode(dark ? SystemColorMode.Dark : SystemColorMode.System);
+
         DisposeBrushesAndPens();
 
         if (dark)

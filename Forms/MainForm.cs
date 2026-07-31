@@ -45,7 +45,6 @@ public partial class MainForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         Font = ThemeManager.Typography.Body;
         MinimumSize = new Size(800, 500);
-        BackColor = ThemeManager.SurfaceBackground;
 
         // Enable double buffering to reduce flicker during resize and child repaints
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
@@ -59,8 +58,8 @@ public partial class MainForm : Form
         // Theme change handler
         ThemeManager.ThemeChanged += OnThemeChanged;
 
-        // Strip backgrounds from labels and containers
-        SoakLabelBackgrounds(this);
+        // Apply initial theme
+        RefreshThemeColors(this);
 
         // Set SplitterDistance after form is shown (controls have proper sizes)
         Shown += (s, e) =>
@@ -70,37 +69,46 @@ public partial class MainForm : Form
         };
     }
 
-    /// <summary>Recursively remove backgrounds from Labels and transparent containers.</summary>
-    private static void SoakLabelBackgrounds(Control parent)
+    /// <summary>Recursively set Label backgrounds to transparent only.</summary>
+    private static void RefreshThemeColors(Control parent)
     {
         foreach (Control c in parent.Controls)
         {
-            if (c is Label || c is FlowLayoutPanel || c is TableLayoutPanel || c is Panel)
+            if (c is Label lbl)
                 c.BackColor = Color.Transparent;
+
+            if (ThemeManager.IsDarkMode)
+            {
+                if (c is TextBox tb)
+                {
+                    tb.BackColor = ThemeManager.ControlInputBg;
+                    tb.ForeColor = ThemeManager.TextPrimary;
+                    tb.BorderStyle = BorderStyle.FixedSingle;
+                }
+                if (c is ComboBox cmb)
+                {
+                    cmb.BackColor = ThemeManager.ControlInputBg;
+                    cmb.ForeColor = ThemeManager.TextPrimary;
+                }
+                if (c is NumericUpDown nud)
+                {
+                    nud.BackColor = ThemeManager.ControlInputBg;
+                    nud.ForeColor = ThemeManager.TextPrimary;
+                }
+            }
+
             if (c.HasChildren)
-                SoakLabelBackgrounds(c);
+                RefreshThemeColors(c);
         }
     }
 
-    /// <summary>Handle theme change by refreshing all colors.</summary>
+    /// <summary>Handle theme change.</summary>
     private void OnThemeChanged()
     {
         BackColor = ThemeManager.SurfaceBackground;
         statusStrip.BackColor = ThemeManager.SurfaceBackground;
 
-        // Refresh all TabPage backgrounds
-        foreach (TabPage tab in tabControl.TabPages)
-            tab.BackColor = ThemeManager.SurfaceBackground;
-        tabControl.BackColor = ThemeManager.SurfaceBackground;
-
-        // Storage sub-tab pages
-        subPiggyBank.BackColor = ThemeManager.SurfaceBackground;
-        subSafe.BackColor = ThemeManager.SurfaceBackground;
-        subDefenderForge.BackColor = ThemeManager.SurfaceBackground;
-        subVoidVault.BackColor = ThemeManager.SurfaceBackground;
-        if (tabStorageSub != null) tabStorageSub.BackColor = ThemeManager.SurfaceBackground;
-
-        SoakLabelBackgrounds(this);
+        RefreshThemeColors(this);
         Invalidate(true);
     }
 
@@ -146,7 +154,10 @@ public partial class MainForm : Form
         {
             SettingsManager.DarkMode = darkModeItem.Checked;
             SettingsManager.Save();
-            ThemeManager.ApplyTheme(darkModeItem.Checked);
+            MessageBox.Show(AppLocale.Get("Dialog.RestartTheme"),
+                Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Application.Restart();
+            Environment.Exit(0);
         };
         settingsMenu.DropDownItems.Add(darkModeItem);
 
@@ -187,26 +198,17 @@ public partial class MainForm : Form
 
     private void BuildTabControl()
     {
-        tabControl = new TabControl
-        {
-            Dock = DockStyle.Fill,
-            BackColor = ThemeManager.SurfaceBackground
-        };
+        tabControl = new TabControl { Dock = DockStyle.Fill };
 
         var pages = new TabPage[]
         {
             BuildPlayerInfoTab(),
-            BuildStatsTab(),
             BuildAppearanceTab(),
             BuildItemsTab(),
             BuildBuffsTab(),
             BuildUpgradesMiscTab(),
             BuildSpawnPointsTab()
         };
-
-        // Set tab page backgrounds
-        foreach (var page in pages)
-            page.BackColor = ThemeManager.SurfaceBackground;
 
         tabControl.TabPages.AddRange(pages);
 
@@ -220,15 +222,18 @@ public partial class MainForm : Form
 
     private TabPage BuildPlayerInfoTab()
     {
-        tabPlayerInfo = new TabPage("Player Info");
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 6, Padding = new Padding(20) };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        tabPlayerInfo = new TabPage(AppLocale.Get("Tab.PlayerInfo")) { UseVisualStyleBackColor = true };
+        var layout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(12), AutoScroll = true };
+
+        // ── Basic Info Table ──
+        var infoTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(4) };
+        infoTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+        infoTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
 
         lblPlayerName = new Label { Text = AppLocale.Get("Info.Name"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        txtPlayerName = new TextBox { Dock = DockStyle.Left, Width = 300 };
+        txtPlayerName = new TextBox { Dock = DockStyle.Left, Width = 280 };
         lblDifficulty = new Label { Text = AppLocale.Get("Info.Difficulty"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        cmbDifficulty = new ComboBox { Dock = DockStyle.Left, Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
+        cmbDifficulty = new ComboBox { Dock = DockStyle.Left, Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbDifficulty.Items.AddRange(DifficultyNames());
         lblPlayTime = new Label { Text = AppLocale.Get("Info.PlayTime"), TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
         txtPlayTime = new TextBox { Dock = DockStyle.Left, Width = 150, ReadOnly = true };
@@ -238,28 +243,19 @@ public partial class MainForm : Form
         cmbCurrentLoadout = new ComboBox { Dock = DockStyle.Left, Width = 120, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbCurrentLoadout.Items.AddRange(LoadoutNames());
 
-        AddRow(layout, 0, lblPlayerName, txtPlayerName);
-        AddRow(layout, 1, lblDifficulty, cmbDifficulty);
-        AddRow(layout, 2, lblPlayTime, txtPlayTime);
-        AddRow(layout, 3, lblFileVersion, txtFileVersion);
-        AddRow(layout, 4, lblLoadout, cmbCurrentLoadout);
-
-        tabPlayerInfo.Controls.Add(layout);
-        return tabPlayerInfo;
-    }
-
-    private TabPage BuildStatsTab()
-    {
-        tabStats = new TabPage("Stats");
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20) };
+        AddRow(infoTbl, 0, lblPlayerName, txtPlayerName);
+        AddRow(infoTbl, 1, lblDifficulty, cmbDifficulty);
+        AddRow(infoTbl, 2, lblPlayTime, txtPlayTime);
+        AddRow(infoTbl, 3, lblFileVersion, txtFileVersion);
+        AddRow(infoTbl, 4, lblLoadout, cmbCurrentLoadout);
 
         // ── Health ──
         grpHealth = new FlatGroupBox { Text = AppLocale.Get("Stats.Health"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        var healthTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 10) };
+        var healthTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 6) };
         healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
         healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        healthTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
         lblHealth = new Label { Text = AppLocale.Get("Stats.Current") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
         nudHealth = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 600 };
         lblMaxHealth = new Label { Text = AppLocale.Get("Stats.Max") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
@@ -272,11 +268,11 @@ public partial class MainForm : Form
 
         // ── Mana ──
         grpMana = new FlatGroupBox { Text = AppLocale.Get("Stats.Mana"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        var manaTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 10) };
+        var manaTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, Padding = new Padding(10, 20, 10, 6) };
         manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
         manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        manaTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
         lblMana = new Label { Text = AppLocale.Get("Stats.Current") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
         nudMana = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 400 };
         lblMaxMana = new Label { Text = AppLocale.Get("Stats.Max") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
@@ -287,11 +283,17 @@ public partial class MainForm : Form
         manaTbl.Controls.Add(nudMaxMana, 3, 0);
         grpMana.Controls.Add(manaTbl);
 
+        // Health + Mana side by side
+        var hpMpRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+        hpMpRow.Controls.Add(grpHealth);
+        grpMana.Margin = new Padding(16, 0, 0, 0);
+        hpMpRow.Controls.Add(grpMana);
+
         // ── Counters ──
         grpCounters = new FlatGroupBox { Text = AppLocale.Get("Stats.Counters"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        var countersTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(10, 20, 10, 10) };
+        var countersTbl = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(10, 20, 10, 6) };
         countersTbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        countersTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+        countersTbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         for (int c = 0; c < 5; c++) countersTbl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         lblDeathsPvE = new Label { Text = AppLocale.Get("Stats.DeathsPvE") + " ", AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Anchor = AnchorStyles.Right };
@@ -317,15 +319,12 @@ public partial class MainForm : Form
         countersTbl.Controls.Add(nudGolferScore, 1, 4);
         grpCounters.Controls.Add(countersTbl);
 
-        var leftCol = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10) };
-        leftCol.Controls.AddRange([grpHealth, grpMana]);
-        var rightCol = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10) };
-        rightCol.Controls.Add(grpCounters);
+        layout.Controls.Add(infoTbl);
+        layout.Controls.Add(hpMpRow);
+        layout.Controls.Add(grpCounters);
 
-        layout.Controls.Add(leftCol, 0, 0);
-        layout.Controls.Add(rightCol, 1, 0);
-        tabStats.Controls.Add(layout);
-        return tabStats;
+        tabPlayerInfo.Controls.Add(layout);
+        return tabPlayerInfo;
     }
 
     private TabPage BuildAppearanceTab()
@@ -525,7 +524,7 @@ public partial class MainForm : Form
             var clean = System.Text.RegularExpressions.Regex.Replace(text, @"\s*\(\d+\)$", "");
             lbl = new Label { Text = clean, AutoSize = true,
                 Font = ThemeManager.Typography.Caption, ForeColor = ThemeManager.TextSecondary,
-                Margin = new Padding(0), TextAlign = ContentAlignment.TopCenter };
+                Margin = new Padding(0), TextAlign = ContentAlignment.TopCenter, Tag = "secondary" };
             var p = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 4, 0) };
             p.Controls.Add(lbl);
             p.Controls.Add(grid);
@@ -582,11 +581,11 @@ public partial class MainForm : Form
         var layout = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, RowCount = 1, Padding = new Padding(5) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        tabStorageSub = new TabControl { Width = 512, Height = 230, BackColor = ThemeManager.SurfaceBackground };
-        subPiggyBank = new TabPage(AppLocale.Get("Storage.PiggyBank")) { BackColor = ThemeManager.SurfaceBackground };
-        subSafe = new TabPage(AppLocale.Get("Storage.Safe")) { BackColor = ThemeManager.SurfaceBackground };
-        subDefenderForge = new TabPage(AppLocale.Get("Storage.DefenderForge")) { BackColor = ThemeManager.SurfaceBackground };
-        subVoidVault = new TabPage(AppLocale.Get("Storage.VoidVault")) { BackColor = ThemeManager.SurfaceBackground };
+        tabStorageSub = new TabControl { Width = 512, Height = 230 };
+        subPiggyBank = new TabPage(AppLocale.Get("Storage.PiggyBank"));
+        subSafe = new TabPage(AppLocale.Get("Storage.Safe"));
+        subDefenderForge = new TabPage(AppLocale.Get("Storage.DefenderForge"));
+        subVoidVault = new TabPage(AppLocale.Get("Storage.VoidVault"));
 
         _gridPiggy = new SlotGrid(10, 4) { Tag = "Piggy" }; subPiggyBank.Controls.Add(_gridPiggy);
         _allItemGrids.Add(_gridPiggy);
@@ -634,12 +633,12 @@ public partial class MainForm : Form
         right.Controls.Add(_lblBuffTitle, 0, 0);
 
         // Buff modifier
-        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100, BorderStyle = BorderStyle.None, BackColor = ThemeManager.SurfaceCard };
+        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100, BorderStyle = BorderStyle.None };
         _lblBuffType = new Label { Text = AppLocale.Get("Buffs.Type"), Location = new Point(5, 5), Width = 70 };
         _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
         _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = ThemeManager.TextSecondary };
+        _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = ThemeManager.TextSecondary, Tag = "secondary" };
         _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
         _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
         void BuffAutoSet()
@@ -1496,7 +1495,6 @@ public partial class MainForm : Form
 
         // Tab titles
         tabPlayerInfo.Text = L("Tab.PlayerInfo");
-        tabStats.Text = L("Tab.Stats");
         tabAppearance.Text = L("Tab.Appearance");
         tabItems.Text = L("Tab.Items");
         tabBuffs.Text = L("Tab.Buffs");
@@ -1528,7 +1526,7 @@ public partial class MainForm : Form
             cmbSkinVariant.SelectedIndex = Math.Clamp(prevSkin, 0, 1);
         }
 
-        // Tab 2: Stats
+        // Tab 1: Player Info — Stats
         grpHealth.Text = L("Stats.Health");
         lblHealth.Text = L("Stats.Current");
         lblMaxHealth.Text = L("Stats.Max");

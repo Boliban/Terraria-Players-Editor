@@ -146,6 +146,7 @@
   "Dialog.LoadError": "加载文件失败:\\n{0}",
   "Dialog.SaveError": "保存文件失败:\\n{0}",
   "Dialog.FileFilter": "Terraria玩家文件(*.plr)|*.plr|所有文件(*.*)|*.*",
+  "Dialog.RestartTheme": "颜色模式已更改，应用将重新启动以应用新主题。",
   "Dialog.OpenTitle": "打开Terraria玩家文件",
   "Dialog.SaveTitle": "保存Terraria玩家文件",
   "Browser.All": "全部"

@@ -37,19 +37,18 @@ partial class MainForm
     private Label lblLoadout = null!;
     private ComboBox cmbCurrentLoadout = null!;
 
-    // === Tab 2: Stats ===
-    private TabPage tabStats = null!;
-    private Panel grpHealth = null!;
+    // === Tab 1: Stats (merged into Player Info) ===
+    private FlatGroupBox grpHealth = null!;
     private Label lblHealth = null!;
     private NumericUpDown nudHealth = null!;
     private Label lblMaxHealth = null!;
     private NumericUpDown nudMaxHealth = null!;
-    private Panel grpMana = null!;
+    private FlatGroupBox grpMana = null!;
     private Label lblMana = null!;
     private NumericUpDown nudMana = null!;
     private Label lblMaxMana = null!;
     private NumericUpDown nudMaxMana = null!;
-    private Panel grpCounters = null!;
+    private FlatGroupBox grpCounters = null!;
     private Label lblDeathsPvE = null!;
     private NumericUpDown nudDeathsPvE = null!;
     private Label lblDeathsPvP = null!;

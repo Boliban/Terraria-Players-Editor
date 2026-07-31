@@ -45,7 +45,8 @@ public class SlotGrid : UserControl
                 Font = ThemeManager.Typography.Caption,
                 ForeColor = ThemeManager.TextSecondary,
                 AutoSize = true,
-                Location = new Point(2, 0)
+                Location = new Point(2, 0),
+                Tag = "secondary"
             };
             Controls.Add(_titleLabel);
         }
@@ -82,11 +83,12 @@ public class SlotGrid : UserControl
         ThemeManager.ThemeChanged += () => ApplyTheme();
     }
 
-    /// <summary>Re-apply theme colors to title label.</summary>
+    /// <summary>Re-apply theme colors.</summary>
     public void ApplyTheme()
     {
         if (_titleLabel != null)
             _titleLabel.ForeColor = ThemeManager.TextSecondary;
+        _table.BackColor = Color.Transparent;
     }
 
     /// <summary>Number of columns in the grid.</summary>

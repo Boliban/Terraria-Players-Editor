@@ -146,6 +146,7 @@
   "Dialog.LoadError": "Failed to load file:\\n{0}",
   "Dialog.SaveError": "Failed to save file:\\n{0}",
   "Dialog.FileFilter": "Terraria Player Files (*.plr)|*.plr|All Files (*.*)|*.*",
+  "Dialog.RestartTheme": "Color mode changed. The application will restart to apply the new theme.",
   "Dialog.OpenTitle": "Open Terraria Player File",
   "Dialog.SaveTitle": "Save Terraria Player File",
   "Browser.All": "All"
