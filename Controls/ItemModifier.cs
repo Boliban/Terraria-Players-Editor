@@ -107,7 +107,7 @@ public class ItemModifier : UserControl
         _cmbPrefix.DropDownClosed += (s, e) => { if (!_suppressEvents) DoSet(); };
         _nudStack.Leave += (s, e) => DoSet();
         _cmbPrefix.Leave += (s, e) => DoSet();
-        _chkFavorite.CheckedChanged += (s, e) => DoSet();
+        _chkFavorite.CheckedChanged += (s, e) => { if (!_suppressEvents) DoSet(); };
 
         _btnSet.Click += (s, e) => DoSet();
         _btnClear.Click += (s, e) => ClearClicked?.Invoke(this, _currentSlotIndex);
@@ -202,15 +202,13 @@ public class ItemModifier : UserControl
         _lblId.Text = $"ID: {item.ItemId}";
         _nudStack.Value = item.StackSize > 0 ? item.StackSize : 1;
         _cachedStack = (int)_nudStack.Value;
-        _chkFavorite.Checked = item.Favorited;
-
         // Update search combo text to match current item so Set doesn't clobber it
-        _cmbItemSearch.Text = item.IsEmpty ? "" : $"{item.ItemName} (ID:{item.ItemId})";
-
+        _cmbItemSearch.Text = item.IsEmpty ? "" : item.ItemName;
         // Set prefix combo
         if (_cmbPrefix.Items.Count > 0 && item.Prefix < _cmbPrefix.Items.Count)
             _cmbPrefix.SelectedIndex = item.Prefix;
         _cachedPrefix = (byte)_cmbPrefix.SelectedIndex;
+        _chkFavorite.Checked = item.Favorited;
         }
         finally { _suppressEvents = false; }
     }

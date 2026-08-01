@@ -212,6 +212,11 @@ public partial class MainForm : Form
 
         tabControl.TabPages.AddRange(pages);
 
+        // Load browser data immediately (no player needed)
+        _browserItems.LoadItems();
+        _browserBuffs.LoadItems();
+        _buffMod.PopulateBuffs();
+
         Controls.Add(tabControl);
         tabControl.BringToFront();
     }
@@ -626,40 +631,17 @@ public partial class MainForm : Form
 
         var right = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Padding = new Padding(5) };
         right.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 115));
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         _lblBuffTitle = new Label { Text = AppLocale.Get("Buffs.Title"), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
         right.Controls.Add(_lblBuffTitle, 0, 0);
 
-        // Buff modifier
-        var buffMod = new Panel { Dock = DockStyle.Top, Height = 100, BorderStyle = BorderStyle.None };
-        _lblBuffType = new Label { Text = AppLocale.Get("Buffs.Type"), Location = new Point(5, 5), Width = 70 };
-        _nudBuffType = new NumericUpDown { Location = new Point(80, 3), Width = 80, Minimum = 0, Maximum = 387 };
-        _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
-        _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
-        _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = ThemeManager.TextSecondary, Tag = "secondary" };
-        _lblBuffName = new Label { Text = "", Location = new Point(5, 30), Width = 380, Height = 20, TextAlign = ContentAlignment.MiddleLeft, ForeColor = ThemeManager.TextSecondary };
-        _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 55), Width = 75 };
-        _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 55), Width = 75 };
-        void BuffAutoSet()
-        {
-            if (_gridBuffs.SelectedIndex < 0) return;
-            _cachedBuffType = (int)_nudBuffType.Value;
-            _cachedBuffDur = (int)_nudBuffDuration.Value;
-            OnBuffModSet();
-        }
-        _nudBuffType.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; BuffAutoSet(); } };
-        _nudBuffDuration.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.Handled = true; e.SuppressKeyPress = true; BuffAutoSet(); } };
-        _nudBuffType.Leave += (s, e) => BuffAutoSet();
-        _nudBuffDuration.Leave += (s, e) => BuffAutoSet();
-        _btnBuffSet.Click += (s, e) => BuffAutoSet();
-        _btnBuffClear.Click += (s, e) => OnBuffModClear();
-        // Update name label when type changes
-        _nudBuffType.ValueChanged += (s, e) => UpdateBuffNameLabel((int)_nudBuffType.Value);
-        ThemeManager.ThemeChanged += () => UpdateBuffNameLabel((int)_nudBuffType.Value);
-        buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _lblBuffTimeUnit, _lblBuffName, _btnBuffSet, _btnBuffClear]);
-        right.Controls.Add(buffMod, 0, 1);
+        // Buff modifier (matches ItemModifier style)
+        _buffMod = new Controls.BuffModifier { Dock = DockStyle.Top };
+        _buffMod.SetClicked += (s, idx) => OnBuffModSet();
+        _buffMod.ClearClicked += (s, idx) => OnBuffModClear();
+        right.Controls.Add(_buffMod, 0, 1);
 
         _gridBuffs = new SlotGrid(11, 4) { IsBuffGrid = true, Tag = "Buffs" };
         _gridBuffs.SlotSelected += (s, idx) => OnBuffSlotSelected(idx);
@@ -1118,11 +1100,9 @@ public partial class MainForm : Form
         var item = _gridBuffs.GetItem(idx);
         if (item != null)
         {
-            _nudBuffType.Value = item.ItemId;
-            _nudBuffDuration.Value = item.StackSize;
+            _buffMod.LoadFromSlot(idx, item.ItemId, item.StackSize);
             _cachedBuffType = item.ItemId;
             _cachedBuffDur = item.StackSize;
-            UpdateBuffNameLabel(item.ItemId);
         }
     }
 
@@ -1133,20 +1113,21 @@ public partial class MainForm : Form
         DebugLog.Log($"[Buff] BrowserSelect: slot={idx}, itemId={itemId}, cachedDur={_cachedBuffDur}");
         _player!.BuffTypes[idx] = itemId;
         _gridBuffs.SetSlot(idx, new ItemData { ItemId = itemId, StackSize = _cachedBuffDur });
-        _nudBuffType.Value = itemId;
-        UpdateBuffNameLabel(itemId);
+        _buffMod.LoadFromSlot(idx, itemId, _cachedBuffDur);
     }
 
     private void OnBuffModSet()
     {
         if (_gridBuffs.SelectedIndex < 0) return;
         var idx = _gridBuffs.SelectedIndex;
-        var type = _cachedBuffType;
-        var dur = _cachedBuffDur;
+        var type = _buffMod.CurrentBuffId;
+        var dur = _buffMod.CurrentDuration;
         DebugLog.Log($"[Buff] ModSet: slot={idx}, type={type}, dur={dur}");
         _player!.BuffTypes[idx] = type;
         _player.BuffTimes[idx] = dur;
         _gridBuffs.SetSlot(idx, new ItemData { ItemId = type, StackSize = dur });
+        _cachedBuffType = type;
+        _cachedBuffDur = dur;
     }
 
     private void OnBuffModClear()
@@ -1156,24 +1137,7 @@ public partial class MainForm : Form
         _player!.BuffTypes[idx] = 0;
         _player.BuffTimes[idx] = 0;
         _gridBuffs.SetSlot(idx, new ItemData());
-    }
-
-    /// <summary>Update the buff name label with theme-aware color based on type.</summary>
-    private void UpdateBuffNameLabel(int buffType)
-    {
-        if (buffType <= 0)
-        {
-            _lblBuffName.Text = "";
-            return;
-        }
-        var name = BuffDatabase.GetName(buffType);
-        var type = BuffDatabase.GetType(buffType);
-        _lblBuffName.Text = name;
-        // Color based on type
-        if (type.Equals("Debuff", StringComparison.OrdinalIgnoreCase))
-            _lblBuffName.ForeColor = ThemeManager.DebuffText;
-        else
-            _lblBuffName.ForeColor = ThemeManager.BuffText;
+        _buffMod.LoadFromSlot(idx, 0, 0);
     }
 
     #endregion
@@ -1608,10 +1572,8 @@ public partial class MainForm : Form
 
         // Tab 5: Buffs
         _lblBuffTitle.Text = L("Buffs.Title");
-        _lblBuffType.Text = L("Buffs.Type");
-        _lblBuffDuration.Text = L("Buffs.Duration");
-        _btnBuffSet.Text = L("Storage.Set");
-        _btnBuffClear.Text = L("Storage.Clear");
+        _buffMod.RefreshLocale();
+        _buffMod.PopulateBuffs();
 
         // Tab 6: Upgrades + Misc
         chkExtraAccessory.Text = L("Upgrades.ExtraAccessory");
@@ -1647,6 +1609,10 @@ public partial class MainForm : Form
         dgvSpawnPoints.Columns["X"]!.HeaderText = L("Spawn.X");
         dgvSpawnPoints.Columns["Y"]!.HeaderText = L("Spawn.Y");
 
+        // Refresh browser display text (always, even without loaded player)
+        _browserItems.RefreshDisplayText();
+        _browserBuffs.RefreshDisplayText();
+
         // Repopulate data if player is loaded (refresh display text with new language)
         if (_player != null)
         {
@@ -1670,10 +1636,6 @@ public partial class MainForm : Form
                 _gridSafe.RefreshAll();
                 _gridDefender.RefreshAll();
                 _gridVoid.RefreshAll();
-
-                // Refresh browser display text
-                _browserItems.RefreshDisplayText();
-                _browserBuffs.RefreshDisplayText();
 
                 // Refresh modifier combo boxes
                 _modItems.PopulatePrefixes();

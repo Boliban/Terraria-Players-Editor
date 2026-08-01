@@ -125,14 +125,7 @@ partial class MainForm
     private Controls.ItemBrowser _browserBuffs = null!;
     private Controls.SlotGrid _gridBuffs = null!;
     private Label _lblBuffTitle = null!;
-    private Label _lblBuffType = null!;
-    private NumericUpDown _nudBuffType = null!;
-    private Label _lblBuffDuration = null!;
-    private NumericUpDown _nudBuffDuration = null!;
-    private Label _lblBuffTimeUnit = null!;
-    private Label _lblBuffName = null!;
-    private Button _btnBuffSet = null!;
-    private Button _btnBuffClear = null!;
+    private Controls.BuffModifier _buffMod = null!;
     private SplitContainer _splitBuffs = null!;
 
     // === Tab 6: Upgrades ===

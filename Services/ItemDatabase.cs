@@ -200,7 +200,7 @@ public static class ItemDatabase
     /// <summary>Lightweight item lookup record.</summary>
     public readonly record struct ItemLookup(int Id, string Name, string Category)
     {
-        public override string ToString() => $"{ItemDatabase.GetName(Id)} (ID:{Id})";
+        public override string ToString() => ItemDatabase.GetName(Id);
     }
 
     private sealed class JsonItemEntry
