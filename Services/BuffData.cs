@@ -21,13 +21,13 @@ public static class BuffData
         return BuffKind.Buff;
     }
 
-    /// <summary>Get the display color for a buff kind.</summary>
+    /// <summary>Get the theme-aware display color for a buff kind.</summary>
     public static Color GetColor(BuffKind kind) => kind switch
     {
-        BuffKind.Buff => Color.Green,
-        BuffKind.Debuff => Color.Red,
+        BuffKind.Buff => ThemeManager.BuffText,
+        BuffKind.Debuff => ThemeManager.DebuffText,
         BuffKind.Pet => Color.DodgerBlue,
-        _ => Color.Black
+        _ => ThemeManager.TextPrimary
     };
 
     private static bool IsDebuff(int id) => id switch

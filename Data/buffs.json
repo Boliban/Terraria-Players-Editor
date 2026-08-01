@@ -1,391 +1,1947 @@
 {
-  "0": {"name": "None", "type": "Buff"},
-  "1": {"name": "Obsidian Skin", "type": "Buff"},
-  "2": {"name": "Regeneration", "type": "Buff"},
-  "3": {"name": "Swiftness", "type": "Buff"},
-  "4": {"name": "Gills", "type": "Buff"},
-  "5": {"name": "Ironskin", "type": "Buff"},
-  "6": {"name": "Mana Regeneration", "type": "Buff"},
-  "7": {"name": "Magic Power", "type": "Buff"},
-  "8": {"name": "Featherfall", "type": "Buff"},
-  "9": {"name": "Spelunker", "type": "Buff"},
-  "10": {"name": "Invisibility", "type": "Buff"},
-  "11": {"name": "Shine", "type": "Buff"},
-  "12": {"name": "Night Owl", "type": "Buff"},
-  "13": {"name": "Battle", "type": "Buff"},
-  "14": {"name": "Thorns", "type": "Buff"},
-  "15": {"name": "Water Walking", "type": "Buff"},
-  "16": {"name": "Archery", "type": "Buff"},
-  "17": {"name": "Hunter", "type": "Buff"},
-  "18": {"name": "Gravitation", "type": "Buff"},
-  "19": {"name": "Shadow Orb", "type": "Buff"},
-  "20": {"name": "Poisoned", "type": "Debuff"},
-  "21": {"name": "Potion Sickness", "type": "Debuff"},
-  "22": {"name": "Darkness", "type": "Debuff"},
-  "23": {"name": "Cursed", "type": "Debuff"},
-  "24": {"name": "On Fire!", "type": "Debuff"},
-  "25": {"name": "Tipsy", "type": "Debuff"},
-  "26": {"name": "Well Fed", "type": "Buff"},
-  "27": {"name": "Fairy&#160;(Blue)", "type": "Buff"},
-  "28": {"name": "Werewolf", "type": "Buff"},
-  "29": {"name": "Clairvoyance", "type": "Buff"},
-  "30": {"name": "Bleeding", "type": "Debuff"},
-  "31": {"name": "Confused", "type": "Debuff"},
-  "32": {"name": "Slow", "type": "Debuff"},
-  "33": {"name": "Weak", "type": "Debuff"},
-  "34": {"name": "Merfolk", "type": "Buff"},
-  "35": {"name": "Silenced", "type": "Debuff"},
-  "36": {"name": "Broken Armor", "type": "Debuff"},
-  "37": {"name": "Horrified", "type": "Debuff"},
-  "38": {"name": "The Tongue", "type": "Debuff"},
-  "39": {"name": "Cursed Inferno", "type": "Debuff"},
-  "40": {"name": "Pet Bunny", "type": "Buff"},
-  "41": {"name": "Baby Penguin", "type": "Buff"},
-  "42": {"name": "Pet Turtle", "type": "Buff"},
-  "43": {"name": "Paladin's Shield", "type": "Buff"},
-  "44": {"name": "Frostburn", "type": "Debuff"},
-  "45": {"name": "Baby Eater", "type": "Buff"},
-  "46": {"name": "Chilled", "type": "Debuff"},
-  "47": {"name": "Frozen", "type": "Debuff"},
-  "48": {"name": "Honey", "type": "Buff"},
-  "49": {"name": "Pygmies", "type": "Buff"},
-  "50": {"name": "Baby Skeletron Head", "type": "Buff"},
-  "51": {"name": "Baby Hornet", "type": "Buff"},
-  "52": {"name": "Tiki Spirit", "type": "Buff"},
-  "53": {"name": "Pet Lizard", "type": "Buff"},
-  "54": {"name": "Pet Parrot", "type": "Buff"},
-  "55": {"name": "Baby Truffle", "type": "Buff"},
-  "56": {"name": "Pet Sapling", "type": "Buff"},
-  "57": {"name": "Wisp", "type": "Buff"},
-  "58": {"name": "Rapid Healing", "type": "Buff"},
-  "59": {"name": "Holy Protection", "type": "Buff"},
-  "60": {"name": "Leaf Crystal", "type": "Buff"},
-  "61": {"name": "Baby Dinosaur", "type": "Buff"},
-  "62": {"name": "Ice Barrier", "type": "Buff"},
-  "63": {"name": "Panic!", "type": "Buff"},
-  "64": {"name": "Baby Slime", "type": "Buff"},
-  "65": {"name": "Eyeball Spring", "type": "Buff"},
-  "66": {"name": "Baby Snowman", "type": "Buff"},
-  "67": {"name": "Burning", "type": "Debuff"},
-  "68": {"name": "Suffocation", "type": "Debuff"},
-  "69": {"name": "Ichor", "type": "Debuff"},
-  "70": {"name": "Acid Venom", "type": "Debuff"},
-  "71": {"name": "Weapon Imbue: Acid Venom", "type": "Buff"},
-  "72": {"name": "Midas", "type": "Debuff"},
-  "73": {"name": "Weapon Imbue: Cursed Flames", "type": "Buff"},
-  "74": {"name": "Weapon Imbue: Fire", "type": "Buff"},
-  "75": {"name": "Weapon Imbue: Gold", "type": "Buff"},
-  "76": {"name": "Weapon Imbue: Ichor", "type": "Buff"},
-  "77": {"name": "Weapon Imbue: Nanites", "type": "Buff"},
-  "78": {"name": "Weapon Imbue: Confetti", "type": "Buff"},
-  "79": {"name": "Weapon Imbue: Poison", "type": "Buff"},
-  "80": {"name": "Blackout", "type": "Debuff"},
-  "81": {"name": "Pet Spider", "type": "Buff"},
-  "82": {"name": "Squashling", "type": "Buff"},
-  "83": {"name": "Ravens", "type": "Buff"},
-  "84": {"name": "Black Cat", "type": "Buff"},
-  "85": {"name": "Cursed Sapling", "type": "Buff"},
-  "86": {"name": "Water Candle", "type": "Debuff"},
-  "87": {"name": "Cozy Fire", "type": "Buff"},
-  "88": {"name": "Chaos State", "type": "Debuff"},
-  "89": {"name": "Heart Lamp", "type": "Buff"},
-  "90": {"name": "Rudolph", "type": "Buff"},
-  "91": {"name": "Puppy", "type": "Buff"},
-  "92": {"name": "Baby Grinch", "type": "Buff"},
-  "93": {"name": "Ammo Box", "type": "Buff"},
-  "94": {"name": "Mana Sickness", "type": "Debuff"},
-  "95": {"name": "Beetle Endurance&#160;(15%)", "type": "Buff"},
-  "96": {"name": "Beetle Endurance&#160;(30%)", "type": "Buff"},
-  "97": {"name": "Beetle Endurance&#160;(45%)", "type": "Buff"},
-  "98": {"name": "Beetle Might&#160;(10%)", "type": "Buff"},
-  "99": {"name": "Beetle Might&#160;(20%)", "type": "Buff"},
-  "100": {"name": "Beetle Might&#160;(30%)", "type": "Buff"},
-  "101": {"name": "Fairy&#160;(Red)", "type": "Buff"},
-  "102": {"name": "Fairy&#160;(Green)", "type": "Buff"},
-  "103": {"name": "Wet", "type": "Debuff"},
-  "104": {"name": "Mining", "type": "Buff"},
-  "105": {"name": "Heartreach", "type": "Buff"},
-  "106": {"name": "Calm", "type": "Buff"},
-  "107": {"name": "Builder", "type": "Buff"},
-  "108": {"name": "Titan", "type": "Buff"},
-  "109": {"name": "Flipper", "type": "Buff"},
-  "110": {"name": "Summoning", "type": "Buff"},
-  "111": {"name": "Dangersense", "type": "Buff"},
-  "112": {"name": "Ammo Reservation", "type": "Buff"},
-  "113": {"name": "Lifeforce", "type": "Buff"},
-  "114": {"name": "Endurance", "type": "Buff"},
-  "115": {"name": "Rage", "type": "Buff"},
-  "116": {"name": "Inferno", "type": "Buff"},
-  "117": {"name": "Wrath", "type": "Buff"},
-  "118": {"name": "Minecart", "type": "Buff"},
-  "119": {"name": "Lovestruck", "type": "Debuff"},
-  "120": {"name": "Stinky", "type": "Debuff"},
-  "121": {"name": "Fishing", "type": "Buff"},
-  "122": {"name": "Sonar", "type": "Buff"},
-  "123": {"name": "Crate", "type": "Buff"},
-  "124": {"name": "Warmth", "type": "Buff"},
-  "125": {"name": "Hornet", "type": "Buff"},
-  "126": {"name": "Imp", "type": "Buff"},
-  "127": {"name": "Zephyr Fish", "type": "Buff"},
-  "128": {"name": "Bunny Mount", "type": "Buff"},
-  "129": {"name": "Pigron Mount", "type": "Buff"},
-  "130": {"name": "Slime Mount", "type": "Buff"},
-  "131": {"name": "Turtle Mount", "type": "Buff"},
-  "132": {"name": "Bee Mount", "type": "Buff"},
-  "133": {"name": "Spider", "type": "Buff"},
-  "134": {"name": "Twins", "type": "Buff"},
-  "135": {"name": "Pirate", "type": "Buff"},
-  "136": {"name": "Faun", "type": "Buff"},
-  "137": {"name": "Slime", "type": "Debuff"},
-  "138": {"name": "", "type": "Buff"},
-  "139": {"name": "Sharknado", "type": "Buff"},
-  "140": {"name": "UFO", "type": "Buff"},
-  "141": {"name": "UFO Mount", "type": "Buff"},
-  "142": {"name": "Drill Mount", "type": "Buff"},
-  "143": {"name": "Scutlix Mount", "type": "Buff"},
-  "144": {"name": "Electrified", "type": "Debuff"},
-  "145": {"name": "Moon Bite", "type": "Debuff"},
-  "146": {"name": "Happy!", "type": "Buff"},
-  "147": {"name": "Banner", "type": "Buff"},
-  "148": {"name": "Feral Bite", "type": "Debuff"},
-  "149": {"name": "Webbed", "type": "Debuff"},
-  "150": {"name": "Bewitched", "type": "Buff"},
-  "151": {"name": "Life Drain", "type": "Buff"},
-  "152": {"name": "Magic Lantern", "type": "Buff"},
-  "153": {"name": "Shadowflame", "type": "Debuff"},
-  "154": {"name": "Baby Face Monster", "type": "Buff"},
-  "155": {"name": "Crimson Heart", "type": "Buff"},
-  "156": {"name": "Stoned", "type": "Debuff"},
-  "157": {"name": "Peace Candle", "type": "Buff"},
-  "158": {"name": "Star in a Bottle", "type": "Buff"},
-  "159": {"name": "Sharpened", "type": "Buff"},
-  "160": {"name": "Dazed", "type": "Debuff"},
-  "161": {"name": "Deadly Sphere", "type": "Buff"},
-  "162": {"name": "Unicorn Mount", "type": "Buff"},
-  "163": {"name": "Obstructed", "type": "Debuff"},
-  "164": {"name": "Distorted", "type": "Debuff"},
-  "165": {"name": "Dryad's Blessing", "type": "Buff"},
-  "166": {"name": "Minecart&#160;(Mechanical)", "type": "Buff"},
-  "167": {"name": "", "type": "Buff"},
-  "168": {"name": "Cute Fishron Mount", "type": "Buff"},
-  "169": {"name": "Penetrated", "type": "Debuff"},
-  "170": {"name": "Solar Blaze&#160;(1 stack)", "type": "Buff"},
-  "171": {"name": "Solar Blaze&#160;(2 stacks)", "type": "Buff"},
-  "172": {"name": "Solar Blaze&#160;(3 stacks)", "type": "Buff"},
-  "173": {"name": "Life Nebula&#160;(1 stack)", "type": "Buff"},
-  "174": {"name": "Life Nebula&#160;(2 stacks)", "type": "Buff"},
-  "175": {"name": "Life Nebula&#160;(3 stacks)", "type": "Buff"},
-  "176": {"name": "Mana Nebula&#160;(1 stack)", "type": "Buff"},
-  "177": {"name": "Mana Nebula&#160;(2 stacks)", "type": "Buff"},
-  "178": {"name": "Mana Nebula&#160;(3 stacks)", "type": "Buff"},
-  "179": {"name": "Damage Nebula&#160;(1 stack)", "type": "Buff"},
-  "180": {"name": "Damage Nebula&#160;(2 stacks)", "type": "Buff"},
-  "181": {"name": "Damage Nebula&#160;(3 stacks)", "type": "Buff"},
-  "182": {"name": "Stardust Cell&#160;(Stardust Minion)", "type": "Buff"},
-  "183": {"name": "Celled", "type": "Debuff"},
-  "184": {"name": "Minecart&#160;(Wooden)", "type": "Buff"},
-  "185": {"name": "", "type": "Buff"},
-  "186": {"name": "Dryad's Bane", "type": "Debuff"},
-  "187": {"name": "Stardust Guardian", "type": "Buff"},
-  "188": {"name": "Stardust Dragon", "type": "Buff"},
-  "189": {"name": "Daybroken", "type": "Debuff"},
-  "190": {"name": "Suspicious Looking Eye", "type": "Buff"},
-  "191": {"name": "Companion Cube", "type": "Buff"},
-  "192": {"name": "Sugar Rush", "type": "Buff"},
-  "193": {"name": "Basilisk Mount", "type": "Buff"},
-  "194": {"name": "Mighty Wind", "type": "Debuff"},
-  "195": {"name": "Withered Armor", "type": "Debuff"},
-  "196": {"name": "Withered Weapon", "type": "Debuff"},
-  "197": {"name": "Oozed", "type": "Debuff"},
-  "198": {"name": "Striking Moment", "type": "Buff"},
-  "199": {"name": "Creative Shock", "type": "Debuff"},
-  "200": {"name": "Propeller Gato", "type": "Buff"},
-  "201": {"name": "Flickerwick", "type": "Buff"},
-  "202": {"name": "Hoardagron", "type": "Buff"},
-  "203": {"name": "Betsy's Curse", "type": "Debuff"},
-  "204": {"name": "Oiled", "type": "Debuff"},
-  "205": {"name": "Ballista Panic!", "type": "Buff"},
-  "206": {"name": "Plenty Satisfied", "type": "Buff"},
-  "207": {"name": "Exquisitely Stuffed", "type": "Buff"},
-  "208": {"name": "Minecart&#160;(Desert)", "type": "Buff"},
-  "209": {"name": "", "type": "Buff"},
-  "210": {"name": "Minecart&#160;(Minecarp)", "type": "Buff"},
-  "211": {"name": "", "type": "Buff"},
-  "212": {"name": "Golf Cart", "type": "Buff"},
-  "213": {"name": "Sanguine Bat", "type": "Buff"},
-  "214": {"name": "Vampire Frog", "type": "Buff"},
-  "215": {"name": "The Bast Defense", "type": "Buff"},
-  "216": {"name": "Baby Finch", "type": "Buff"},
-  "217": {"name": "Estee", "type": "Buff"},
-  "218": {"name": "Sugar Glider", "type": "Buff"},
-  "219": {"name": "Shark Pup", "type": "Buff"},
-  "220": {"name": "Minecart&#160;(Bee)", "type": "Buff"},
-  "221": {"name": "", "type": "Buff"},
-  "222": {"name": "Minecart&#160;(Ladybug)", "type": "Buff"},
-  "223": {"name": "", "type": "Buff"},
-  "224": {"name": "Minecart&#160;(Pigron)", "type": "Buff"},
-  "225": {"name": "", "type": "Buff"},
-  "226": {"name": "Minecart&#160;(Sunflower)", "type": "Buff"},
-  "227": {"name": "", "type": "Buff"},
-  "228": {"name": "Minecart&#160;(Demonic Hellcart)", "type": "Buff"},
-  "229": {"name": "", "type": "Buff"},
-  "230": {"name": "Witch's Broom", "type": "Buff"},
-  "231": {"name": "Minecart&#160;(Shroom)", "type": "Buff"},
-  "232": {"name": "", "type": "Buff"},
-  "233": {"name": "Minecart&#160;(Amethyst)", "type": "Buff"},
-  "234": {"name": "", "type": "Buff"},
-  "235": {"name": "Minecart&#160;(Topaz)", "type": "Buff"},
-  "236": {"name": "", "type": "Buff"},
-  "237": {"name": "Minecart&#160;(Sapphire)", "type": "Buff"},
-  "238": {"name": "", "type": "Buff"},
-  "239": {"name": "Minecart&#160;(Emerald)", "type": "Buff"},
-  "240": {"name": "", "type": "Buff"},
-  "241": {"name": "Minecart&#160;(Ruby)", "type": "Buff"},
-  "242": {"name": "", "type": "Buff"},
-  "243": {"name": "Minecart&#160;(Diamond)", "type": "Buff"},
-  "244": {"name": "", "type": "Buff"},
-  "245": {"name": "Minecart&#160;(Amber)", "type": "Buff"},
-  "246": {"name": "", "type": "Buff"},
-  "247": {"name": "Minecart&#160;(Beetle)", "type": "Buff"},
-  "248": {"name": "", "type": "Buff"},
-  "249": {"name": "Minecart&#160;(Meowmere)", "type": "Buff"},
-  "250": {"name": "", "type": "Buff"},
-  "251": {"name": "Minecart&#160;(Party)", "type": "Buff"},
-  "252": {"name": "", "type": "Buff"},
-  "253": {"name": "Minecart&#160;(The Dutchman)", "type": "Buff"},
-  "254": {"name": "", "type": "Buff"},
-  "255": {"name": "Minecart&#160;(Steampunk)", "type": "Buff"},
-  "256": {"name": "", "type": "Buff"},
-  "257": {"name": "Lucky", "type": "Buff"},
-  "258": {"name": "Lil' Harpy", "type": "Buff"},
-  "259": {"name": "Fennec Fox", "type": "Buff"},
-  "260": {"name": "Glittery Butterfly", "type": "Buff"},
-  "261": {"name": "Baby Imp", "type": "Buff"},
-  "262": {"name": "Baby Red Panda", "type": "Buff"},
-  "263": {"name": "Desert Tiger", "type": "Buff"},
-  "264": {"name": "Plantero", "type": "Buff"},
-  "265": {"name": "Flamingo", "type": "Buff"},
-  "266": {"name": "Dynamite Kitten", "type": "Buff"},
-  "267": {"name": "Baby Werewolf", "type": "Buff"},
-  "268": {"name": "Shadow Mimic", "type": "Buff"},
-  "269": {"name": "Minecart&#160;(Coffin)", "type": "Buff"},
-  "270": {"name": "", "type": "Buff"},
-  "271": {"name": "Enchanted Daggers", "type": "Buff"},
-  "272": {"name": "Digging Molecart", "type": "Buff"},
-  "273": {"name": "", "type": "Buff"},
-  "274": {"name": "Volt Bunny", "type": "Buff"},
-  "275": {"name": "Painted Horse Mount", "type": "Buff"},
-  "276": {"name": "Majestic Horse Mount", "type": "Buff"},
-  "277": {"name": "Dark Horse Mount", "type": "Buff"},
-  "278": {"name": "Pogo Stick Mount", "type": "Buff"},
-  "279": {"name": "Pirate Ship Mount", "type": "Buff"},
-  "280": {"name": "Tree Mount", "type": "Buff"},
-  "281": {"name": "Santank Mount", "type": "Buff"},
-  "282": {"name": "Goat Mount", "type": "Buff"},
-  "283": {"name": "Book Mount", "type": "Buff"},
-  "284": {"name": "Slime Prince", "type": "Buff"},
-  "285": {"name": "Suspicious Eye", "type": "Buff"},
-  "286": {"name": "Eater of Worms", "type": "Buff"},
-  "287": {"name": "Spider Brain", "type": "Buff"},
-  "288": {"name": "Skeletron Jr.", "type": "Buff"},
-  "289": {"name": "Honey Bee", "type": "Buff"},
-  "290": {"name": "Destroyer-Lite", "type": "Buff"},
-  "291": {"name": "Rez and Spaz", "type": "Buff"},
-  "292": {"name": "Mini Prime", "type": "Buff"},
-  "293": {"name": "Plantera Seedling", "type": "Buff"},
-  "294": {"name": "Toy Golem", "type": "Buff"},
-  "295": {"name": "Tiny Fishron", "type": "Buff"},
-  "296": {"name": "Phantasmal Dragon", "type": "Buff"},
-  "297": {"name": "Moonling", "type": "Buff"},
-  "298": {"name": "Fairy Princess", "type": "Buff"},
-  "299": {"name": "Jack 'O Lantern", "type": "Buff"},
-  "300": {"name": "Everscream Sapling", "type": "Buff"},
-  "301": {"name": "Ice Queen", "type": "Buff"},
-  "302": {"name": "Alien Skater", "type": "Buff"},
-  "303": {"name": "Baby Ogre", "type": "Buff"},
-  "304": {"name": "Itsy Betsy", "type": "Buff"},
-  "305": {"name": "Lava Shark Mount", "type": "Buff"},
-  "306": {"name": "Titanium Barrier", "type": "Buff"},
-  "307": {"name": "", "type": "Debuff"},
-  "308": {"name": "Durendal's Blessing", "type": "Buff"},
-  "309": {"name": "", "type": "Debuff"},
-  "310": {"name": "", "type": "Debuff"},
-  "311": {"name": "Harvest Time", "type": "Buff"},
-  "312": {"name": "A Nice Buff", "type": "Buff"},
-  "313": {"name": "", "type": "Debuff"},
-  "314": {"name": "Jungle's Fury", "type": "Buff"},
-  "315": {"name": "", "type": "Debuff"},
-  "316": {"name": "", "type": "Debuff"},
-  "317": {"name": "Slime Princess", "type": "Buff"},
-  "318": {"name": "Winged Slime Mount", "type": "Buff"},
-  "319": {"name": "", "type": "Debuff"},
-  "320": {"name": "Sparkle Slime", "type": "Debuff"},
-  "321": {"name": "Cerebral Mindtrick", "type": "Debuff"},
-  "322": {"name": "Terraprisma", "type": "Buff"},
-  "323": {"name": "Hellfire", "type": "Debuff"},
-  "324": {"name": "Frostbite", "type": "Debuff"},
-  "325": {"name": "Flinx", "type": "Buff"},
-  "326": {"name": "", "type": "Debuff"},
-  "327": {"name": "Bernie", "type": "Buff"},
-  "328": {"name": "Glommer", "type": "Buff"},
-  "329": {"name": "Tiny Deerclops", "type": "Buff"},
-  "330": {"name": "Pig", "type": "Buff"},
-  "331": {"name": "Chester", "type": "Buff"},
-  "332": {"name": "Peckish", "type": "Debuff"},
-  "333": {"name": "Hungry", "type": "Debuff"},
-  "334": {"name": "Starving", "type": "Debuff"},
-  "335": {"name": "Abigail", "type": "Buff"},
-  "336": {"name": "Hearty Meal", "type": "Buff"},
-  "337": {"name": "", "type": "Debuff"},
-  "338": {"name": "Fart Kart", "type": "Buff"},
-  "339": {"name": "", "type": "Buff"},
-  "340": {"name": "", "type": "Buff"},
-  "341": {"name": "Slime Royals", "type": "Buff"},
-  "342": {"name": "Blessing of the Moon", "type": "Buff"},
-  "343": {"name": "Biome Sight", "type": "Buff"},
-  "344": {"name": "Blood Butchered", "type": "Debuff"},
-  "345": {"name": "Junimo", "type": "Buff"},
-  "346": {"name": "Terra Fart Kart", "type": "Buff"},
-  "347": {"name": "", "type": "Buff"},
-  "348": {"name": "Strategist", "type": "Buff"},
-  "349": {"name": "Blue Chicken", "type": "Buff"},
-  "350": {"name": "Shadow Candle", "type": "Debuff"},
-  "351": {"name": "Spiffo", "type": "Buff"},
-  "352": {"name": "Caveling Gardener", "type": "Buff"},
-  "353": {"name": "Shimmering", "type": "Debuff"},
-  "354": {"name": "The Dirtiest Block", "type": "Buff"},
-  "355": {"name": "Mushroom Boi!", "type": "Buff"},
-  "356": {"name": "Swarm Biter", "type": "Buff"},
-  "357": {"name": "", "type": "Debuff"},
-  "358": {"name": "", "type": "Debuff"},
-  "359": {"name": "", "type": "Debuff"},
-  "360": {"name": "", "type": "Debuff"},
-  "361": {"name": "", "type": "Debuff"},
-  "362": {"name": "", "type": "Debuff"},
-  "363": {"name": "", "type": "Debuff"},
-  "364": {"name": "", "type": "Debuff"},
-  "365": {"name": "Whip Spider", "type": "Buff"},
-  "366": {"name": "Alchemic Enhancement", "type": "Buff"},
-  "367": {"name": "", "type": "Debuff"},
-  "368": {"name": "", "type": "Debuff"},
-  "369": {"name": "", "type": "Debuff"},
-  "370": {"name": "Instinct of the Raptor", "type": "Buff"},
-  "371": {"name": "Pufferfish", "type": "Buff"},
-  "372": {"name": "Cenaxe", "type": "Buff"},
-  "373": {"name": "Friendly Boulder", "type": "Buff"},
-  "374": {"name": "Nature of the Rat", "type": "Buff"},
-  "375": {"name": "Hemorrhage", "type": "Debuff"},
-  "376": {"name": "Torch Blessing", "type": "Buff"},
-  "377": {"name": "Curse of the Bat", "type": "Buff"},
-  "378": {"name": "Blue Roller Skates", "type": "Buff"},
-  "379": {"name": "Green Roller Skates", "type": "Buff"},
-  "380": {"name": "Classic Roller Skates", "type": "Buff"},
-  "381": {"name": "Party Roller Skates", "type": "Buff"},
-  "382": {"name": "Friendly Rainbow Boulder", "type": "Buff"},
-  "383": {"name": "High Spirits", "type": "Buff"},
-  "384": {"name": "Form of the Fae", "type": "Buff"},
-  "385": {"name": "Cattiva", "type": "Buff"},
-  "386": {"name": "Foxparks", "type": "Buff"},
-  "387": {"name": "Chillet", "type": "Buff"},
-  "388": {"name": "Chillet Ignis", "type": "Buff"}
+  "0": {
+    "name": "",
+    "internal": "",
+    "type": "Buff"
+  },
+  "1": {
+    "name": "Obsidian Skin",
+    "internal": "ObsidianSkin",
+    "type": "Buff"
+  },
+  "2": {
+    "name": "Regeneration",
+    "internal": "Regeneration",
+    "type": "Buff"
+  },
+  "3": {
+    "name": "Swiftness",
+    "internal": "Swiftness",
+    "type": "Buff"
+  },
+  "4": {
+    "name": "Gills",
+    "internal": "Gills",
+    "type": "Buff"
+  },
+  "5": {
+    "name": "Ironskin",
+    "internal": "Ironskin",
+    "type": "Buff"
+  },
+  "6": {
+    "name": "Mana Regeneration",
+    "internal": "ManaRegeneration",
+    "type": "Buff"
+  },
+  "7": {
+    "name": "Magic Power",
+    "internal": "MagicPower",
+    "type": "Buff"
+  },
+  "8": {
+    "name": "Featherfall",
+    "internal": "Featherfall",
+    "type": "Buff"
+  },
+  "9": {
+    "name": "Spelunker",
+    "internal": "Spelunker",
+    "type": "Buff"
+  },
+  "10": {
+    "name": "Invisibility",
+    "internal": "Invisibility",
+    "type": "Buff"
+  },
+  "11": {
+    "name": "Shine",
+    "internal": "Shine",
+    "type": "Buff"
+  },
+  "12": {
+    "name": "Night Owl",
+    "internal": "NightOwl",
+    "type": "Buff"
+  },
+  "13": {
+    "name": "Battle",
+    "internal": "Battle",
+    "type": "Buff"
+  },
+  "14": {
+    "name": "Thorns",
+    "internal": "Thorns",
+    "type": "Buff"
+  },
+  "15": {
+    "name": "Water Walking",
+    "internal": "WaterWalking",
+    "type": "Buff"
+  },
+  "16": {
+    "name": "Archery",
+    "internal": "Archery",
+    "type": "Buff"
+  },
+  "17": {
+    "name": "Hunter",
+    "internal": "Hunter",
+    "type": "Buff"
+  },
+  "18": {
+    "name": "Gravitation",
+    "internal": "Gravitation",
+    "type": "Buff"
+  },
+  "19": {
+    "name": "Shadow Orb \"Shadow Orb (item)\"",
+    "internal": "ShadowOrb",
+    "type": "Buff"
+  },
+  "20": {
+    "name": "Poisoned",
+    "internal": "Poisoned",
+    "type": "Debuff"
+  },
+  "21": {
+    "name": "Potion Sickness",
+    "internal": "PotionSickness",
+    "type": "Debuff"
+  },
+  "22": {
+    "name": "Darkness",
+    "internal": "Darkness",
+    "type": "Debuff"
+  },
+  "23": {
+    "name": "Cursed",
+    "internal": "Cursed",
+    "type": "Debuff"
+  },
+  "24": {
+    "name": "On Fire!",
+    "internal": "OnFire",
+    "type": "Debuff"
+  },
+  "25": {
+    "name": "Tipsy",
+    "internal": "Tipsy",
+    "type": "Debuff"
+  },
+  "26": {
+    "name": "Well Fed",
+    "internal": "WellFed",
+    "type": "Buff"
+  },
+  "27": {
+    "name": "Fairy (Blue)",
+    "internal": "FairyBlue",
+    "type": "Buff"
+  },
+  "28": {
+    "name": "Werewolf",
+    "internal": "Werewolf",
+    "type": "Buff"
+  },
+  "29": {
+    "name": "Clairvoyance",
+    "internal": "Clairvoyance",
+    "type": "Buff"
+  },
+  "30": {
+    "name": "Bleeding",
+    "internal": "Bleeding",
+    "type": "Debuff"
+  },
+  "31": {
+    "name": "Confused",
+    "internal": "Confused",
+    "type": "Debuff"
+  },
+  "32": {
+    "name": "Slow",
+    "internal": "Slow",
+    "type": "Debuff"
+  },
+  "33": {
+    "name": "Weak",
+    "internal": "Weak",
+    "type": "Debuff"
+  },
+  "34": {
+    "name": "Merfolk",
+    "internal": "Merfolk",
+    "type": "Buff"
+  },
+  "35": {
+    "name": "Silenced",
+    "internal": "Silenced",
+    "type": "Debuff"
+  },
+  "36": {
+    "name": "Broken Armor",
+    "internal": "BrokenArmor",
+    "type": "Debuff"
+  },
+  "37": {
+    "name": "Horrified",
+    "internal": "Horrified",
+    "type": "Debuff"
+  },
+  "38": {
+    "name": "The Tongue",
+    "internal": "TheTongue",
+    "type": "Debuff"
+  },
+  "39": {
+    "name": "Cursed Inferno",
+    "internal": "CursedInferno",
+    "type": "Debuff"
+  },
+  "40": {
+    "name": "Pet Bunny",
+    "internal": "PetBunny",
+    "type": "Buff"
+  },
+  "41": {
+    "name": "Baby Penguin \"Fish (item)\"",
+    "internal": "BabyPenguin",
+    "type": "Buff"
+  },
+  "42": {
+    "name": "Pet Turtle",
+    "internal": "PetTurtle",
+    "type": "Buff"
+  },
+  "43": {
+    "name": "Paladin's Shield",
+    "internal": "PaladinsShield",
+    "type": "Buff"
+  },
+  "44": {
+    "name": "Frostburn",
+    "internal": "Frostburn",
+    "type": "Debuff"
+  },
+  "45": {
+    "name": "Baby Eater",
+    "internal": "BabyEater",
+    "type": "Buff"
+  },
+  "46": {
+    "name": "Chilled",
+    "internal": "Chilled",
+    "type": "Debuff"
+  },
+  "47": {
+    "name": "Frozen",
+    "internal": "Frozen",
+    "type": "Debuff"
+  },
+  "48": {
+    "name": "Honey \"Honey (buff)\"",
+    "internal": "Honey",
+    "type": "Buff"
+  },
+  "49": {
+    "name": "Pygmies",
+    "internal": "Pygmies",
+    "type": "Buff"
+  },
+  "50": {
+    "name": "Baby Skeletron Head",
+    "internal": "BabySkeletronHead",
+    "type": "Buff"
+  },
+  "51": {
+    "name": "Baby Hornet",
+    "internal": "BabyHornet",
+    "type": "Buff"
+  },
+  "52": {
+    "name": "Tiki Spirit",
+    "internal": "TikiSpirit",
+    "type": "Buff"
+  },
+  "53": {
+    "name": "Pet Lizard",
+    "internal": "PetLizard",
+    "type": "Buff"
+  },
+  "54": {
+    "name": "Pet Parrot",
+    "internal": "PetParrot",
+    "type": "Buff"
+  },
+  "55": {
+    "name": "Baby Truffle",
+    "internal": "BabyTruffle",
+    "type": "Buff"
+  },
+  "56": {
+    "name": "Pet Sapling",
+    "internal": "PetSapling",
+    "type": "Buff"
+  },
+  "57": {
+    "name": "Wisp",
+    "internal": "Wisp",
+    "type": "Buff"
+  },
+  "58": {
+    "name": "Rapid Healing",
+    "internal": "RapidHealing",
+    "type": "Buff"
+  },
+  "59": {
+    "name": "Holy Protection",
+    "internal": "ShadowDodge",
+    "type": "Buff"
+  },
+  "60": {
+    "name": "Leaf Crystal",
+    "internal": "LeafCrystal",
+    "type": "Buff"
+  },
+  "61": {
+    "name": "Baby Dinosaur",
+    "internal": "BabyDinosaur",
+    "type": "Buff"
+  },
+  "62": {
+    "name": "Ice Barrier",
+    "internal": "IceBarrier",
+    "type": "Buff"
+  },
+  "63": {
+    "name": "Panic!",
+    "internal": "Panic",
+    "type": "Buff"
+  },
+  "64": {
+    "name": "Baby Slime",
+    "internal": "BabySlime",
+    "type": "Buff"
+  },
+  "65": {
+    "name": "Eyeball Spring",
+    "internal": "EyeballSpring",
+    "type": "Buff"
+  },
+  "66": {
+    "name": "Baby Snowman",
+    "internal": "BabySnowman",
+    "type": "Buff"
+  },
+  "67": {
+    "name": "Burning",
+    "internal": "Burning",
+    "type": "Debuff"
+  },
+  "68": {
+    "name": "Suffocation",
+    "internal": "Suffocation",
+    "type": "Debuff"
+  },
+  "69": {
+    "name": "Ichor \"Ichor (debuff)\"",
+    "internal": "Ichor",
+    "type": "Debuff"
+  },
+  "70": {
+    "name": "Acid Venom",
+    "internal": "Venom",
+    "type": "Debuff"
+  },
+  "71": {
+    "name": "Weapon Imbue: Acid Venom",
+    "internal": "WeaponImbueVenom",
+    "type": "Buff"
+  },
+  "72": {
+    "name": "Midas",
+    "internal": "Midas",
+    "type": "Debuff"
+  },
+  "73": {
+    "name": "Weapon Imbue: Cursed Flames",
+    "internal": "WeaponImbueCursedFlames",
+    "type": "Buff"
+  },
+  "74": {
+    "name": "Weapon Imbue: Fire",
+    "internal": "WeaponImbueFire",
+    "type": "Buff"
+  },
+  "75": {
+    "name": "Weapon Imbue: Gold",
+    "internal": "WeaponImbueGold",
+    "type": "Buff"
+  },
+  "76": {
+    "name": "Weapon Imbue: Ichor",
+    "internal": "WeaponImbueIchor",
+    "type": "Buff"
+  },
+  "77": {
+    "name": "Weapon Imbue: Nanites",
+    "internal": "WeaponImbueNanites",
+    "type": "Buff"
+  },
+  "78": {
+    "name": "Weapon Imbue: Confetti",
+    "internal": "WeaponImbueConfetti",
+    "type": "Buff"
+  },
+  "79": {
+    "name": "Weapon Imbue: Poison",
+    "internal": "WeaponImbuePoison",
+    "type": "Buff"
+  },
+  "80": {
+    "name": "Blackout",
+    "internal": "Blackout",
+    "type": "Debuff"
+  },
+  "81": {
+    "name": "Pet Spider",
+    "internal": "PetSpider",
+    "type": "Buff"
+  },
+  "82": {
+    "name": "Squashling",
+    "internal": "Squashling",
+    "type": "Buff"
+  },
+  "83": {
+    "name": "Ravens",
+    "internal": "Ravens",
+    "type": "Buff"
+  },
+  "84": {
+    "name": "Black Cat",
+    "internal": "BlackCat",
+    "type": "Buff"
+  },
+  "85": {
+    "name": "Cursed Sapling",
+    "internal": "CursedSapling",
+    "type": "Buff"
+  },
+  "86": {
+    "name": "Water Candle",
+    "internal": "WaterCandle",
+    "type": "Debuff"
+  },
+  "87": {
+    "name": "Cozy Fire",
+    "internal": "Campfire",
+    "type": "Buff"
+  },
+  "88": {
+    "name": "Chaos State",
+    "internal": "ChaosState",
+    "type": "Debuff"
+  },
+  "89": {
+    "name": "Heart Lamp",
+    "internal": "HeartLamp",
+    "type": "Buff"
+  },
+  "90": {
+    "name": "Rudolph",
+    "internal": "Rudolph",
+    "type": "Buff"
+  },
+  "91": {
+    "name": "Puppy",
+    "internal": "Puppy",
+    "type": "Buff"
+  },
+  "92": {
+    "name": "Baby Grinch",
+    "internal": "BabyGrinch",
+    "type": "Buff"
+  },
+  "93": {
+    "name": "Ammo Box",
+    "internal": "AmmoBox",
+    "type": "Buff"
+  },
+  "94": {
+    "name": "Mana Sickness",
+    "internal": "ManaSickness",
+    "type": "Debuff"
+  },
+  "95": {
+    "name": "Beetle Endurance (15%)",
+    "internal": "BeetleEndurance1",
+    "type": "Buff"
+  },
+  "96": {
+    "name": "Beetle Endurance (30%)",
+    "internal": "BeetleEndurance2",
+    "type": "Buff"
+  },
+  "97": {
+    "name": "Beetle Endurance (45%)",
+    "internal": "BeetleEndurance3",
+    "type": "Buff"
+  },
+  "98": {
+    "name": "Beetle Might (10%)",
+    "internal": "BeetleMight1",
+    "type": "Buff"
+  },
+  "99": {
+    "name": "Beetle Might (20%)",
+    "internal": "BeetleMight2",
+    "type": "Buff"
+  },
+  "100": {
+    "name": "Beetle Might (30%)",
+    "internal": "BeetleMight3",
+    "type": "Buff"
+  },
+  "101": {
+    "name": "Fairy (Red)",
+    "internal": "FairyRed",
+    "type": "Buff"
+  },
+  "102": {
+    "name": "Fairy (Green)",
+    "internal": "FairyGreen",
+    "type": "Buff"
+  },
+  "103": {
+    "name": "Wet",
+    "internal": "Wet",
+    "type": "Debuff"
+  },
+  "104": {
+    "name": "Mining",
+    "internal": "Mining",
+    "type": "Buff"
+  },
+  "105": {
+    "name": "Heartreach",
+    "internal": "Heartreach",
+    "type": "Buff"
+  },
+  "106": {
+    "name": "Calm",
+    "internal": "Calm",
+    "type": "Buff"
+  },
+  "107": {
+    "name": "Builder",
+    "internal": "Builder",
+    "type": "Buff"
+  },
+  "108": {
+    "name": "Titan",
+    "internal": "Titan",
+    "type": "Buff"
+  },
+  "109": {
+    "name": "Flipper",
+    "internal": "Flipper",
+    "type": "Buff"
+  },
+  "110": {
+    "name": "Summoning",
+    "internal": "Summoning",
+    "type": "Buff"
+  },
+  "111": {
+    "name": "Dangersense",
+    "internal": "Dangersense",
+    "type": "Buff"
+  },
+  "112": {
+    "name": "Ammo Reservation",
+    "internal": "AmmoReservation",
+    "type": "Buff"
+  },
+  "113": {
+    "name": "Lifeforce",
+    "internal": "Lifeforce",
+    "type": "Buff"
+  },
+  "114": {
+    "name": "Endurance",
+    "internal": "Endurance",
+    "type": "Buff"
+  },
+  "115": {
+    "name": "Rage",
+    "internal": "Rage",
+    "type": "Buff"
+  },
+  "116": {
+    "name": "Inferno",
+    "internal": "Inferno",
+    "type": "Buff"
+  },
+  "117": {
+    "name": "Wrath",
+    "internal": "Wrath",
+    "type": "Buff"
+  },
+  "118": {
+    "name": "Minecart",
+    "internal": "Minecart",
+    "type": "Buff"
+  },
+  "119": {
+    "name": "Lovestruck",
+    "internal": "Lovestruck",
+    "type": "Debuff"
+  },
+  "120": {
+    "name": "Stinky",
+    "internal": "Stinky",
+    "type": "Debuff"
+  },
+  "121": {
+    "name": "Fishing",
+    "internal": "Fishing",
+    "type": "Buff"
+  },
+  "122": {
+    "name": "Sonar",
+    "internal": "Sonar",
+    "type": "Buff"
+  },
+  "123": {
+    "name": "Crate",
+    "internal": "Crate",
+    "type": "Buff"
+  },
+  "124": {
+    "name": "Warmth",
+    "internal": "Warmth",
+    "type": "Buff"
+  },
+  "125": {
+    "name": "Hornet",
+    "internal": "HornetMinion",
+    "type": "Buff"
+  },
+  "126": {
+    "name": "Imp",
+    "internal": "ImpMinion",
+    "type": "Buff"
+  },
+  "127": {
+    "name": "Zephyr Fish",
+    "internal": "ZephyrFish",
+    "type": "Buff"
+  },
+  "128": {
+    "name": "Bunny Mount",
+    "internal": "BunnyMount",
+    "type": "Buff"
+  },
+  "129": {
+    "name": "Pigron Mount",
+    "internal": "PigronMount",
+    "type": "Buff"
+  },
+  "130": {
+    "name": "Slime Mount",
+    "internal": "SlimeMount",
+    "type": "Buff"
+  },
+  "131": {
+    "name": "Turtle Mount",
+    "internal": "TurtleMount",
+    "type": "Buff"
+  },
+  "132": {
+    "name": "Bee Mount",
+    "internal": "BeeMount",
+    "type": "Buff"
+  },
+  "133": {
+    "name": "Spider",
+    "internal": "SpiderMinion",
+    "type": "Buff"
+  },
+  "134": {
+    "name": "Twins",
+    "internal": "TwinEyesMinion",
+    "type": "Buff"
+  },
+  "135": {
+    "name": "Pirate",
+    "internal": "PirateMinion",
+    "type": "Buff"
+  },
+  "136": {
+    "name": "Faun",
+    "internal": "MiniMinotaur",
+    "type": "Buff"
+  },
+  "137": {
+    "name": "Slime \"Slime (debuff)\"",
+    "internal": "Slimed",
+    "type": "Debuff"
+  },
+  "138": {
+    "name": "",
+    "internal": "MinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "139": {
+    "name": "Sharknado",
+    "internal": "SharknadoMinion",
+    "type": "Buff"
+  },
+  "140": {
+    "name": "UFO",
+    "internal": "UFOMinion",
+    "type": "Buff"
+  },
+  "141": {
+    "name": "UFO Mount",
+    "internal": "UFOMount",
+    "type": "Buff"
+  },
+  "142": {
+    "name": "Drill Mount",
+    "internal": "DrillMount",
+    "type": "Buff"
+  },
+  "143": {
+    "name": "Scutlix Mount \"Brain Scrambler (item)\"",
+    "internal": "ScutlixMount",
+    "type": "Buff"
+  },
+  "144": {
+    "name": "Electrified",
+    "internal": "Electrified",
+    "type": "Debuff"
+  },
+  "145": {
+    "name": "Moon Bite",
+    "internal": "MoonLeech",
+    "type": "Debuff"
+  },
+  "146": {
+    "name": "Happy!",
+    "internal": "Sunflower",
+    "type": "Buff"
+  },
+  "147": {
+    "name": "Banner \"Banners (enemy)\"",
+    "internal": "MonsterBanner",
+    "type": "Buff"
+  },
+  "148": {
+    "name": "Feral Bite",
+    "internal": "Rabies",
+    "type": "Debuff"
+  },
+  "149": {
+    "name": "Webbed",
+    "internal": "Webbed",
+    "type": "Debuff"
+  },
+  "150": {
+    "name": "Bewitched",
+    "internal": "Bewitched",
+    "type": "Buff"
+  },
+  "151": {
+    "name": "Life Drain",
+    "internal": "SoulDrain",
+    "type": "Buff"
+  },
+  "152": {
+    "name": "Magic Lantern",
+    "internal": "MagicLantern",
+    "type": "Buff"
+  },
+  "153": {
+    "name": "Shadowflame",
+    "internal": "ShadowFlame",
+    "type": "Debuff"
+  },
+  "154": {
+    "name": "Baby Face Monster",
+    "internal": "BabyFaceMonster",
+    "type": "Buff"
+  },
+  "155": {
+    "name": "Crimson Heart \"Crimson Heart (item)\"",
+    "internal": "CrimsonHeart",
+    "type": "Buff"
+  },
+  "156": {
+    "name": "Stoned",
+    "internal": "Stoned",
+    "type": "Debuff"
+  },
+  "157": {
+    "name": "Peace Candle",
+    "internal": "PeaceCandle",
+    "type": "Buff"
+  },
+  "158": {
+    "name": "Star in a Bottle",
+    "internal": "StarInBottle",
+    "type": "Buff"
+  },
+  "159": {
+    "name": "Sharpened",
+    "internal": "Sharpened",
+    "type": "Buff"
+  },
+  "160": {
+    "name": "Dazed",
+    "internal": "Dazed",
+    "type": "Debuff"
+  },
+  "161": {
+    "name": "Deadly Sphere",
+    "internal": "DeadlySphere",
+    "type": "Buff"
+  },
+  "162": {
+    "name": "Unicorn Mount",
+    "internal": "UnicornMount",
+    "type": "Buff"
+  },
+  "163": {
+    "name": "Obstructed",
+    "internal": "Obstructed",
+    "type": "Debuff"
+  },
+  "164": {
+    "name": "Distorted",
+    "internal": "VortexDebuff",
+    "type": "Debuff"
+  },
+  "165": {
+    "name": "Dryad's Blessing",
+    "internal": "DryadsWard",
+    "type": "Buff"
+  },
+  "166": {
+    "name": "Minecart (Mechanical)",
+    "internal": "MinecartMech",
+    "type": "Buff"
+  },
+  "167": {
+    "name": "",
+    "internal": "MinecartMechLegacyUnused",
+    "type": "Buff"
+  },
+  "168": {
+    "name": "Cute Fishron Mount",
+    "internal": "CuteFishronMount",
+    "type": "Buff"
+  },
+  "169": {
+    "name": "Penetrated",
+    "internal": "BoneJavelin",
+    "type": "Debuff"
+  },
+  "170": {
+    "name": "Solar Blaze (1 stack)",
+    "internal": "SolarShield1",
+    "type": "Buff"
+  },
+  "171": {
+    "name": "Solar Blaze (2 stacks)",
+    "internal": "SolarShield2",
+    "type": "Buff"
+  },
+  "172": {
+    "name": "Solar Blaze (3 stacks)",
+    "internal": "SolarShield3",
+    "type": "Buff"
+  },
+  "173": {
+    "name": "Life Nebula (1 stack)",
+    "internal": "NebulaUpLife1",
+    "type": "Buff"
+  },
+  "174": {
+    "name": "Life Nebula (2 stacks)",
+    "internal": "NebulaUpLife2",
+    "type": "Buff"
+  },
+  "175": {
+    "name": "Life Nebula (3 stacks)",
+    "internal": "NebulaUpLife3",
+    "type": "Buff"
+  },
+  "176": {
+    "name": "Mana Nebula (1 stack)",
+    "internal": "NebulaUpMana1",
+    "type": "Buff"
+  },
+  "177": {
+    "name": "Mana Nebula (2 stacks)",
+    "internal": "NebulaUpMana2",
+    "type": "Buff"
+  },
+  "178": {
+    "name": "Mana Nebula (3 stacks)",
+    "internal": "NebulaUpMana3",
+    "type": "Buff"
+  },
+  "179": {
+    "name": "Damage Nebula (1 stack)",
+    "internal": "NebulaUpDmg1",
+    "type": "Buff"
+  },
+  "180": {
+    "name": "Damage Nebula (2 stacks)",
+    "internal": "NebulaUpDmg2",
+    "type": "Buff"
+  },
+  "181": {
+    "name": "Damage Nebula (3 stacks)",
+    "internal": "NebulaUpDmg3",
+    "type": "Buff"
+  },
+  "182": {
+    "name": "Stardust Cell (Stardust Minion)",
+    "internal": "StardustMinion",
+    "type": "Buff"
+  },
+  "183": {
+    "name": "Celled",
+    "internal": "StardustMinionBleed",
+    "type": "Debuff"
+  },
+  "184": {
+    "name": "Minecart (Wooden)",
+    "internal": "MinecartWood",
+    "type": "Buff"
+  },
+  "185": {
+    "name": "",
+    "internal": "MinecartWoodLegacyUnused",
+    "type": "Buff"
+  },
+  "186": {
+    "name": "Dryad's Bane",
+    "internal": "DryadsWardDebuff",
+    "type": "Debuff"
+  },
+  "187": {
+    "name": "Stardust Guardian",
+    "internal": "StardustGuardianMinion",
+    "type": "Buff"
+  },
+  "188": {
+    "name": "Stardust Dragon",
+    "internal": "StardustDragonMinion",
+    "type": "Buff"
+  },
+  "189": {
+    "name": "Daybroken",
+    "internal": "Daybreak",
+    "type": "Debuff"
+  },
+  "190": {
+    "name": "Suspicious Looking Eye",
+    "internal": "SuspiciousTentacle",
+    "type": "Buff"
+  },
+  "191": {
+    "name": "Companion Cube",
+    "internal": "CompanionCube",
+    "type": "Buff"
+  },
+  "192": {
+    "name": "Sugar Rush",
+    "internal": "SugarRush",
+    "type": "Buff"
+  },
+  "193": {
+    "name": "Basilisk Mount",
+    "internal": "BasiliskMount",
+    "type": "Buff"
+  },
+  "194": {
+    "name": "Mighty Wind",
+    "internal": "WindPushed",
+    "type": "Debuff"
+  },
+  "195": {
+    "name": "Withered Armor",
+    "internal": "WitheredArmor",
+    "type": "Debuff"
+  },
+  "196": {
+    "name": "Withered Weapon",
+    "internal": "WitheredWeapon",
+    "type": "Debuff"
+  },
+  "197": {
+    "name": "Oozed",
+    "internal": "OgreSpit",
+    "type": "Debuff"
+  },
+  "198": {
+    "name": "Striking Moment",
+    "internal": "ParryDamageBuff",
+    "type": "Buff"
+  },
+  "199": {
+    "name": "Creative Shock",
+    "internal": "NoBuilding",
+    "type": "Debuff"
+  },
+  "200": {
+    "name": "Propeller Gato",
+    "internal": "PetDD2Gato",
+    "type": "Buff"
+  },
+  "201": {
+    "name": "Flickerwick",
+    "internal": "PetDD2Ghost",
+    "type": "Buff"
+  },
+  "202": {
+    "name": "Hoardagron",
+    "internal": "PetDD2Dragon",
+    "type": "Buff"
+  },
+  "203": {
+    "name": "Betsy's Curse",
+    "internal": "BetsysCurse",
+    "type": "Debuff"
+  },
+  "204": {
+    "name": "Oiled",
+    "internal": "Oiled",
+    "type": "Debuff"
+  },
+  "205": {
+    "name": "Ballista Panic!",
+    "internal": "BallistaPanic",
+    "type": "Buff"
+  },
+  "206": {
+    "name": "Plenty Satisfied",
+    "internal": "WellFed2",
+    "type": "Buff"
+  },
+  "207": {
+    "name": "Exquisitely Stuffed",
+    "internal": "WellFed3",
+    "type": "Buff"
+  },
+  "208": {
+    "name": "Minecart (Desert)",
+    "internal": "DesertMinecart",
+    "type": "Buff"
+  },
+  "209": {
+    "name": "",
+    "internal": "DesertMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "210": {
+    "name": "Minecart (Minecarp)",
+    "internal": "FishMinecart",
+    "type": "Buff"
+  },
+  "211": {
+    "name": "",
+    "internal": "FishMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "212": {
+    "name": "Golf Cart",
+    "internal": "GolfCartMount",
+    "type": "Buff"
+  },
+  "213": {
+    "name": "Sanguine Bat",
+    "internal": "BatOfLight",
+    "type": "Buff"
+  },
+  "214": {
+    "name": "Vampire Frog",
+    "internal": "VampireFrog",
+    "type": "Buff"
+  },
+  "215": {
+    "name": "The Bast Defense",
+    "internal": "CatBast",
+    "type": "Buff"
+  },
+  "216": {
+    "name": "Baby Finch",
+    "internal": "BabyBird",
+    "type": "Buff"
+  },
+  "217": {
+    "name": "Estee",
+    "internal": "UpbeatStar",
+    "type": "Buff"
+  },
+  "218": {
+    "name": "Sugar Glider",
+    "internal": "SugarGlider",
+    "type": "Buff"
+  },
+  "219": {
+    "name": "Shark Pup",
+    "internal": "SharkPup",
+    "type": "Buff"
+  },
+  "220": {
+    "name": "Minecart (Bee)",
+    "internal": "BeeMinecart",
+    "type": "Buff"
+  },
+  "221": {
+    "name": "",
+    "internal": "BeeMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "222": {
+    "name": "Minecart (Ladybug)",
+    "internal": "LadybugMinecart",
+    "type": "Buff"
+  },
+  "223": {
+    "name": "",
+    "internal": "LadybugMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "224": {
+    "name": "Minecart (Pigron)",
+    "internal": "PigronMinecart",
+    "type": "Buff"
+  },
+  "225": {
+    "name": "",
+    "internal": "PigronMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "226": {
+    "name": "Minecart (Sunflower)",
+    "internal": "SunflowerMinecart",
+    "type": "Buff"
+  },
+  "227": {
+    "name": "",
+    "internal": "SunflowerMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "228": {
+    "name": "Minecart (Demonic Hellcart)",
+    "internal": "HellMinecart",
+    "type": "Buff"
+  },
+  "229": {
+    "name": "",
+    "internal": "HellMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "230": {
+    "name": "Witch's Broom",
+    "internal": "WitchBroom",
+    "type": "Buff"
+  },
+  "231": {
+    "name": "Minecart (Shroom)",
+    "internal": "ShroomMinecart",
+    "type": "Buff"
+  },
+  "232": {
+    "name": "",
+    "internal": "ShroomMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "233": {
+    "name": "Minecart (Amethyst)",
+    "internal": "AmethystMinecart",
+    "type": "Buff"
+  },
+  "234": {
+    "name": "",
+    "internal": "AmethystMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "235": {
+    "name": "Minecart (Topaz)",
+    "internal": "TopazMinecart",
+    "type": "Buff"
+  },
+  "236": {
+    "name": "",
+    "internal": "TopazMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "237": {
+    "name": "Minecart (Sapphire)",
+    "internal": "SapphireMinecart",
+    "type": "Buff"
+  },
+  "238": {
+    "name": "",
+    "internal": "SapphireMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "239": {
+    "name": "Minecart (Emerald)",
+    "internal": "EmeraldMinecart",
+    "type": "Buff"
+  },
+  "240": {
+    "name": "",
+    "internal": "EmeraldMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "241": {
+    "name": "Minecart (Ruby)",
+    "internal": "RubyMinecart",
+    "type": "Buff"
+  },
+  "242": {
+    "name": "",
+    "internal": "RubyMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "243": {
+    "name": "Minecart (Diamond)",
+    "internal": "DiamondMinecart",
+    "type": "Buff"
+  },
+  "244": {
+    "name": "",
+    "internal": "DiamondMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "245": {
+    "name": "Minecart (Amber)",
+    "internal": "AmberMinecart",
+    "type": "Buff"
+  },
+  "246": {
+    "name": "",
+    "internal": "AmberMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "247": {
+    "name": "Minecart (Beetle)",
+    "internal": "BeetleMinecart",
+    "type": "Buff"
+  },
+  "248": {
+    "name": "",
+    "internal": "BeetleMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "249": {
+    "name": "Minecart (Meowmere)",
+    "internal": "MeowmereMinecart",
+    "type": "Buff"
+  },
+  "250": {
+    "name": "",
+    "internal": "MeowmereMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "251": {
+    "name": "Minecart (Party)",
+    "internal": "PartyMinecart",
+    "type": "Buff"
+  },
+  "252": {
+    "name": "",
+    "internal": "PartyMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "253": {
+    "name": "Minecart (The Dutchman)",
+    "internal": "PirateMinecart",
+    "type": "Buff"
+  },
+  "254": {
+    "name": "",
+    "internal": "PirateMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "255": {
+    "name": "Minecart (Steampunk)",
+    "internal": "SteampunkMinecart",
+    "type": "Buff"
+  },
+  "256": {
+    "name": "",
+    "internal": "SteampunkMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "257": {
+    "name": "Lucky \"Lucky (buff)\"",
+    "internal": "Lucky",
+    "type": "Buff"
+  },
+  "258": {
+    "name": "Lil' Harpy",
+    "internal": "LilHarpy",
+    "type": "Buff"
+  },
+  "259": {
+    "name": "Fennec Fox",
+    "internal": "FennecFox",
+    "type": "Buff"
+  },
+  "260": {
+    "name": "Glittery Butterfly",
+    "internal": "GlitteryButterfly",
+    "type": "Buff"
+  },
+  "261": {
+    "name": "Baby Imp",
+    "internal": "BabyImp",
+    "type": "Buff"
+  },
+  "262": {
+    "name": "Baby Red Panda",
+    "internal": "BabyRedPanda",
+    "type": "Buff"
+  },
+  "263": {
+    "name": "Desert Tiger",
+    "internal": "StormTiger",
+    "type": "Buff"
+  },
+  "264": {
+    "name": "Plantero",
+    "internal": "Plantero",
+    "type": "Buff"
+  },
+  "265": {
+    "name": "Flamingo",
+    "internal": "Flamingo",
+    "type": "Buff"
+  },
+  "266": {
+    "name": "Dynamite Kitten",
+    "internal": "DynamiteKitten",
+    "type": "Buff"
+  },
+  "267": {
+    "name": "Baby Werewolf",
+    "internal": "BabyWerewolf",
+    "type": "Buff"
+  },
+  "268": {
+    "name": "Shadow Mimic",
+    "internal": "ShadowMimic",
+    "type": "Buff"
+  },
+  "269": {
+    "name": "Minecart (Coffin)",
+    "internal": "CoffinMinecart",
+    "type": "Buff"
+  },
+  "270": {
+    "name": "",
+    "internal": "CoffinMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "271": {
+    "name": "Enchanted Daggers",
+    "internal": "Smolstar",
+    "type": "Buff"
+  },
+  "272": {
+    "name": "Digging Molecart",
+    "internal": "DiggingMoleMinecart",
+    "type": "Buff"
+  },
+  "273": {
+    "name": "",
+    "internal": "DiggingMoleMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "274": {
+    "name": "Volt Bunny",
+    "internal": "VoltBunny",
+    "type": "Buff"
+  },
+  "275": {
+    "name": "Painted Horse Mount",
+    "internal": "PaintedHorseMount",
+    "type": "Buff"
+  },
+  "276": {
+    "name": "Majestic Horse Mount",
+    "internal": "MajesticHorseMount",
+    "type": "Buff"
+  },
+  "277": {
+    "name": "Dark Horse Mount",
+    "internal": "DarkHorseMount",
+    "type": "Buff"
+  },
+  "278": {
+    "name": "Pogo Stick Mount",
+    "internal": "PogoStickMount",
+    "type": "Buff"
+  },
+  "279": {
+    "name": "Pirate Ship Mount",
+    "internal": "PirateShipMount",
+    "type": "Buff"
+  },
+  "280": {
+    "name": "Tree Mount",
+    "internal": "SpookyWoodMount",
+    "type": "Buff"
+  },
+  "281": {
+    "name": "Santank Mount",
+    "internal": "SantankMount",
+    "type": "Buff"
+  },
+  "282": {
+    "name": "Goat Mount",
+    "internal": "WallOfFleshGoatMount",
+    "type": "Buff"
+  },
+  "283": {
+    "name": "Book Mount",
+    "internal": "DarkMageBookMount",
+    "type": "Buff"
+  },
+  "284": {
+    "name": "Slime Prince",
+    "internal": "KingSlimePet",
+    "type": "Buff"
+  },
+  "285": {
+    "name": "Suspicious Eye",
+    "internal": "EyeOfCthulhuPet",
+    "type": "Buff"
+  },
+  "286": {
+    "name": "Eater of Worms",
+    "internal": "EaterOfWorldsPet",
+    "type": "Buff"
+  },
+  "287": {
+    "name": "Spider Brain",
+    "internal": "BrainOfCthulhuPet",
+    "type": "Buff"
+  },
+  "288": {
+    "name": "Skeletron Jr.",
+    "internal": "SkeletronPet",
+    "type": "Buff"
+  },
+  "289": {
+    "name": "Honey Bee",
+    "internal": "QueenBeePet",
+    "type": "Buff"
+  },
+  "290": {
+    "name": "Destroyer-Lite",
+    "internal": "DestroyerPet",
+    "type": "Buff"
+  },
+  "291": {
+    "name": "Rez and Spaz",
+    "internal": "TwinsPet",
+    "type": "Buff"
+  },
+  "292": {
+    "name": "Mini Prime",
+    "internal": "SkeletronPrimePet",
+    "type": "Buff"
+  },
+  "293": {
+    "name": "Plantera Seedling",
+    "internal": "PlanteraPet",
+    "type": "Buff"
+  },
+  "294": {
+    "name": "Toy Golem",
+    "internal": "GolemPet",
+    "type": "Buff"
+  },
+  "295": {
+    "name": "Tiny Fishron",
+    "internal": "DukeFishronPet",
+    "type": "Buff"
+  },
+  "296": {
+    "name": "Phantasmal Dragon",
+    "internal": "LunaticCultistPet",
+    "type": "Buff"
+  },
+  "297": {
+    "name": "Moonling",
+    "internal": "MoonLordPet",
+    "type": "Buff"
+  },
+  "298": {
+    "name": "Fairy Princess",
+    "internal": "FairyQueenPet",
+    "type": "Buff"
+  },
+  "299": {
+    "name": "Jack 'O Lantern",
+    "internal": "PumpkingPet",
+    "type": "Buff"
+  },
+  "300": {
+    "name": "Everscream Sapling",
+    "internal": "EverscreamPet",
+    "type": "Buff"
+  },
+  "301": {
+    "name": "Ice Queen",
+    "internal": "IceQueenPet",
+    "type": "Buff"
+  },
+  "302": {
+    "name": "Alien Skater",
+    "internal": "MartianPet",
+    "type": "Buff"
+  },
+  "303": {
+    "name": "Baby Ogre",
+    "internal": "DD2OgrePet",
+    "type": "Buff"
+  },
+  "304": {
+    "name": "Itsy Betsy",
+    "internal": "DD2BetsyPet",
+    "type": "Buff"
+  },
+  "305": {
+    "name": "Lava Shark Mount",
+    "internal": "LavaSharkMount",
+    "type": "Buff"
+  },
+  "306": {
+    "name": "Titanium Barrier",
+    "internal": "TitaniumStorm",
+    "type": "Buff"
+  },
+  "307": {
+    "name": "",
+    "internal": "BlandWhipEnemyDebuff",
+    "type": "Debuff"
+  },
+  "308": {
+    "name": "Durendal's Blessing",
+    "internal": "SwordWhipPlayerBuff",
+    "type": "Buff"
+  },
+  "309": {
+    "name": "",
+    "internal": "SwordWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "310": {
+    "name": "",
+    "internal": "ScytheWhipEnemyDebuff",
+    "type": "Debuff"
+  },
+  "311": {
+    "name": "Harvest Time",
+    "internal": "ScytheWhipPlayerBuff",
+    "type": "Buff"
+  },
+  "312": {
+    "name": "A Nice Buff",
+    "internal": "CoolWhipPlayerBuff",
+    "type": "Buff"
+  },
+  "313": {
+    "name": "",
+    "internal": "FlameWhipEnemyDebuff",
+    "type": "Debuff"
+  },
+  "314": {
+    "name": "Jungle's Fury",
+    "internal": "ThornWhipPlayerBuff",
+    "type": "Buff"
+  },
+  "315": {
+    "name": "",
+    "internal": "ThornWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "316": {
+    "name": "",
+    "internal": "RainbowWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "317": {
+    "name": "Slime Princess",
+    "internal": "QueenSlimePet",
+    "type": "Buff"
+  },
+  "318": {
+    "name": "Winged Slime Mount",
+    "internal": "QueenSlimeMount",
+    "type": "Buff"
+  },
+  "319": {
+    "name": "",
+    "internal": "MaceWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "320": {
+    "name": "Sparkle Slime",
+    "internal": "GelBalloonBuff",
+    "type": "Debuff"
+  },
+  "321": {
+    "name": "Cerebral Mindtrick",
+    "internal": "BrainOfConfusionBuff",
+    "type": "Debuff"
+  },
+  "322": {
+    "name": "Terraprisma",
+    "internal": "EmpressBlade",
+    "type": "Buff"
+  },
+  "323": {
+    "name": "Hellfire",
+    "internal": "OnFire3",
+    "type": "Debuff"
+  },
+  "324": {
+    "name": "Frostbite",
+    "internal": "Frostburn2",
+    "type": "Debuff"
+  },
+  "325": {
+    "name": "Flinx",
+    "internal": "FlinxMinion",
+    "type": "Buff"
+  },
+  "326": {
+    "name": "",
+    "internal": "BoneWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "327": {
+    "name": "Bernie",
+    "internal": "BerniePet",
+    "type": "Buff"
+  },
+  "328": {
+    "name": "Glommer",
+    "internal": "GlommerPet",
+    "type": "Buff"
+  },
+  "329": {
+    "name": "Tiny Deerclops",
+    "internal": "DeerclopsPet",
+    "type": "Buff"
+  },
+  "330": {
+    "name": "Pig",
+    "internal": "PigPet",
+    "type": "Buff"
+  },
+  "331": {
+    "name": "Chester",
+    "internal": "ChesterPet",
+    "type": "Buff"
+  },
+  "332": {
+    "name": "Peckish",
+    "internal": "NeutralHunger",
+    "type": "Debuff"
+  },
+  "333": {
+    "name": "Hungry",
+    "internal": "Hunger",
+    "type": "Debuff"
+  },
+  "334": {
+    "name": "Starving",
+    "internal": "Starving",
+    "type": "Debuff"
+  },
+  "335": {
+    "name": "Abigail",
+    "internal": "AbigailMinion",
+    "type": "Buff"
+  },
+  "336": {
+    "name": "Hearty Meal",
+    "internal": "HeartyMeal",
+    "type": "Buff"
+  },
+  "337": {
+    "name": "",
+    "internal": "TentacleSpike",
+    "type": "Debuff"
+  },
+  "338": {
+    "name": "Fart Kart",
+    "internal": "FartMinecart",
+    "type": "Buff"
+  },
+  "339": {
+    "name": "",
+    "internal": "FartMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "340": {
+    "name": "",
+    "internal": "CoolWhipNPCDebuff",
+    "type": "Buff"
+  },
+  "341": {
+    "name": "Slime Royals",
+    "internal": "DualSlimePet",
+    "type": "Buff"
+  },
+  "342": {
+    "name": "Blessing of the Moon",
+    "internal": "WolfMount",
+    "type": "Buff"
+  },
+  "343": {
+    "name": "Biome Sight",
+    "internal": "BiomeSight",
+    "type": "Buff"
+  },
+  "344": {
+    "name": "Blood Butchered",
+    "internal": "BloodButcherer",
+    "type": "Debuff"
+  },
+  "345": {
+    "name": "Junimo",
+    "internal": "JunimoPet",
+    "type": "Buff"
+  },
+  "346": {
+    "name": "Terra Fart Kart",
+    "internal": "TerraFartMinecart",
+    "type": "Buff"
+  },
+  "347": {
+    "name": "",
+    "internal": "TerraFartMinecartLegacyUnused",
+    "type": "Buff"
+  },
+  "348": {
+    "name": "Strategist",
+    "internal": "WarTable",
+    "type": "Buff"
+  },
+  "349": {
+    "name": "Blue Chicken",
+    "internal": "BlueChickenPet",
+    "type": "Buff"
+  },
+  "350": {
+    "name": "Shadow Candle",
+    "internal": "ShadowCandle",
+    "type": "Debuff"
+  },
+  "351": {
+    "name": "Spiffo",
+    "internal": "Spiffo",
+    "type": "Buff"
+  },
+  "352": {
+    "name": "Caveling Gardener",
+    "internal": "CavelingGardener",
+    "type": "Buff"
+  },
+  "353": {
+    "name": "Shimmering",
+    "internal": "Shimmer",
+    "type": "Debuff"
+  },
+  "354": {
+    "name": "The Dirtiest Block",
+    "internal": "DirtiestBlock",
+    "type": "Buff"
+  },
+  "355": {
+    "name": "Mushroom Boi!",
+    "internal": "DeadCellsMushroomBoiMinion",
+    "type": "Buff"
+  },
+  "356": {
+    "name": "Swarm Biter",
+    "internal": "DeadCellsSwarmBiter",
+    "type": "Buff"
+  },
+  "357": {
+    "name": "",
+    "internal": "CobWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "358": {
+    "name": "",
+    "internal": "CorruptWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "359": {
+    "name": "",
+    "internal": "CrimsonWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "360": {
+    "name": "",
+    "internal": "MeteorWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "361": {
+    "name": "",
+    "internal": "FlowerWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "362": {
+    "name": "",
+    "internal": "EelWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "363": {
+    "name": "",
+    "internal": "ConstellationWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "364": {
+    "name": "",
+    "internal": "MoonLordWhipNPCDebuff",
+    "type": "Debuff"
+  },
+  "365": {
+    "name": "Whip Spider",
+    "internal": "CobWhipPlayerBuff",
+    "type": "Buff"
+  },
+  "366": {
+    "name": "Alchemic Enhancement",
+    "internal": "DeadCellsPotionStation",
+    "type": "Buff"
+  },
+  "367": {
+    "name": "",
+    "internal": "FlowerWhipNPCDebuffProc",
+    "type": "Debuff"
+  },
+  "368": {
+    "name": "",
+    "internal": "MoonLordWhipNPCDebuffProc",
+    "type": "Debuff"
+  },
+  "369": {
+    "name": "",
+    "internal": "MeteorWhipNPCDebuffProc",
+    "type": "Debuff"
+  },
+  "370": {
+    "name": "Instinct of the Raptor",
+    "internal": "VelociraptorMount",
+    "type": "Buff"
+  },
+  "371": {
+    "name": "Pufferfish",
+    "internal": "Pufferfish",
+    "type": "Buff"
+  },
+  "372": {
+    "name": "Cenaxe",
+    "internal": "AxeFairyPet",
+    "type": "Buff"
+  },
+  "373": {
+    "name": "Friendly Boulder",
+    "internal": "BoulderPet",
+    "type": "Buff"
+  },
+  "374": {
+    "name": "Nature of the Rat",
+    "internal": "RatMount",
+    "type": "Buff"
+  },
+  "375": {
+    "name": "Hemorrhage",
+    "internal": "Hemorrhage",
+    "type": "Debuff"
+  },
+  "376": {
+    "name": "Torch Blessing",
+    "internal": "TorchGodPotion",
+    "type": "Buff"
+  },
+  "377": {
+    "name": "Curse of the Bat",
+    "internal": "BatMount",
+    "type": "Buff"
+  },
+  "378": {
+    "name": "Blue Roller Skates",
+    "internal": "RollerSkatesMount",
+    "type": "Buff"
+  },
+  "379": {
+    "name": "Green Roller Skates",
+    "internal": "RollerSkatesGreenMount",
+    "type": "Buff"
+  },
+  "380": {
+    "name": "Classic Roller Skates",
+    "internal": "RollerSkatesWhiteMount",
+    "type": "Buff"
+  },
+  "381": {
+    "name": "Party Roller Skates",
+    "internal": "RollerSkatesPinkMount",
+    "type": "Buff"
+  },
+  "382": {
+    "name": "Friendly Rainbow Boulder",
+    "internal": "RainbowBoulderPet",
+    "type": "Buff"
+  },
+  "383": {
+    "name": "High Spirits",
+    "internal": "Kite",
+    "type": "Buff"
+  },
+  "384": {
+    "name": "Form of the Fae",
+    "internal": "PixieMount",
+    "type": "Buff"
+  },
+  "385": {
+    "name": "Cattiva",
+    "internal": "PalworldMinionCattiva",
+    "type": "Buff"
+  },
+  "386": {
+    "name": "Foxparks",
+    "internal": "PalworldMinionFoxsparks",
+    "type": "Buff"
+  },
+  "387": {
+    "name": "Chillet",
+    "internal": "PalworldPetChillet",
+    "type": "Buff"
+  },
+  "388": {
+    "name": "Chillet Ignis",
+    "internal": "PalworldPetChilletIgnis",
+    "type": "Buff"
+  }
 }

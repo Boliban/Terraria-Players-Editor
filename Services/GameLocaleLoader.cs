@@ -13,6 +13,7 @@ public static class GameLocaleLoader
     private static Dictionary<string, string> PrefixNames { get; } = new();
     private static Dictionary<string, string> NPCNames { get; } = new();
     private static Dictionary<string, string> BuffNames { get; } = new();
+    private static Dictionary<string, string> BuffNamesEn { get; } = new();
     private static Dictionary<string, string> ProjectileNames { get; } = new();
 
     private static bool _loaded = false;
@@ -64,6 +65,12 @@ public static class GameLocaleLoader
         return BuffNames.TryGetValue(internalName, out var zh) ? zh : null;
     }
 
+    /// <summary>Get English buff name from internal buff name.</summary>
+    public static string? GetBuffNameEn(string internalName)
+    {
+        return BuffNamesEn.TryGetValue(internalName, out var en) ? en : null;
+    }
+
     /// <summary>Get Chinese projectile name from internal name.</summary>
     public static string? GetProjectileName(string internalName)
     {
@@ -93,6 +100,7 @@ public static class GameLocaleLoader
         LoadDict(assembly, prefix + "prefixes-zh.json", PrefixNames);
         LoadDict(assembly, prefix + "npcs-zh.json", NPCNames);
         LoadDict(assembly, prefix + "buffs-zh.json", BuffNames);
+        LoadDict(assembly, prefix + "buffs-en.json", BuffNamesEn);
         LoadDict(assembly, prefix + "projectiles-zh.json", ProjectileNames);
     }
 

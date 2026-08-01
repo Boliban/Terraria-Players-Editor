@@ -173,7 +173,7 @@ public class ItemBrowser : UserControl
         // Apply theme colors to DataGridView
         ApplyDgvTheme();
         _dgvItems.EnableHeadersVisualStyles = false;
-        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); _dgvItems.Invalidate(); };
+        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); RefreshBuffRowColors(); _dgvItems.Invalidate(); };
 
         // Refresh scrollbar when this control becomes visible (tab switch, etc.)
         VisibleChanged += (s, e) =>
@@ -223,23 +223,24 @@ public class ItemBrowser : UserControl
             _dgvItems.Rows.Clear();
             _dgvItems.RowCount = buffData.Count;
 
-            var categories = new HashSet<string> { "All" };
             for (int i = 0; i < buffData.Count; i++)
             {
                 var d = buffData[i];
                 var row = _dgvItems.Rows[i];
                 row.Cells[0].Value = d.icon;
-                row.Cells[1].Value = $"{d.name} (ID:{d.id})";
+                row.Cells[1].Value = d.name;
                 row.Cells[2].Value = d.id;
                 row.Tag = d.id;
-                var kind = BuffData.GetBuffKind(d.id);
-                row.DefaultCellStyle.ForeColor = BuffData.GetColor(kind);
-                if (!string.IsNullOrEmpty(d.type) && d.type != "Buff")
-                    categories.Add(d.type);
+                row.DefaultCellStyle.ForeColor = d.type.Equals("Debuff", StringComparison.OrdinalIgnoreCase)
+                    ? ThemeManager.DebuffText
+                    : ThemeManager.BuffText;
             }
 
+            // Populate category filter: All, Buff, Debuff
             _cmbCategory.Items.Clear();
             _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
+            _cmbCategory.Items.Add(AppLocale.Get("Browser.Buff") ?? "Buff");
+            _cmbCategory.Items.Add(AppLocale.Get("Browser.Debuff") ?? "Debuff");
             _cmbCategory.SelectedIndex = 0;
             // Force scrollbar recalculation after bulk row loading
             _dgvItems.ScrollBars = ScrollBars.None;
@@ -298,11 +299,25 @@ public class ItemBrowser : UserControl
     /// <summary>Refresh only display text (for language switching) without rebuilding rows.</summary>
     public void RefreshDisplayText()
     {
+        // Refresh category dropdown locale text
+        if (_filterMode == ItemFilterMode.BuffOnly && _cmbCategory.Items.Count >= 3)
+        {
+            int sel = _cmbCategory.SelectedIndex;
+            _cmbCategory.Items[0] = AppLocale.Get("Browser.All") ?? "All";
+            _cmbCategory.Items[1] = AppLocale.Get("Browser.Buff") ?? "Buff";
+            _cmbCategory.Items[2] = AppLocale.Get("Browser.Debuff") ?? "Debuff";
+            _cmbCategory.SelectedIndex = sel;
+        }
+
+        // Refresh row display text
         foreach (DataGridViewRow row in _dgvItems.Rows)
         {
             if (row.Tag is int itemId)
             {
-                row.Cells[1].Value = ItemDatabase.GetName(itemId);
+                if (_filterMode == ItemFilterMode.BuffOnly)
+                    row.Cells[1].Value = BuffDatabase.GetName(itemId);
+                else
+                    row.Cells[1].Value = ItemDatabase.GetName(itemId);
             }
         }
     }
@@ -318,12 +333,35 @@ public class ItemBrowser : UserControl
         _dgvItems.GridColor = ThemeManager.ControlInputBorder;
     }
 
+    /// <summary>Refresh per-row buff/debuff colors when theme changes.</summary>
+    private void RefreshBuffRowColors()
+    {
+        if (_filterMode != ItemFilterMode.BuffOnly) return;
+        foreach (DataGridViewRow row in _dgvItems.Rows)
+        {
+            if (row.Tag is int buffId)
+            {
+                var type = BuffDatabase.GetType(buffId);
+                row.DefaultCellStyle.ForeColor = type.Equals("Debuff", StringComparison.OrdinalIgnoreCase)
+                    ? ThemeManager.DebuffText
+                    : ThemeManager.BuffText;
+            }
+        }
+    }
+
     private void ApplyFilter()
     {
         var query = _txtSearch.Text.Trim();
-        if (string.IsNullOrEmpty(query))
+
+        // Category filter: 0 = All, 1 = Buff, 2 = Debuff (uses index to avoid locale text mismatch)
+        int categoryFilter = _filterMode == ItemFilterMode.BuffOnly ? _cmbCategory.SelectedIndex : 0;
+
+        bool hasTextFilter = !string.IsNullOrEmpty(query);
+        bool hasCategoryFilter = categoryFilter > 0;
+
+        if (!hasTextFilter && !hasCategoryFilter)
         {
-            // Clear filter — show all rows and reset scroll position
+            // Clear all filters — show all rows and reset scroll position
             foreach (DataGridViewRow row in _dgvItems.Rows)
                 row.Visible = true;
             if (_dgvItems.Rows.Count > 0)
@@ -334,22 +372,39 @@ public class ItemBrowser : UserControl
         bool isNumeric = int.TryParse(query, out int numericQuery);
         foreach (DataGridViewRow row in _dgvItems.Rows)
         {
-            if (isNumeric)
+            bool visible = true;
+
+            // Category filter: compare against English type names ("Buff"/"Debuff") from database
+            if (hasCategoryFilter && row.Tag is int rowId)
             {
-                // Numeric query: exact ID match first, then fallback to name contains
-                if (row.Tag is int rowId && rowId == numericQuery)
-                    row.Visible = true;
+                var rowType = BuffDatabase.GetType(rowId);
+                if (categoryFilter == 1)
+                    visible = rowType.Equals("Buff", StringComparison.OrdinalIgnoreCase);
+                else if (categoryFilter == 2)
+                    visible = rowType.Equals("Debuff", StringComparison.OrdinalIgnoreCase);
+            }
+
+            // Text filter
+            if (visible && hasTextFilter)
+            {
+                if (isNumeric)
+                {
+                    if (row.Tag is int id && id == numericQuery)
+                        visible = true;
+                    else
+                    {
+                        var text = row.Cells[1].Value?.ToString() ?? "";
+                        visible = text.Contains(query, StringComparison.OrdinalIgnoreCase);
+                    }
+                }
                 else
                 {
                     var text = row.Cells[1].Value?.ToString() ?? "";
-                    row.Visible = text.Contains(query, StringComparison.OrdinalIgnoreCase);
+                    visible = text.Contains(query, StringComparison.OrdinalIgnoreCase);
                 }
             }
-            else
-            {
-                var text = row.Cells[1].Value?.ToString() ?? "";
-                row.Visible = text.Contains(query, StringComparison.OrdinalIgnoreCase);
-            }
+
+            row.Visible = visible;
         }
     }
 }

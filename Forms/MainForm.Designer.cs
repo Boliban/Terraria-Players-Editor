@@ -130,6 +130,7 @@ partial class MainForm
     private Label _lblBuffDuration = null!;
     private NumericUpDown _nudBuffDuration = null!;
     private Label _lblBuffTimeUnit = null!;
+    private Label _lblBuffName = null!;
     private Button _btnBuffSet = null!;
     private Button _btnBuffClear = null!;
     private SplitContainer _splitBuffs = null!;

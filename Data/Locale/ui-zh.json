@@ -149,5 +149,7 @@
   "Dialog.RestartTheme": "颜色模式已更改，应用将重新启动以应用新主题。",
   "Dialog.OpenTitle": "打开Terraria玩家文件",
   "Dialog.SaveTitle": "保存Terraria玩家文件",
-  "Browser.All": "全部"
+  "Browser.All": "全部",
+  "Browser.Buff": "增益",
+  "Browser.Debuff": "减益"
 }

@@ -50,6 +50,10 @@ public static class ThemeManager
     // ── Icon Modifier Dark Background ──
     public static Color IconModifierBg { get; private set; }
 
+    // ── Buff/Debuff Text Colors ──
+    public static Color BuffText { get; private set; }
+    public static Color DebuffText { get; private set; }
+
     // ── Typography (cached Font objects — never recreated) ──
     public static class Typography
     {
@@ -132,6 +136,9 @@ public static class ThemeManager
             ControlButtonPressed = Color.FromArgb(50, 50, 55);
 
             IconModifierBg = Color.FromArgb(40, 35, 45);
+
+            BuffText = Color.FromArgb(129, 199, 132);
+            DebuffText = Color.FromArgb(239, 83, 80);
         }
         else
         {
@@ -166,6 +173,9 @@ public static class ThemeManager
             ControlButtonPressed = Color.FromArgb(210, 222, 240);
 
             IconModifierBg = Color.FromArgb(40, 35, 45);
+
+            BuffText = Color.FromArgb(21, 101, 45);
+            DebuffText = Color.FromArgb(183, 28, 28);
         }
 
         ThemeChanged?.Invoke();

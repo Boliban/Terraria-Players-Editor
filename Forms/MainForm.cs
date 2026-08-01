@@ -639,8 +639,9 @@ public partial class MainForm : Form
         _lblBuffDuration = new Label { Text = AppLocale.Get("Buffs.Duration"), Location = new Point(170, 5), Width = 70 };
         _nudBuffDuration = new NumericUpDown { Location = new Point(245, 3), Width = 100, Minimum = 0, Maximum = int.MaxValue };
         _lblBuffTimeUnit = new Label { Text = "ticks", Location = new Point(348, 5), Width = 40, ForeColor = ThemeManager.TextSecondary, Tag = "secondary" };
-        _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 30), Width = 75 };
-        _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 30), Width = 75 };
+        _lblBuffName = new Label { Text = "", Location = new Point(5, 30), Width = 380, Height = 20, TextAlign = ContentAlignment.MiddleLeft, ForeColor = ThemeManager.TextSecondary };
+        _btnBuffSet = new Button { Text = AppLocale.Get("Storage.Set"), Location = new Point(5, 55), Width = 75 };
+        _btnBuffClear = new Button { Text = AppLocale.Get("Storage.Clear"), Location = new Point(85, 55), Width = 75 };
         void BuffAutoSet()
         {
             if (_gridBuffs.SelectedIndex < 0) return;
@@ -654,7 +655,10 @@ public partial class MainForm : Form
         _nudBuffDuration.Leave += (s, e) => BuffAutoSet();
         _btnBuffSet.Click += (s, e) => BuffAutoSet();
         _btnBuffClear.Click += (s, e) => OnBuffModClear();
-        buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _lblBuffTimeUnit, _btnBuffSet, _btnBuffClear]);
+        // Update name label when type changes
+        _nudBuffType.ValueChanged += (s, e) => UpdateBuffNameLabel((int)_nudBuffType.Value);
+        ThemeManager.ThemeChanged += () => UpdateBuffNameLabel((int)_nudBuffType.Value);
+        buffMod.Controls.AddRange([_lblBuffType, _nudBuffType, _lblBuffDuration, _nudBuffDuration, _lblBuffTimeUnit, _lblBuffName, _btnBuffSet, _btnBuffClear]);
         right.Controls.Add(buffMod, 0, 1);
 
         _gridBuffs = new SlotGrid(11, 4) { IsBuffGrid = true, Tag = "Buffs" };
@@ -1118,6 +1122,7 @@ public partial class MainForm : Form
             _nudBuffDuration.Value = item.StackSize;
             _cachedBuffType = item.ItemId;
             _cachedBuffDur = item.StackSize;
+            UpdateBuffNameLabel(item.ItemId);
         }
     }
 
@@ -1129,6 +1134,7 @@ public partial class MainForm : Form
         _player!.BuffTypes[idx] = itemId;
         _gridBuffs.SetSlot(idx, new ItemData { ItemId = itemId, StackSize = _cachedBuffDur });
         _nudBuffType.Value = itemId;
+        UpdateBuffNameLabel(itemId);
     }
 
     private void OnBuffModSet()
@@ -1150,6 +1156,24 @@ public partial class MainForm : Form
         _player!.BuffTypes[idx] = 0;
         _player.BuffTimes[idx] = 0;
         _gridBuffs.SetSlot(idx, new ItemData());
+    }
+
+    /// <summary>Update the buff name label with theme-aware color based on type.</summary>
+    private void UpdateBuffNameLabel(int buffType)
+    {
+        if (buffType <= 0)
+        {
+            _lblBuffName.Text = "";
+            return;
+        }
+        var name = BuffDatabase.GetName(buffType);
+        var type = BuffDatabase.GetType(buffType);
+        _lblBuffName.Text = name;
+        // Color based on type
+        if (type.Equals("Debuff", StringComparison.OrdinalIgnoreCase))
+            _lblBuffName.ForeColor = ThemeManager.DebuffText;
+        else
+            _lblBuffName.ForeColor = ThemeManager.BuffText;
     }
 
     #endregion
