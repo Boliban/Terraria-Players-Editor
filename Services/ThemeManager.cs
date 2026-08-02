@@ -60,8 +60,8 @@ public static class ThemeManager
         public static readonly Font Body = new("Segoe UI", 9f, FontStyle.Regular);
         public static readonly Font BodyBold = new("Segoe UI", 9f, FontStyle.Bold);
         public static readonly Font Caption = new("Segoe UI", 9f, FontStyle.Regular);
-        public static readonly Font SlotStack = new("Segoe UI", 6.5f, FontStyle.Bold);
-        public static readonly Font SlotStackSmall = new("Segoe UI", 5.5f, FontStyle.Bold);
+        public static readonly Font SlotStack = new("Segoe UI", 9f, FontStyle.Bold);
+        public static readonly Font SlotStackSmall = new("Segoe UI", 9f, FontStyle.Bold);
 
         /// <summary>Dispose cached fonts. Call on application shutdown.</summary>
         public static void Dispose()

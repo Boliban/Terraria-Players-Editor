@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
 using Terraria_Players_Editor.Models;
 using Terraria_Players_Editor.Services;
 
@@ -10,8 +11,8 @@ namespace Terraria_Players_Editor.Controls;
 /// </summary>
 public class SlotPanel : UserControl
 {
-    private readonly PictureBox _icon;
-    private readonly Label _stackLabel;
+    private Image? _iconImage;
+    private bool _showStack;
     private bool _selected;
     private int _slotIndex;
     private ItemData? _item;
@@ -51,38 +52,11 @@ public class SlotPanel : UserControl
         Cursor = Cursors.Hand;
         Margin = new Padding(0);
 
-        _icon = new PictureBox
-        {
-            Size = new Size(32, 32),
-            Location = new Point(8, 8),
-            SizeMode = PictureBoxSizeMode.Zoom,
-            BackColor = Color.Transparent,
-            Enabled = false
-        };
-
-        _stackLabel = new Label
-        {
-            AutoSize = true,
-            Font = ThemeManager.Typography.SlotStack,
-            ForeColor = ThemeManager.IsDarkMode ? Color.White : Color.Black,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.BottomRight,
-            Visible = false
-        };
-
-        Controls.Add(_icon);
-        Controls.Add(_stackLabel);
-        _stackLabel.BringToFront();
-
-        _icon.MouseClick += (s, e) => OnMouseClick(e);
-        _icon.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
-        _stackLabel.MouseClick += (s, e) => OnMouseClick(e);
-        _stackLabel.MouseDoubleClick += (s, e) => OnMouseDoubleClick(e);
         Click += (s, e) => DebugLog.Log($"[SlotPanel] Click slotIdx={_slotIndex}");
         MouseClick += (s, e) => DebugLog.Log($"[SlotPanel] MouseClick slotIdx={_slotIndex} btn={e.Button}");
 
         Disposed += (s, e) => StopAnimation();
-        ThemeManager.ThemeChanged += () => { ApplyTheme(); _stackLabel.ForeColor = ThemeManager.IsDarkMode ? Color.White : Color.Black; };
+        ThemeManager.ThemeChanged += () => ApplyTheme();
     }
 
     /// <summary>Re-read cached theme colors and invalidate for repaint.</summary>
@@ -149,9 +123,10 @@ public class SlotPanel : UserControl
 
         if (_item == null || _item.IsEmpty)
         {
-            _icon.Image = IconService.DefaultIcon;
-            _stackLabel.Visible = false;
+            _iconImage = IconService.DefaultIcon;
+            _showStack = false;
             TransitionFill(GetTargetFill());
+            Invalidate();
             return;
         }
 
@@ -162,30 +137,24 @@ public class SlotPanel : UserControl
             {
                 _animFrames = frames;
                 _animFrameIdx = 0;
-                _icon.Image = frames[0];
+                _iconImage = frames[0];
                 StartAnimation();
             }
             else
             {
-                _icon.Image = IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon;
+                _iconImage = IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon;
             }
         }
         else
         {
-            _icon.Image = IsBuffSlot
+            _iconImage = IsBuffSlot
                 ? (IconService.GetBuffIcon(_item.ItemId) ?? IconService.DefaultIcon)
                 : (IconService.GetItemIcon(_item.ItemId) ?? IconService.DefaultIcon);
         }
 
-        _stackLabel.Visible = _item.StackSize > 1;
-        _stackLabel.Font = _item.StackSize >= 1000
-            ? ThemeManager.Typography.SlotStackSmall
-            : ThemeManager.Typography.SlotStack;
-        _stackLabel.Text = _item.StackSize.ToString();
-        _stackLabel.Location = new Point(Width - _stackLabel.PreferredWidth - 2,
-            Height - _stackLabel.PreferredHeight);
-        _stackLabel.BringToFront();
+        _showStack = _item.StackSize > 1;
         TransitionFill(GetTargetFill());
+        Invalidate();
     }
 
     public void Clear()
@@ -218,7 +187,8 @@ public class SlotPanel : UserControl
     {
         if (_animFrames == null || _animFrames.Length == 0) return;
         _animFrameIdx = (_animFrameIdx + 1) % _animFrames.Length;
-        _icon.Image = _animFrames[_animFrameIdx];
+        _iconImage = _animFrames[_animFrameIdx];
+        Invalidate();
     }
 
     protected override void OnClick(EventArgs e)
@@ -241,8 +211,45 @@ public class SlotPanel : UserControl
         using (var fillBrush = new SolidBrush(_currentFill))
             e.Graphics.FillRectangle(fillBrush, ClientRectangle);
 
-        // Child controls on top
-        base.OnPaint(e);
+        // Item icon (32x32 box at top-left)
+        if (_iconImage != null)
+            e.Graphics.DrawImage(_iconImage, 8, 8, 32, 32);
+
+        // Stack count drawn directly over the icon with NO background, plus a
+        // smooth 2px round-join outline so the number stays readable in both
+        // light and dark themes over any icon color.
+        if (_showStack && _item != null && _item.StackSize > 1)
+        {
+            var text = _item.StackSize.ToString();
+            var font = _item.StackSize >= 1000
+                ? ThemeManager.Typography.SlotStackSmall
+                : ThemeManager.Typography.SlotStack;
+            // Outline/fill colors swapped per request: dark = black text with
+            // white outline, light = white text with black outline
+            var fillColor = ThemeManager.IsDarkMode ? Color.Black : Color.White;
+            var outlineColor = ThemeManager.IsDarkMode ? Color.White : Color.Black;
+
+            // Build the glyph outline path (emSize in pixels), then stroke + fill
+            using var path = new GraphicsPath();
+            float emSize = font.SizeInPoints * e.Graphics.DpiY / 72f;
+            path.AddString(text, font.FontFamily, (int)font.Style, emSize,
+                PointF.Empty, StringFormat.GenericTypographic);
+            var bounds = path.GetBounds();
+            // Bottom-left corner, clear of the border ring: the 2px outline
+            // extends 1px past the glyph bounds, and the selected border is 2px,
+            // so use a 3px left / 4px bottom margin.
+            using var tx = new Matrix();
+            tx.Translate(3 - bounds.X, Height - bounds.Height - 4 - bounds.Y);
+            path.Transform(tx);
+
+            var oldMode = e.Graphics.SmoothingMode;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var outlinePen = new Pen(outlineColor, 2f) { LineJoin = LineJoin.Round };
+            e.Graphics.DrawPath(outlinePen, path);
+            using var fillBrush = new SolidBrush(fillColor);
+            e.Graphics.FillPath(fillBrush, path);
+            e.Graphics.SmoothingMode = oldMode;
+        }
 
         // Simple rect border — gray normally, themed yellow when selected.
         // The pen is centered on the rectangle line: the 2px selected border is
