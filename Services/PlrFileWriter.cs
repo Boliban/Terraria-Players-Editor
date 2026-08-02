@@ -88,12 +88,15 @@ public static class PlrFileWriter
         WriteColor(w, player.Appearance.PantsColor);
         WriteColor(w, player.Appearance.ShoeColor);
 
-        // === Armor: 20 slots (armor 3 + vanity 3 + accessories 7 + vanity acc 7) ===
+        // === Armor: 20 slots (armor 3 + accessories 7 + vanity armor 3 + vanity acc 7) ===
+        // The armor array always holds the ACTIVE loadout's equipment (the game
+        // syncs loadout[CurrentLoadout] with it when the character loads).
+        var active = GetActiveLoadout(player);
         var flatArmor = new List<ItemData>(ArmorSlots);
-        flatArmor.AddRange(SafeTake(player.Armor, 3));
-        flatArmor.AddRange(SafeTake(player.VanityArmor, 3));
-        flatArmor.AddRange(SafeTake(player.Accessories, 7));
-        flatArmor.AddRange(SafeTake(player.VanityAccessories, 7));
+        flatArmor.AddRange(SafeTake(active.Armor, 3));
+        flatArmor.AddRange(SafeTake(active.Accessories, 7));
+        flatArmor.AddRange(SafeTake(active.VanityArmor, 3));
+        flatArmor.AddRange(SafeTake(active.VanityAccessories, 7));
         for (int i = 0; i < ArmorSlots; i++)
         {
             var a = i < flatArmor.Count ? flatArmor[i] : new ItemData();
@@ -101,10 +104,10 @@ public static class PlrFileWriter
             w.Write(a.Prefix);
         }
 
-        // === Dyes: 10 slots ===
+        // === Dyes: 10 slots (active loadout's dyes) ===
         for (int i = 0; i < DyeSlots; i++)
         {
-            var d = i < player.ArmorDyes.Count ? player.ArmorDyes[i] : new ItemData();
+            var d = i < active.ArmorDyes.Count ? active.ArmorDyes[i] : new ItemData();
             w.Write(d.ItemId);
             w.Write(d.Prefix);
         }
@@ -196,18 +199,21 @@ public static class PlrFileWriter
         // === Golfer score ===
         w.Write(player.GolferScoreAccumulated);
 
-        // === Creative tracker (research items) ===
-        // Format: int32 count + for each: string(internalName) + int32(researchCount)
-        WriteResearchItems(w, player);
-
-        // === Temporary item slots ===
-        // Format: byte count (0-1) + optionally: int32 type + int32 stack + byte prefix + bool favorited
-        w.Write((byte)0);
-
-        // === Creative powers ===
-        // Format: sentinel-based — while(true) { bool hasMore; if(!hasMore) break; ushort id; data }
-        // For non-journey characters: just write false (1 byte) — no powers persisted
-        w.Write(false);
+        // === Creative tracker / powers ===
+        // Preserved verbatim from the original file when available (the exact
+        // layout isn't fully documented); otherwise write an empty structure.
+        if (player.LoadoutPrefix != null)
+        {
+            w.Write(player.LoadoutPrefix);
+        }
+        else
+        {
+            // CreativeTracker.Save: bool flag + int32 count (no entries)
+            w.Write(false);
+            w.Write(0);
+            w.Write((byte)0);     // temporary item slots
+            w.Write(false);       // creative powers: none
+        }
 
         // === Super cart bits ===
         byte cartBits = 0;
@@ -217,19 +223,23 @@ public static class PlrFileWriter
 
         // === Loadouts === (game expects 3: main + loadout2 + loadout3)
         w.Write(player.CurrentLoadout);
-        WriteLoadout(w, BuildMainLoadout(player));    // loadout[0]: current equipment
-        WriteLoadout(w, player.Loadout2 ?? new PlayerLoadout());  // loadout[1]
-        WriteLoadout(w, player.Loadout3 ?? new PlayerLoadout());  // loadout[2]
+        WriteLoadout(w, player.Loadout1 ?? BuildMainLoadout(player));  // loadout[0]
+        WriteLoadout(w, player.Loadout2 ?? new PlayerLoadout());       // loadout[1]
+        WriteLoadout(w, player.Loadout3 ?? new PlayerLoadout());       // loadout[2]
 
-        // === Voice ===
-        w.Write((byte)0); // voiceVariant
-        w.Write(0f); // voicePitchOffset
-
-        // === Pending refunds (empty) ===
-        w.Write(0);
-
-        // === One-time dialogues (empty) ===
-        w.Write(0);
+        // === Voice / refunds / dialogues ===
+        // Preserved verbatim from the original file when available.
+        if (player.FileTail != null)
+        {
+            w.Write(player.FileTail);
+        }
+        else
+        {
+            w.Write((byte)0); // voiceVariant
+            w.Write(0f);      // voicePitchOffset
+            w.Write(0);       // pending refunds
+            w.Write(0);       // one-time dialogues
+        }
 
         w.Flush();
         byte[] plain = ms.ToArray();
@@ -249,25 +259,6 @@ public static class PlrFileWriter
         w.Write(c.Length > 2 ? c[2] : (byte)0);
     }
 
-    private static void WriteResearchItems(BinaryWriter w, PlayerData player)
-    {
-        // Format: int32 count + foreach: string(internalName) + int32(researchCount)
-        // BinaryWriter.Write(string) uses 7-bit-encoded length prefix, matching the game
-        if (player.ResearchedItems.Count > 0)
-        {
-            w.Write(player.ResearchedItems.Count);
-            foreach (var kv in player.ResearchedItems)
-            {
-                w.Write(kv.Key);
-                w.Write(kv.Value);
-            }
-        }
-        else
-        {
-            w.Write(0);
-        }
-    }
-
     private static void WriteStorage(BinaryWriter w, List<ItemData> items, int count, bool writeFavorited)
     {
         for (int i = 0; i < count; i++)
@@ -281,7 +272,18 @@ public static class PlrFileWriter
         }
     }
 
-    /// <summary>Build a PlayerLoadout from the player's current equipment (used as loadout[0]).</summary>
+    /// <summary>Get the active loadout (loadout[CurrentLoadout]) — the armor array mirrors it.</summary>
+    private static PlayerLoadout GetActiveLoadout(PlayerData player)
+    {
+        return player.CurrentLoadout switch
+        {
+            1 => player.Loadout2,
+            2 => player.Loadout3,
+            _ => player.Loadout1
+        } ?? player.Loadout1 ?? BuildMainLoadout(player);
+    }
+
+    /// <summary>Build a PlayerLoadout from the player's current equipment (used as loadout[0] fallback).</summary>
     private static PlayerLoadout BuildMainLoadout(PlayerData player)
     {
         return new PlayerLoadout
@@ -306,31 +308,30 @@ public static class PlrFileWriter
 
     /// <summary>
     /// Write loadout data matching the game's EquipmentLoadout.Serialize format.
-    /// Each item uses Item.Serialize (10 bytes: type+stack+prefix+fav), NOT 5 bytes.
+    /// Each item is 9 bytes: int32 type + int32 stack + byte prefix (NO favorited).
     /// </summary>
     private static void WriteLoadout(BinaryWriter w, PlayerLoadout lo)
     {
-        // Armor: 20 items, each using full Item.Serialize (int32 type + int32 stack + byte prefix + bool fav)
+        // Armor: 20 items in game slot order (armor 3 + accessories 7 + vanity 3 + vanity acc 7)
         var la = new List<ItemData>(20);
         la.AddRange(SafeTake(lo.Armor, 3));
-        la.AddRange(SafeTake(lo.VanityArmor, 3));
         la.AddRange(SafeTake(lo.Accessories, 7));
+        la.AddRange(SafeTake(lo.VanityArmor, 3));
         la.AddRange(SafeTake(lo.VanityAccessories, 7));
-        for (int i = 0; i < 20; i++) WriteItemFull(w, i < la.Count ? la[i] : new ItemData());
+        for (int i = 0; i < 20; i++) WriteItemLoadout(w, i < la.Count ? la[i] : new ItemData());
 
-        // Dyes: 10 items, full Item.Serialize
-        for (int i = 0; i < 10; i++) WriteItemFull(w, i < lo.ArmorDyes.Count ? lo.ArmorDyes[i] : new ItemData());
+        // Dyes: 10 items
+        for (int i = 0; i < 10; i++) WriteItemLoadout(w, i < lo.ArmorDyes.Count ? lo.ArmorDyes[i] : new ItemData());
 
         // Hide flags: 10 bools (hideVisual for loadout)
         for (int i = 0; i < 10; i++) w.Write(false);
     }
 
-    private static void WriteItemFull(BinaryWriter w, ItemData item)
+    private static void WriteItemLoadout(BinaryWriter w, ItemData item)
     {
         w.Write(item.ItemId);
         w.Write(item.StackSize);
         w.Write(item.Prefix);
-        w.Write(item.Favorited);
     }
 
     private static List<ItemData> SafeTake(List<ItemData> source, int count)

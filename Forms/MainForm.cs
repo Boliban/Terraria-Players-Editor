@@ -1079,23 +1079,27 @@ public partial class MainForm : Form
         // Save current loadout edits before switching (skip during initial population)
         if (!_populating) CollectEquipToLoadout();
         _activeLoadout = loadoutIdx;
+        // Equipment and dyes switch with the loadout; misc equips and their
+        // dyes are GLOBAL (shared across all loadouts).
         switch (loadoutIdx)
         {
             case 0:
-                PopulateEquipFromData(_player.Armor, _player.VanityArmor, _player.Accessories,
-                    _player.VanityAccessories, _player.MiscEquips, _player.ArmorDyes, _player.MiscEquipDyes);
+                var lo1 = _player.Loadout1;
+                PopulateEquipFromData(lo1?.Armor ?? _player.Armor, lo1?.VanityArmor ?? _player.VanityArmor,
+                    lo1?.Accessories ?? _player.Accessories, lo1?.VanityAccessories ?? _player.VanityAccessories,
+                    _player.MiscEquips, lo1?.ArmorDyes ?? _player.ArmorDyes, _player.MiscEquipDyes);
                 break;
             case 1:
                 if (_player.Loadout2 != null)
                     PopulateEquipFromData(_player.Loadout2.Armor, _player.Loadout2.VanityArmor,
                         _player.Loadout2.Accessories, _player.Loadout2.VanityAccessories,
-                        _player.Loadout2.MiscEquips, _player.Loadout2.ArmorDyes, _player.Loadout2.MiscEquipDyes);
+                        _player.MiscEquips, _player.Loadout2.ArmorDyes, _player.MiscEquipDyes);
                 break;
             case 2:
                 if (_player.Loadout3 != null)
                     PopulateEquipFromData(_player.Loadout3.Armor, _player.Loadout3.VanityArmor,
                         _player.Loadout3.Accessories, _player.Loadout3.VanityAccessories,
-                        _player.Loadout3.MiscEquips, _player.Loadout3.ArmorDyes, _player.Loadout3.MiscEquipDyes);
+                        _player.MiscEquips, _player.Loadout3.ArmorDyes, _player.MiscEquipDyes);
                 break;
         }
     }
@@ -1215,11 +1219,14 @@ public partial class MainForm : Form
         _gridCoins.SetItems(_player.Coins);
         _gridAmmo.SetItems(_player.Ammo);
 
-        // Tab 4: Items — Equipment (Loadout 1)
+        // Tab 4: Items — Equipment (Loadout 1 = the saved loadout[0]; misc equips
+        // and their dyes are GLOBAL, shared across all loadouts)
         _activeLoadout = 0;
         _rbLoadout1.Checked = true;
-        PopulateEquipFromData(_player.Armor, _player.VanityArmor, _player.Accessories,
-            _player.VanityAccessories, _player.MiscEquips, _player.ArmorDyes, _player.MiscEquipDyes);
+        var lo1 = _player.Loadout1;
+        PopulateEquipFromData(lo1?.Armor ?? _player.Armor, lo1?.VanityArmor ?? _player.VanityArmor,
+            lo1?.Accessories ?? _player.Accessories, lo1?.VanityAccessories ?? _player.VanityAccessories,
+            _player.MiscEquips, lo1?.ArmorDyes ?? _player.ArmorDyes, _player.MiscEquipDyes);
 
         // Tab 4: Items — Storage
         _gridPiggy.SetItems(_player.PiggyBank);
@@ -1279,56 +1286,49 @@ public partial class MainForm : Form
     {
         if (_player == null) return;
         DebugLog.Log($"[CollectEquip] START loadout={_activeLoadout} populating={_populating}");
-        List<ItemData> armor, vanity, acc, vacc, misc, armorDyes, miscDyes;
+        // Equipment and dyes are per-loadout; misc equips and their dyes are
+        // GLOBAL (shared across all loadouts).
+        List<ItemData> armor, vanity, acc, vacc, armorDyes;
         if (_activeLoadout == 0)
         {
-            armor = _player.Armor; vanity = _player.VanityArmor; acc = _player.Accessories;
-            vacc = _player.VanityAccessories; misc = _player.MiscEquips;
-            armorDyes = _player.ArmorDyes; miscDyes = _player.MiscEquipDyes;
+            var lo1 = _player.Loadout1 ??= new PlayerLoadout();
+            armor = lo1.Armor; vanity = lo1.VanityArmor; acc = lo1.Accessories;
+            vacc = lo1.VanityAccessories; armorDyes = lo1.ArmorDyes;
         }
         else if (_activeLoadout == 1 && _player.Loadout2 != null)
         {
             armor = _player.Loadout2.Armor; vanity = _player.Loadout2.VanityArmor; acc = _player.Loadout2.Accessories;
-            vacc = _player.Loadout2.VanityAccessories; misc = _player.Loadout2.MiscEquips;
-            armorDyes = _player.Loadout2.ArmorDyes; miscDyes = _player.Loadout2.MiscEquipDyes;
+            vacc = _player.Loadout2.VanityAccessories; armorDyes = _player.Loadout2.ArmorDyes;
         }
         else if (_activeLoadout == 2 && _player.Loadout3 != null)
         {
             armor = _player.Loadout3.Armor; vanity = _player.Loadout3.VanityArmor; acc = _player.Loadout3.Accessories;
-            vacc = _player.Loadout3.VanityAccessories; misc = _player.Loadout3.MiscEquips;
-            armorDyes = _player.Loadout3.ArmorDyes; miscDyes = _player.Loadout3.MiscEquipDyes;
+            vacc = _player.Loadout3.VanityAccessories; armorDyes = _player.Loadout3.ArmorDyes;
         }
         else return;
+        List<ItemData> misc = _player.MiscEquips;
+        List<ItemData> miscDyes = _player.MiscEquipDyes;
 
+        // Columns map directly to the game's slot order (inverse of PopulateEquipFromData)
         for (int i = 0; i < _equipSlots[0].Slots.Length && i < armor.Count; i++) armor[i] = _equipSlots[0].Slots[i].Item ?? new ItemData();
-        // Vanity armor collected from _accSlots[0] positions 0-2
-        for (int i = 0; i < 3 && i < vanity.Count; i++) vanity[i] = _accSlots[0].Slots[i].Item ?? new ItemData();
-        TraceLog($"[Collect] vanitySlots: [0]={_accSlots[0].Slots[0].Item?.ItemId}:{_accSlots[0].Slots[0].Item?.Prefix} [1]={_accSlots[0].Slots[1].Item?.ItemId}:{_accSlots[0].Slots[1].Item?.Prefix} [2]={_accSlots[0].Slots[2].Item?.ItemId}:{_accSlots[0].Slots[2].Item?.Prefix}");
-        // Accessories[0..3] from _accSlots[0] positions 3-6
-        for (int i = 0; i < 4 && i < acc.Count; i++) acc[i] = _accSlots[0].Slots[i + 3].Item ?? new ItemData();
-        TraceLog($"[Collect] accGrid[3..6]: [3]={_accSlots[0].Slots[3].Item?.ItemId}:{_accSlots[0].Slots[3].Item?.Prefix} [4]={_accSlots[0].Slots[4].Item?.ItemId}:{_accSlots[0].Slots[4].Item?.Prefix} [5]={_accSlots[0].Slots[5].Item?.ItemId}:{_accSlots[0].Slots[5].Item?.Prefix} [6]={_accSlots[0].Slots[6].Item?.ItemId}:{_accSlots[0].Slots[6].Item?.Prefix}");
-        // Accessories[4..6] from _vanitySlots[0] positions 0-2
-        for (int i = 0; i < 3 && (i + 4) < acc.Count; i++) acc[i + 4] = _vanitySlots[0].Slots[i].Item ?? new ItemData();
-        TraceLog($"[Collect] vanityGrid[0..2]: [0]={_vanitySlots[0].Slots[0].Item?.ItemId}:{_vanitySlots[0].Slots[0].Item?.Prefix} [1]={_vanitySlots[0].Slots[1].Item?.ItemId}:{_vanitySlots[0].Slots[1].Item?.Prefix} [2]={_vanitySlots[0].Slots[2].Item?.ItemId}:{_vanitySlots[0].Slots[2].Item?.Prefix}");
-        TraceLog($"[Collect] RESULT: vanity[0]={vanity[0].ItemId}:{vanity[0].Prefix} acc[0]={acc[0].ItemId}:{acc[0].Prefix} acc[4]={acc[4].ItemId}:{acc[4].Prefix}");
+        for (int i = 0; i < _vanitySlots[0].Slots.Length && i < vanity.Count; i++) vanity[i] = _vanitySlots[0].Slots[i].Item ?? new ItemData();
+        for (int i = 0; i < _accSlots[0].Slots.Length && i < acc.Count; i++) acc[i] = _accSlots[0].Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _vaccSlots[0].Slots.Length && i < vacc.Count; i++) vacc[i] = _vaccSlots[0].Slots[i].Item ?? new ItemData();
         for (int i = 0; i < _miscSlots[0].Slots.Length && i < misc.Count; i++) misc[i] = _miscSlots[0].Slots[i].Item ?? new ItemData();
         // Collect dyes
         for (int i = 0; i < _armorDyeSlots[0].Slots.Length && i < 3; i++) { if (i < armorDyes.Count) armorDyes[i] = _armorDyeSlots[0].Slots[i].Item ?? new ItemData(); }
         for (int i = 0; i < _accDyeSlots[0].Slots.Length && i < 7; i++) { var idx = i + 3; if (idx < armorDyes.Count) armorDyes[idx] = _accDyeSlots[0].Slots[i].Item ?? new ItemData(); }
         for (int i = 0; i < _miscDyeSlots[0].Slots.Length && i < miscDyes.Count; i++) miscDyes[i] = _miscDyeSlots[0].Slots[i].Item ?? new ItemData();
-        DebugLog.Log($"[CollectEquip] END vanity[0]={vanity[0].ItemId}:{vanity[0].Prefix} acc[0]={acc[0].ItemId}:{acc[0].Prefix} acc[4]={acc[4].ItemId}:{acc[4].Prefix} acc[5]={acc[5].ItemId}:{acc[5].Prefix} acc[6]={acc[6].ItemId}:{acc[6].Prefix}");
     }
 
     private void PopulateEquipFromData(List<ItemData> armor, List<ItemData> vanity, List<ItemData> acc,
         List<ItemData> vacc, List<ItemData> misc, List<ItemData> armorDyes, List<ItemData> miscDyes)
     {
-        TraceLog($"[PopEquip] INPUT: vanity[0]={vanity[0].ItemId}:{vanity[0].Prefix} acc[0]={acc[0].ItemId}:{acc[0].Prefix} acc[4]={acc[4].ItemId}:{acc[4].Prefix} acc[5]={acc[5].ItemId}:{acc[5].Prefix} acc[6]={acc[6].ItemId}:{acc[6].Prefix}");
+        // Columns map directly to the game's slot order:
+        // armor(3) + accessories(7) + vanity armor(3) + vanity accessories(7)
         _equipSlots[0].SetItems(armor);
-        _vanitySlots[0].SetItems(acc.Skip(4).Take(3).ToList());
-        _accSlots[0].SetItems(vanity.Take(3).Concat(acc.Take(4)).ToList());
-        // Verify: read back from grids
-        TraceLog($"[PopEquip] AFTER: vanityGrid[0]={_vanitySlots[0].Slots[0].Item?.ItemId}:{_vanitySlots[0].Slots[0].Item?.Prefix} vanityGrid[1]={_vanitySlots[0].Slots[1].Item?.ItemId}:{_vanitySlots[0].Slots[1].Item?.Prefix} accGrid[0]={_accSlots[0].Slots[0].Item?.ItemId}:{_accSlots[0].Slots[0].Item?.Prefix} accGrid[3]={_accSlots[0].Slots[3].Item?.ItemId}:{_accSlots[0].Slots[3].Item?.Prefix}");
+        _vanitySlots[0].SetItems(vanity);
+        _accSlots[0].SetItems(acc);
         _vaccSlots[0].SetItems(vacc);
         _miscSlots[0].SetItems(misc);
         _armorDyeSlots[0].SetItems(armorDyes.Take(3).ToList());

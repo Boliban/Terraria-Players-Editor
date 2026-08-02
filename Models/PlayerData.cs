@@ -84,8 +84,17 @@ public sealed class PlayerData
 
     // === Loadouts ===
     public int CurrentLoadout { get; set; }
+    public PlayerLoadout? Loadout1 { get; set; }
     public PlayerLoadout? Loadout2 { get; set; }
     public PlayerLoadout? Loadout3 { get; set; }
+
+    // === Preserved raw sections (round-trip safety) ===
+    // Bytes between the golfer score and the loadout index (creative tracker
+    // entries, temporary item slots, creative powers) and everything after the
+    // loadouts (voice, refunds, one-time dialogues). These sections' exact
+    // layout isn't fully documented, so they are preserved verbatim on save.
+    public byte[]? LoadoutPrefix { get; set; }
+    public byte[]? FileTail { get; set; }
 
     // === Emotes ===
     public List<int> UnlockedEmotes { get; set; } = new();

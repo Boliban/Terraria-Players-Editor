@@ -24,6 +24,20 @@ public static class PlrFileReader
     {
         DebugLog.Clear();
         DebugLog.Log($"Game Reader: input plaintext size = {plainData.Length} bytes");
+
+        // Strip PKCS7 padding — PlrCrypto.Decrypt leaves it in the output
+        // (PaddingMode.None to match the game's raw block layout).
+        if (plainData.Length > 0)
+        {
+            int pad = plainData[^1];
+            if (pad > 0 && pad <= 16)
+            {
+                bool valid = true;
+                for (int i = plainData.Length - pad; i < plainData.Length; i++)
+                    if (plainData[i] != pad) { valid = false; break; }
+                if (valid) plainData = plainData[..^pad];
+            }
+        }
         DebugLog.LogHex("Plaintext input to PlrFileReader", plainData);
         var player = new PlayerData();
         try
@@ -109,9 +123,10 @@ public static class PlrFileReader
                 byte prefix = r.ReadByte();
                 flatArmor.Add(new ItemData { ItemId = id, Prefix = prefix, StackSize = 1 });
             }
+            // Game slot order: armor(3) + accessories(7) + vanity armor(3) + vanity accessories(7)
             player.Armor = flatArmor.GetRange(0, 3);
-            player.VanityArmor = flatArmor.GetRange(3, 3);
-            player.Accessories = flatArmor.GetRange(6, 7);
+            player.Accessories = flatArmor.GetRange(3, 7);
+            player.VanityArmor = flatArmor.GetRange(10, 3);
             player.VanityAccessories = flatArmor.GetRange(13, 7);
 
             // === Dyes: 10 slots ===
@@ -210,81 +225,71 @@ public static class PlrFileReader
             // === Golfer ===
             player.GolferScoreAccumulated = r.ReadInt32();
 
-            // === Creative tracker (research items) ===
-            // Uses BinaryWriter strings (7-bit-encoded length), matching the game
-            int researchCount = r.ReadInt32();
-            player.ResearchedItems.Clear();
-            for (int i = 0; i < researchCount; i++)
-            {
-                string internalName = r.ReadString();
-                int count = r.ReadInt32();
-                player.ResearchedItems[internalName] = count;
-            }
-
-            // === Temporary item slots ===
-            byte tempCount = r.ReadByte();
-            for (int i = 0; i < tempCount; i++)
-            {
-                r.ReadInt32(); // type
-                r.ReadInt32(); // stack
-                r.ReadByte();  // prefix
-                r.ReadBoolean(); // favorited
-            }
-
-            // === Creative powers ===
-            // Sentinel-based: while(true) { bool hasMore; if(!hasMore) break; ushort id; data }
-            while (r.ReadBoolean())
-            {
-                r.ReadUInt16(); // power ID
-                // Skip power-specific data — format varies by power type
-                // Each power's Load method handles its own data
-                // For now, we can't easily skip arbitrary power data
-                // Since non-journey chars have 0 powers, this loop won't execute
-            }
-
-            // === Super cart bits ===
-            byte cartBits = r.ReadByte();
-            player.Upgrades.UnlockedSuperCart = (byte)((cartBits & 1) != 0 ? 1 : 0);
-            player.Upgrades.EnabledSuperCart = (cartBits & 2) != 0;
-
-            // === Loadouts === (game stores 3: main + loadout2 + loadout3)
+            // === Creative tracker / powers / loadouts (v262+) ===
+            // Exact layout (from the game source): creativeTracker.Save writes a
+            // bool + int32 count + (string,int) entries; then temporary item
+            // slots; then CreativePowerManager.SaveToPlayer's sentinel loop
+            // (while(hasMore) { ushort id; data } + final false). The power data
+            // sizes are not tracked here, so the loadout section (cart bits +
+            // CurrentLoadoutIndex + 3 × 280-byte loadouts) is located by scanning
+            // right after the tracker/temp sections, and the surrounding raw
+            // bytes are preserved for a faithful round-trip.
             if (version >= 262)
             {
+                int suffixStart = (int)ms.Position;
+
+                // CreativeTracker.Save: bool flag + int32 count + (string,int) entries
+                r.ReadBoolean();
+                int researchCount = r.ReadInt32();
+                for (int i = 0; i < researchCount; i++)
+                {
+                    r.ReadString();
+                    r.ReadInt32();
+                }
+
+                // SaveTemporaryItemSlotContents: byte count + items
+                byte tempCount = r.ReadByte();
+                for (int i = 0; i < tempCount; i++)
+                {
+                    r.ReadInt32();
+                    r.ReadInt32();
+                    r.ReadByte();
+                    r.ReadBoolean();
+                }
+
+                // Creative powers + cart + loadouts: locate by scanning
+                int scanStart = (int)ms.Position;
+                int loadoutPos = FindLoadoutSection(plainData, scanStart);
+                if (loadoutPos <= 0)
+                    throw new InvalidDataException($"无法定位负载数据区段 (scanStart=0x{scanStart:X} len={plainData.Length})");
+
+                // Preserve tracker/temp/powers bytes (cart byte at loadoutPos-1
+                // is rewritten from the model on save)
+                player.LoadoutPrefix = plainData[suffixStart..(loadoutPos - 1)];
+
+                // The scan locates the CurrentLoadoutIndex; the cart bits byte
+                // immediately precedes it.
+                ms.Position = loadoutPos - 1;
+                byte cartBits = r.ReadByte();
+                player.Upgrades.UnlockedSuperCart = (byte)((cartBits & 1) != 0 ? 1 : 0);
+                player.Upgrades.EnabledSuperCart = (cartBits & 2) != 0;
                 player.CurrentLoadout = r.ReadInt32();
-                ReadLoadout(r); // loadout[0] = main — duplicates current equipment, skip it
+                player.Loadout1 = ReadLoadout(r); // loadout[0]
                 player.Loadout2 = ReadLoadout(r); // loadout[1]
                 player.Loadout3 = ReadLoadout(r); // loadout[2]
-            }
 
-            // === Voice ===
-            if (version >= 280)
-            {
-                r.ReadByte(); // voiceVariant
-            }
-            if (version >= 281)
-            {
-                r.ReadSingle(); // voicePitchOffset
-            }
+                // The game keeps the active loadout in sync with the armor array
+                // when the character loads, so mirror that here: the displayed
+                // equipment of the active loadout equals the current equipment.
+                if (player.CurrentLoadout == 0 && player.Loadout1 != null)
+                    SyncLoadoutToEquipment(player.Loadout1, player);
+                else if (player.CurrentLoadout == 1 && player.Loadout2 != null)
+                    SyncLoadoutToEquipment(player.Loadout2, player);
+                else if (player.CurrentLoadout == 2 && player.Loadout3 != null)
+                    SyncLoadoutToEquipment(player.Loadout3, player);
 
-            // === Pending refunds ===
-            if (version >= 300)
-            {
-                int refundCount = r.ReadInt32();
-                for (int i = 0; i < refundCount; i++)
-                {
-                    r.ReadInt32(); // type
-                    r.ReadInt32(); // stack
-                    r.ReadByte();  // prefix
-                    r.ReadBoolean(); // favorited
-                }
-            }
-
-            // === One-time dialogues ===
-            if (version >= 310)
-            {
-                int dialogueCount = r.ReadInt32();
-                for (int i = 0; i < dialogueCount; i++)
-                    r.ReadString();
+                // Preserve voice/refunds/dialogues bytes
+                player.FileTail = plainData[(int)ms.Position..];
             }
         }
         catch (EndOfStreamException)
@@ -318,38 +323,103 @@ public static class PlrFileReader
 
     /// <summary>
     /// Read loadout data matching the game's EquipmentLoadout.Deserialize format.
-    /// Each item uses full Item.Serialize: int32 type + int32 stack + byte prefix + bool fav.
+    /// Each item is 9 bytes: int32 type + int32 stack + byte prefix (NO favorited).
     /// </summary>
     private static PlayerLoadout ReadLoadout(BinaryReader r)
     {
         var lo = new PlayerLoadout();
-        // Armor: 20 items × 10 bytes each
+        // Armor: 20 items × 9 bytes each, in game slot order:
+        // armor(3) + accessories(7) + vanity armor(3) + vanity accessories(7)
         for (int i = 0; i < 20; i++)
         {
-            int id = r.ReadInt32();
-            int stack = r.ReadInt32();
-            byte prefix = r.ReadByte();
-            bool fav = r.ReadBoolean();
-            var item = new ItemData { ItemId = id, StackSize = stack, Prefix = prefix, Favorited = fav };
+            var item = new ItemData { ItemId = r.ReadInt32(), StackSize = r.ReadInt32(), Prefix = r.ReadByte() };
             if (i < 3) lo.Armor.Add(item);
-            else if (i < 6) lo.VanityArmor.Add(item);
-            else if (i < 13) lo.Accessories.Add(item);
+            else if (i < 10) lo.Accessories.Add(item);
+            else if (i < 13) lo.VanityArmor.Add(item);
             else lo.VanityAccessories.Add(item);
         }
-        // Dyes: 10 items × 10 bytes each
+        // Dyes: 10 items × 9 bytes each
         lo.ArmorDyes = new List<ItemData>(10);
         for (int i = 0; i < 10; i++)
-        {
-            int id = r.ReadInt32();
-            int stack = r.ReadInt32();
-            byte prefix = r.ReadByte();
-            bool fav = r.ReadBoolean();
-            lo.ArmorDyes.Add(new ItemData { ItemId = id, StackSize = stack, Prefix = prefix, Favorited = fav });
-        }
+            lo.ArmorDyes.Add(new ItemData { ItemId = r.ReadInt32(), StackSize = r.ReadInt32(), Prefix = r.ReadByte() });
         // Hide flags: 10 bools
         for (int i = 0; i < 10; i++) r.ReadBoolean();
         // Misc equips are NOT part of the loadout — skip
         return lo;
+    }
+
+    /// <summary>Overwrite a loadout with the player's current equipment (game sync behavior).</summary>
+    private static void SyncLoadoutToEquipment(PlayerLoadout lo, PlayerData player)
+    {
+        lo.Armor = player.Armor.Select(a => a.Clone()).ToList();
+        lo.Accessories = player.Accessories.Select(a => a.Clone()).ToList();
+        lo.VanityArmor = player.VanityArmor.Select(a => a.Clone()).ToList();
+        lo.VanityAccessories = player.VanityAccessories.Select(a => a.Clone()).ToList();
+        lo.ArmorDyes = player.ArmorDyes.Select(a => a.Clone()).ToList();
+    }
+
+    /// <summary>
+    /// Locate the loadout section (cart bits + CurrentLoadoutIndex + 3 × 280-byte
+    /// loadouts + tail) by scanning from <paramref name="start"/>. The candidate
+    /// must have valid cart bits, a loadout index 0-2, 30 valid 9-byte items,
+    /// 10 hide flags, and a tail (voice/refunds/dialogues) that parses to EOF.
+    /// </summary>
+    private static int FindLoadoutSection(byte[] data, int start)
+    {
+        int maxScan = Math.Min(start + 512, data.Length - 4 - LoadoutBytes);
+        for (int p = start + 1; p <= maxScan; p++)
+        {
+            if (data[p - 1] > 3) continue; // cart bits must be 0-3
+            int idx = BitConverter.ToInt32(data, p);
+            if (idx < 0 || idx > 2) continue; // CurrentLoadoutIndex 0-2
+            // The tail must parse (voice/refunds/dialogues) to exact EOF.
+            // Loadout items are NOT validated — older/corrupted saves can contain
+            // unusual item data, and the exact-EOF tail check is the reliable filter.
+            if (!IsValidTail(data, p + 4 + LoadoutBytes)) continue;
+            return p;
+        }
+        return -1;
+    }
+
+    private const int LoadoutBytes = 3 * (20 * 9 + 10 * 9 + 10); // 3 loadouts × 280
+
+    /// <summary>
+    /// Validate that the remainder of the file parses as the fixed tail —
+    /// voice(byte+float) + refunds(count + 10B items) + dialogues(count + 7-bit strings)
+    /// — and consumes exactly to EOF.
+    /// </summary>
+    private static bool IsValidTail(byte[] data, int off)
+    {
+        int pos = off;
+        if (pos + 5 > data.Length) return false;
+        pos += 5; // voice: variant byte + pitch float
+        if (pos + 4 > data.Length) return false;
+        int refunds = BitConverter.ToInt32(data, pos);
+        pos += 4;
+        if (refunds < 0 || refunds > 100) return false;
+        if (pos + refunds * 10 > data.Length) return false;
+        pos += refunds * 10;
+        if (pos + 4 > data.Length) return false;
+        int dialogues = BitConverter.ToInt32(data, pos);
+        pos += 4;
+        if (dialogues < 0 || dialogues > 1000) return false;
+        for (int i = 0; i < dialogues; i++)
+        {
+            // 7-bit encoded string length (BinaryWriter.Write(string)).
+            // Each dialogue must consume at least its length byte.
+            int lenStart = pos;
+            int len = 0, shift = 0;
+            while (pos < data.Length && shift < 35)
+            {
+                byte b = data[pos++];
+                len |= (b & 0x7F) << shift;
+                shift += 7;
+                if ((b & 0x80) == 0) break;
+            }
+            if (pos == lenStart || len < 0 || pos + len > data.Length) return false;
+            pos += len;
+        }
+        return pos == data.Length;
     }
 
     #endregion
