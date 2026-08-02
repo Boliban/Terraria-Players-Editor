@@ -151,5 +151,15 @@
   "Dialog.SaveTitle": "Save Terraria Player File",
   "Browser.All": "All",
   "Browser.Buff": "Buff",
-  "Browser.Debuff": "Debuff"
+  "Browser.Debuff": "Debuff",
+  "Misc.Pet": "Pet",
+  "Misc.LightPet": "Light Pet",
+  "Misc.Minecart": "Minecart",
+  "Misc.Mount": "Mount",
+  "Misc.Hook": "Hook",
+  "Menu.VerticalLabels": "Vertical Equipment Labels",
+  "UI.Ellipsis": "…",
+  "Menu.AnimatedIcons": "Animated Icons",
+  "Menu.DebugLog": "Debug Log",
+  "Menu.DarkMode": "Dark Mode"
 }

@@ -83,6 +83,48 @@ public class SlotGrid : UserControl
         ThemeManager.ThemeChanged += () => ApplyTheme();
     }
 
+    /// <summary>
+    /// Add content labels to the right of each cell (e.g. pet/mount/hook names
+    /// for the misc grid). Labels are placed beside the cells and do not change
+    /// the cells' positions; the grid's width grows to fit them.
+    /// </summary>
+    private Label[]? _cellLabels;
+
+    public void SetCellLabels(string[] labels)
+    {
+        int maxRight = Width;
+        _cellLabels = new Label[labels.Length];
+        for (int i = 0; i < labels.Length && i < _slots.Length; i++)
+        {
+            var slot = _slots[i];
+            var lbl = new Label
+            {
+                Text = labels[i],
+                Font = ThemeManager.Typography.Caption,
+                ForeColor = ThemeManager.TextSecondary,
+                AutoSize = false,
+                Width = 72,
+                Height = 20,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Tag = "secondary"
+            };
+            lbl.Location = new Point(slot.Right + 4, slot.Top + (slot.Height - lbl.Height) / 2);
+            Controls.Add(lbl);
+            lbl.BringToFront();
+            _cellLabels[i] = lbl;
+            maxRight = Math.Max(maxRight, lbl.Right);
+        }
+        if (maxRight > Width) Width = maxRight;
+    }
+
+    /// <summary>Update cell label texts (for language switching).</summary>
+    public void UpdateCellLabels(string[] labels)
+    {
+        if (_cellLabels == null) return;
+        for (int i = 0; i < _cellLabels.Length && i < labels.Length; i++)
+            _cellLabels[i].Text = labels[i];
+    }
+
     /// <summary>Re-apply theme colors.</summary>
     public void ApplyTheme()
     {

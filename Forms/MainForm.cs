@@ -10,7 +10,7 @@ public partial class MainForm : Form
     private PlayerData? _player;
     private string? _filePath;
 
-    private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem, _refreshMenuItem, _contextRefreshItem;
+    private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem, _verticalLabelsItem, _refreshMenuItem, _contextRefreshItem;
 
     // Right-click context menu
     private ContextMenuStrip? _contextMenu;
@@ -34,6 +34,27 @@ public partial class MainForm : Form
         BuildForm();
         AppLocale.LanguageChanged += RefreshAllUI;
         RefreshAllUI(); // Apply current language to all UI elements on startup
+
+        // TEMP debug: autoload via env var for display verification — REMOVE
+        var autoLoad = Environment.GetEnvironmentVariable("TPE_AUTOLOAD");
+        if (!string.IsNullOrEmpty(autoLoad) && File.Exists(autoLoad))
+        {
+            Shown += async (s, e) =>
+            {
+                try
+                {
+                    SetLoading(true);
+                    var bytes = await Task.Run(() => File.ReadAllBytes(autoLoad));
+                    var player = await Task.Run(() => PlrFileReader.Read(PlrCrypto.Decrypt(bytes)));
+                    _player = player;
+                    _filePath = autoLoad;
+                    PopulateAllTabs();
+                    SetLoading(false);
+                    TraceLog($"[AUTOLOAD] loaded {autoLoad}");
+                }
+                catch (Exception ex) { MessageBox.Show(ex.Message); }
+            };
+        }
     }
 
     #region Form Construction
@@ -136,7 +157,7 @@ public partial class MainForm : Form
         var settingsMenu = new ToolStripMenuItem(AppLocale.Get("Menu.Settings"));
         settingsMenu.DropDownItems.Add(langMenu);
 
-        _animIconItem = new ToolStripMenuItem("动态图标渲染")
+        _animIconItem = new ToolStripMenuItem(AppLocale.Get("Menu.AnimatedIcons"))
         {
             Checked = SettingsManager.EnableAnimatedIcons,
             CheckOnClick = true
@@ -148,7 +169,20 @@ public partial class MainForm : Form
         };
         settingsMenu.DropDownItems.Add(_animIconItem);
 
-        var darkModeItem = new ToolStripMenuItem("Dark Mode")
+        _verticalLabelsItem = new ToolStripMenuItem(AppLocale.Get("Menu.VerticalLabels"))
+        {
+            Checked = SettingsManager.VerticalEquipLabels,
+            CheckOnClick = true
+        };
+        _verticalLabelsItem.Click += (_, _) =>
+        {
+            SettingsManager.VerticalEquipLabels = _verticalLabelsItem.Checked;
+            SettingsManager.Save();
+            RebuildEquipmentRow();
+        };
+        settingsMenu.DropDownItems.Add(_verticalLabelsItem);
+
+        var darkModeItem = new ToolStripMenuItem(AppLocale.Get("Menu.DarkMode"))
         {
             Checked = SettingsManager.DarkMode,
             CheckOnClick = true
@@ -164,7 +198,7 @@ public partial class MainForm : Form
         };
         settingsMenu.DropDownItems.Add(darkModeItem);
 
-        var debugItem = new ToolStripMenuItem("Debug Log");
+        var debugItem = new ToolStripMenuItem(AppLocale.Get("Menu.DebugLog"));
         debugItem.Click += (_, _) =>
         {
             DebugLog.Enabled = !DebugLog.Enabled;
@@ -485,19 +519,23 @@ public partial class MainForm : Form
 
         // Layout like the game: main inventory (10×5) on the left, coins and
         // ammo as vertical single-column grids (coins first, ammo second) on the
-        // right. A table layout with 50px cells places the coins/ammo cells
-        // exactly on the inventory grid lines (titles share the 16px first row).
+        // right, separated by a gap. A table layout with 50px cells places the
+        // coins/ammo cells exactly on the inventory grid lines (titles share the
+        // 16px first row).
         var invGrid = new TableLayoutPanel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 12,
+            ColumnCount = 13,
             RowCount = 6,
-            // Align the left edge with the other section boxes (5px padding)
-            Margin = new Padding(5, 0, 0, 0)
+            // Box internal padding; left edge aligned with the other sections
+            Margin = new Padding(5, 5, 10, 10)
         };
-        for (int c = 0; c < 12; c++)
+        for (int c = 0; c < 10; c++)
             invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
+        invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30)); // gap before coins/ammo
+        invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50)); // coins
+        invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50)); // ammo
         invGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 16)); // grid titles
         for (int r = 0; r < 5; r++)
             invGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
@@ -511,9 +549,9 @@ public partial class MainForm : Form
         invGrid.Controls.Add(_gridInventory, 0, 0);
         invGrid.SetColumnSpan(_gridInventory, 10);
         invGrid.SetRowSpan(_gridInventory, 6);
-        invGrid.Controls.Add(_gridCoins, 10, 0);
+        invGrid.Controls.Add(_gridCoins, 11, 0);
         invGrid.SetRowSpan(_gridCoins, 5);
-        invGrid.Controls.Add(_gridAmmo, 11, 0);
+        invGrid.Controls.Add(_gridAmmo, 12, 0);
         invGrid.SetRowSpan(_gridAmmo, 5);
 
         var innerLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
@@ -531,7 +569,7 @@ public partial class MainForm : Form
     {
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Equipment"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
 
-        var layout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
+        _equipLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(5) };
 
         // Loadout selector
         _loadoutSelector = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 0, 0, 5) };
@@ -542,7 +580,7 @@ public partial class MainForm : Form
         _rbLoadout2.CheckedChanged += (s, e) => { if (_rbLoadout2.Checked) OnLoadoutSwitch(1); };
         _rbLoadout3.CheckedChanged += (s, e) => { if (_rbLoadout3.Checked) OnLoadoutSwitch(2); };
         _loadoutSelector.Controls.AddRange([_rbLoadout1, _rbLoadout2, _rbLoadout3]);
-        layout.Controls.Add(_loadoutSelector);
+        _equipLayout.Controls.Add(_loadoutSelector);
 
         // Vertical slot grids
         _armorDyeSlots = [new SlotGrid(1, 3)]; _armorDyeSlots[0].Tag = "DyeArmor"; _allItemGrids.Add(_armorDyeSlots[0]);
@@ -554,47 +592,15 @@ public partial class MainForm : Form
         _miscDyeSlots  = [new SlotGrid(1, 5)]; _miscDyeSlots[0].Tag = "DyeMisc"; _allItemGrids.Add(_miscDyeSlots[0]);
         _miscSlots     = [new SlotGrid(1, 5)]; _miscSlots[0].Tag = "EquipMisc"; _allItemGrids.Add(_miscSlots[0]);
 
-        // Column helper: label above slot grid
-        static FlowLayoutPanel Col(string text, SlotGrid grid, out Label lbl)
-        {
-            var clean = System.Text.RegularExpressions.Regex.Replace(text, @"\s*\(\d+\)$", "");
-            lbl = new Label { Text = clean, AutoSize = true,
-                Font = ThemeManager.Typography.Caption, ForeColor = ThemeManager.TextSecondary,
-                Margin = new Padding(0), TextAlign = ContentAlignment.TopCenter, Tag = "secondary" };
-            var p = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 4, 0) };
-            p.Controls.Add(lbl);
-            p.Controls.Add(grid);
-            return p;
-        }
+        // Mark each misc slot's content (pet, light pet, minecart, mount, hook)
+        _miscSlots[0].SetCellLabels([
+            AppLocale.Get("Misc.Pet"), AppLocale.Get("Misc.LightPet"),
+            AppLocale.Get("Misc.Minecart"), AppLocale.Get("Misc.Mount"),
+            AppLocale.Get("Misc.Hook")
+        ]);
 
-        // ── Left column: Armor + Equipment ──
-        var leftCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
-        var armorRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-        armorRow.Controls.Add(Col(AppLocale.Get("Dyes.Armor"), _armorDyeSlots[0], out _lblArmorDye));
-        armorRow.Controls.Add(Col(AppLocale.Get("Equip.VanityArmorRemap"), _vanitySlots[0], out _lblVanityArmor));
-        armorRow.Controls.Add(Col(AppLocale.Get("Equip.Armor"), _equipSlots[0], out _lblArmor));
-        var equipRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
-        equipRow.Controls.Add(Col(AppLocale.Get("Dyes.Equipment"), _miscDyeSlots[0], out _lblMiscDye));
-        equipRow.Controls.Add(new Panel { Width = 54, Height = 1 }); // Spacer for missing middle column
-        equipRow.Controls.Add(Col(AppLocale.Get("Equip.Misc"), _miscSlots[0], out _lblMisc));
-        leftCol.Controls.Add(armorRow);
-        leftCol.Controls.Add(equipRow);
-
-        // ── Right column: Accessories ──
-        var rightCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true };
-        var accRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-        accRow.Controls.Add(Col(AppLocale.Get("Dyes.Accessories"), _accDyeSlots[0], out _lblAccDye));
-        accRow.Controls.Add(Col(AppLocale.Get("Equip.VanityAccessories"), _vaccSlots[0], out _lblVAcc));
-        accRow.Controls.Add(Col(AppLocale.Get("Equip.AccessoriesRemap"), _accSlots[0], out _lblAcc));
-        rightCol.Controls.Add(accRow);
-
-        // Two columns side by side
-        var columnsPanel = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, Margin = new Padding(0) };
-        columnsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        columnsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        columnsPanel.Controls.Add(leftCol, 0, 0);
-        columnsPanel.Controls.Add(rightCol, 1, 0);
-        layout.Controls.Add(columnsPanel);
+        // Build the equipment row using the user's label arrangement preference
+        RebuildEquipmentRow();
 
         // Wire all equip slot grids + attach right-click context menu
         void WireEquipGrid(SlotGrid g) { g.SlotSelected += (s, idx) => OnGridSlotSelected(g, idx, null, "equip"); g.ContextMenuStrip = _contextMenu; }
@@ -607,8 +613,183 @@ public partial class MainForm : Form
         foreach (var grid in _accDyeSlots) WireEquipGrid(grid);
         foreach (var grid in _miscDyeSlots) WireEquipGrid(grid);
 
-        grp.Controls.Add(layout);
+        grp.Controls.Add(_equipLayout);
         return grp;
+    }
+
+    /// <summary>
+    /// Vertical column label text for the equipment grids: a trailing "(…)"
+    /// annotation is stripped; CJK text is written one character per line,
+    /// English is split by word.
+    /// </summary>
+    private static string VerticalText(string text)
+    {
+        var clean = System.Text.RegularExpressions.Regex.Replace(text, @"\s*\([^)]*\)$", "");
+        return clean.Any(c => c > 127)
+            ? string.Join("\n", clean.ToCharArray())
+            : string.Join("\n", clean.Split(' '));
+    }
+
+    /// <summary>Equipment column label text per the user's arrangement preference.</summary>
+    private static string EquipLabelText(string text)
+    {
+        return SettingsManager.VerticalEquipLabels
+            ? VerticalText(text)
+            : System.Text.RegularExpressions.Regex.Replace(text, @"\s*\([^)]*\)$", "");
+    }
+
+    private FlowLayoutPanel? _equipLayout;
+    private Control? _equipRowContainer;
+
+    /// <summary>Rebuild the equipment columns using the current label arrangement setting.</summary>
+    private void RebuildEquipmentRow()
+    {
+        if (_equipLayout == null) return;
+        if (_equipRowContainer != null)
+            _equipLayout.Controls.Remove(_equipRowContainer);
+        _equipRowContainer = BuildEquipmentRow(SettingsManager.VerticalEquipLabels);
+        _equipLayout.Controls.Add(_equipRowContainer);
+    }
+
+    /// <summary>
+    /// Build the equipment columns in three groups (armor | accessories | misc).
+    /// In vertical mode the label sits on the grid's left (top-aligned, CJK one
+    /// character per line, English by word) with a smaller column gap. In
+    /// horizontal mode the labels sit in a row above the grids, so all grids
+    /// share the same Y (below the tallest label); words that cannot fit on one
+    /// line are truncated with "…" instead of wrapping.
+    /// </summary>
+    private Control BuildEquipmentRow(bool vertical)
+    {
+        int gap = vertical ? 4 : 8;
+
+        static Label MakeVerticalLabel(string text)
+        {
+            return new Label
+            {
+                Text = VerticalText(text),
+                AutoSize = true,
+                Font = ThemeManager.Typography.Caption,
+                ForeColor = ThemeManager.TextSecondary,
+                Margin = new Padding(0, 0, 4, 0),
+                TextAlign = ContentAlignment.TopLeft,
+                Tag = "secondary"
+            };
+        }
+
+        Label MakeHorizontalLabel(string text, int gridWidth)
+        {
+            var clean = System.Text.RegularExpressions.Regex.Replace(text, @"\s*\([^)]*\)$", "");
+            return new Label
+            {
+                // Single line: overlong text is truncated with "…" instead of
+                // wrapping, so all grids in the row stay aligned.
+                Text = FitSingleLine(clean, gridWidth + 9, ThemeManager.Typography.Caption),
+                AutoSize = true,
+                Font = ThemeManager.Typography.Caption,
+                ForeColor = ThemeManager.TextSecondary,
+                Margin = new Padding(0),
+                TextAlign = ContentAlignment.TopLeft,
+                Tag = "secondary"
+            };
+        }
+
+        if (vertical)
+        {
+            // Each column: vertical label on the grid's left (top-aligned)
+            FlowLayoutPanel Col(SlotGrid grid, string text, out Label lbl, int leftMargin)
+            {
+                lbl = MakeVerticalLabel(text);
+                var col = new FlowLayoutPanel
+                {
+                    FlowDirection = FlowDirection.LeftToRight,
+                    AutoSize = true,
+                    Margin = new Padding(leftMargin, 0, gap, 0)
+                };
+                col.Controls.Add(lbl);
+                col.Controls.Add(grid);
+                return col;
+            }
+
+            var row = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+
+            // Group 1: Armor (dye + vanity + armor)
+            var armorGroup = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            armorGroup.Controls.Add(Col(_armorDyeSlots[0], AppLocale.Get("Dyes.Armor"), out _lblArmorDye, 0));
+            armorGroup.Controls.Add(Col(_vanitySlots[0], AppLocale.Get("Equip.VanityArmorRemap"), out _lblVanityArmor, 0));
+            armorGroup.Controls.Add(Col(_equipSlots[0], AppLocale.Get("Equip.Armor"), out _lblArmor, 0));
+
+            // Group 2: Accessories (dye + vanity accessories + accessories)
+            var accGroup = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            accGroup.Controls.Add(Col(_accDyeSlots[0], AppLocale.Get("Dyes.Accessories"), out _lblAccDye, 20));
+            accGroup.Controls.Add(Col(_vaccSlots[0], AppLocale.Get("Equip.VanityAccessories"), out _lblVAcc, 0));
+            accGroup.Controls.Add(Col(_accSlots[0], AppLocale.Get("Equip.AccessoriesRemap"), out _lblAcc, 0));
+
+            // Group 3: Misc (dyes + equipment)
+            var miscGroup = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            miscGroup.Controls.Add(Col(_miscDyeSlots[0], AppLocale.Get("Dyes.Equipment"), out _lblMiscDye, 20));
+            miscGroup.Controls.Add(Col(_miscSlots[0], AppLocale.Get("Equip.Misc"), out _lblMisc, 0));
+
+            row.Controls.Add(armorGroup);
+            row.Controls.Add(accGroup);
+            row.Controls.Add(miscGroup);
+            return row;
+        }
+        else
+        {
+            // Horizontal: labels in the first row, grids in the second — the
+            // first row's height is the tallest label, so ALL grids share the
+            // same Y and stay aligned even when one label wraps.
+            _lblArmorDye = MakeHorizontalLabel(AppLocale.Get("Dyes.Armor"), _armorDyeSlots[0].Width);
+            _lblVanityArmor = MakeHorizontalLabel(AppLocale.Get("Equip.VanityArmorRemap"), _vanitySlots[0].Width);
+            _lblArmor = MakeHorizontalLabel(AppLocale.Get("Equip.Armor"), _equipSlots[0].Width);
+            _lblAccDye = MakeHorizontalLabel(AppLocale.Get("Dyes.Accessories"), _accDyeSlots[0].Width);
+            _lblVAcc = MakeHorizontalLabel(AppLocale.Get("Equip.VanityAccessories"), _vaccSlots[0].Width);
+            _lblAcc = MakeHorizontalLabel(AppLocale.Get("Equip.AccessoriesRemap"), _accSlots[0].Width);
+            _lblMiscDye = MakeHorizontalLabel(AppLocale.Get("Dyes.Equipment"), _miscDyeSlots[0].Width);
+            _lblMisc = MakeHorizontalLabel(AppLocale.Get("Equip.Misc"), _miscSlots[0].Width);
+
+            Label[] labels = [_lblArmorDye, _lblVanityArmor, _lblArmor, _lblAccDye, _lblVAcc, _lblAcc, _lblMiscDye, _lblMisc];
+            SlotGrid[] grids = [_armorDyeSlots[0], _vanitySlots[0], _equipSlots[0], _accDyeSlots[0], _vaccSlots[0], _accSlots[0], _miscDyeSlots[0], _miscSlots[0]];
+            int[] groupLefts = [0, 0, 0, 20, 0, 0, 20, 0]; // uniform gaps between the three groups
+
+            var table = new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = labels.Length,
+                RowCount = 2,
+                Margin = new Padding(0)
+            };
+            for (int i = 0; i < labels.Length; i++)
+            {
+                table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                labels[i].Margin = new Padding(groupLefts[i], 0, gap, 0);
+                grids[i].Margin = new Padding(groupLefts[i], 0, gap, 0);
+                table.Controls.Add(labels[i], i, 0);
+                table.Controls.Add(grids[i], i, 1);
+            }
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            return table;
+        }
+    }
+
+    /// <summary>
+    /// Fit text onto a single line of at most <paramref name="maxWidth"/> pixels:
+    /// overlong text is truncated with the localized ellipsis instead of wrapping.
+    /// </summary>
+    private static string FitSingleLine(string text, int maxWidth, Font font)
+    {
+        string ellipsis = AppLocale.Get("UI.Ellipsis");
+        if (TextRenderer.MeasureText(text, font).Width <= maxWidth) return text;
+        string result = "";
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (TextRenderer.MeasureText(result + text[i] + ellipsis, font).Width > maxWidth) break;
+            result += text[i];
+        }
+        return result + ellipsis;
     }
 
     private FlatGroupBox BuildStorageSection()
@@ -1601,16 +1782,19 @@ public partial class MainForm : Form
         // Tab 4: Items — section titles + modifier + loadout + grid titles
         _grpInventorySection.Text = L("Tab.Inventory");
         _grpEquipmentSection.Text = L("Tab.Equipment");
-        // Equipment column labels (strip "(N)" suffix via regex, same as Col() helper)
-        var re = new System.Text.RegularExpressions.Regex(@"\s*\(\d+\)$");
-        _lblArmorDye.Text = re.Replace(L("Dyes.Armor"), "");
-        _lblVanityArmor.Text = re.Replace(L("Equip.VanityArmorRemap"), "");
-        _lblArmor.Text = re.Replace(L("Equip.Armor"), "");
-        _lblMiscDye.Text = re.Replace(L("Dyes.Equipment"), "");
-        _lblMisc.Text = re.Replace(L("Equip.Misc"), "");
-        _lblAccDye.Text = re.Replace(L("Dyes.Accessories"), "");
-        _lblVAcc.Text = re.Replace(L("Equip.VanityAccessories"), "");
-        _lblAcc.Text = re.Replace(L("Equip.AccessoriesRemap"), "");
+        // Equipment column labels (conversion follows the arrangement setting)
+        _lblArmorDye.Text = EquipLabelText(L("Dyes.Armor"));
+        _lblVanityArmor.Text = EquipLabelText(L("Equip.VanityArmorRemap"));
+        _lblArmor.Text = EquipLabelText(L("Equip.Armor"));
+        _lblMiscDye.Text = EquipLabelText(L("Dyes.Equipment"));
+        _lblMisc.Text = EquipLabelText(L("Equip.Misc"));
+        _lblAccDye.Text = EquipLabelText(L("Dyes.Accessories"));
+        _lblVAcc.Text = EquipLabelText(L("Equip.VanityAccessories"));
+        _lblAcc.Text = EquipLabelText(L("Equip.AccessoriesRemap"));
+        _miscSlots[0].UpdateCellLabels([
+            L("Misc.Pet"), L("Misc.LightPet"), L("Misc.Minecart"),
+            L("Misc.Mount"), L("Misc.Hook")
+        ]);
         _grpStorageSection.Text = L("Tab.Storage");
         _modItems.RefreshLocale();
         _gridInventory.GridTitle = L("Grid.MainInventory");

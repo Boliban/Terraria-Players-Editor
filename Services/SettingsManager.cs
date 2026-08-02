@@ -18,6 +18,9 @@ public static class SettingsManager
     /// <summary>Whether dark mode is active.</summary>
     public static bool DarkMode { get; set; } = false;
 
+    /// <summary>Whether equipment column labels are arranged vertically on the grids' left (true) or horizontally above the grids (false).</summary>
+    public static bool VerticalEquipLabels { get; set; } = true;
+
     /// <summary>Load saved settings and apply language. Call once at startup before creating UI.</summary>
     public static void Load()
     {
@@ -32,6 +35,7 @@ public static class SettingsManager
                     AppLocale.SetLanguage(settings.Language);
                     EnableAnimatedIcons = settings.EnableAnimatedIcons;
                     DarkMode = settings.DarkMode;
+                    VerticalEquipLabels = settings.VerticalEquipLabels;
                 }
             }
         }
@@ -51,7 +55,8 @@ public static class SettingsManager
             {
                 Language = AppLocale.Current,
                 EnableAnimatedIcons = EnableAnimatedIcons,
-                DarkMode = DarkMode
+                DarkMode = DarkMode,
+                VerticalEquipLabels = VerticalEquipLabels
             };
             var json = JsonSerializer.Serialize(settings);
             File.WriteAllText(SettingsFile, json);
@@ -67,5 +72,6 @@ public static class SettingsManager
         public AppLocale.Lang Language { get; set; }
         public bool EnableAnimatedIcons { get; set; } = true;
         public bool DarkMode { get; set; } = false;
+        public bool VerticalEquipLabels { get; set; } = true;
     }
 }

@@ -151,5 +151,15 @@
   "Dialog.SaveTitle": "保存Terraria玩家文件",
   "Browser.All": "全部",
   "Browser.Buff": "增益",
-  "Browser.Debuff": "减益"
+  "Browser.Debuff": "减益",
+  "Misc.Pet": "宠物",
+  "Misc.LightPet": "照明宠物",
+  "Misc.Minecart": "矿车",
+  "Misc.Mount": "坐骑",
+  "Misc.Hook": "钩爪",
+  "Menu.VerticalLabels": "装备标签竖向排列",
+  "UI.Ellipsis": "…",
+  "Menu.AnimatedIcons": "动态图标渲染",
+  "Menu.DebugLog": "调试日志",
+  "Menu.DarkMode": "深色模式"
 }

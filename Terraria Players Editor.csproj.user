@@ -10,6 +10,9 @@
     <Compile Update="Controls\FlatGroupBox.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Controls\FlatPictureBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\ItemBrowser.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -21,6 +24,9 @@
     </Compile>
     <Compile Update="Controls\SlotPanel.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\ThemedBorderPanel.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="DemoFile\WinTerrEdit\about.cs">
       <SubType>Form</SubType>
