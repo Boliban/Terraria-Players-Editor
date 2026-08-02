@@ -478,18 +478,46 @@ public partial class MainForm : Form
         var grp = new FlatGroupBox { Text = AppLocale.Get("Tab.Inventory"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 10) };
         _gridInventory = new SlotGrid(10, 5, enableHotbarColor: true, gridTitle: AppLocale.Get("Grid.MainInventory")) { Tag = "Inv" };
         _allItemGrids.Add(_gridInventory);
-        _gridCoins = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Coins")) { Tag = "Coins" };
+        _gridCoins = new SlotGrid(1, 4, gridTitle: AppLocale.Get("Grid.Coins")) { Tag = "Coins" };
         _allItemGrids.Add(_gridCoins);
-        _gridAmmo = new SlotGrid(4, 1, gridTitle: AppLocale.Get("Grid.Ammo")) { Tag = "Ammo" };
+        _gridAmmo = new SlotGrid(1, 4, gridTitle: AppLocale.Get("Grid.Ammo")) { Tag = "Ammo" };
         _allItemGrids.Add(_gridAmmo);
 
+        // Layout like the game: main inventory (10×5) on the left, coins and
+        // ammo as vertical single-column grids (coins first, ammo second) on the
+        // right. A table layout with 50px cells places the coins/ammo cells
+        // exactly on the inventory grid lines (titles share the 16px first row).
+        var invGrid = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 12,
+            RowCount = 6,
+            // Align the left edge with the other section boxes (5px padding)
+            Margin = new Padding(5, 0, 0, 0)
+        };
+        for (int c = 0; c < 12; c++)
+            invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
+        invGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 16)); // grid titles
+        for (int r = 0; r < 5; r++)
+            invGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+
+        // Zero margins so the table cells land exactly on the 50px grid
+        // (a default 3px margin would shrink the grids and misalign the cells).
+        _gridInventory.Margin = new Padding(0);
+        _gridCoins.Margin = new Padding(0);
+        _gridAmmo.Margin = new Padding(0);
+
+        invGrid.Controls.Add(_gridInventory, 0, 0);
+        invGrid.SetColumnSpan(_gridInventory, 10);
+        invGrid.SetRowSpan(_gridInventory, 6);
+        invGrid.Controls.Add(_gridCoins, 10, 0);
+        invGrid.SetRowSpan(_gridCoins, 5);
+        invGrid.Controls.Add(_gridAmmo, 11, 0);
+        invGrid.SetRowSpan(_gridAmmo, 5);
+
         var innerLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
-        var coinAmmoRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 5, 0, 0) };
-        coinAmmoRow.Controls.Add(_gridCoins);
-        coinAmmoRow.Controls.Add(_gridAmmo);
-        _gridAmmo.Margin = new Padding(100, 0, 0, 0);
-        innerLayout.Controls.Add(_gridInventory);
-        innerLayout.Controls.Add(coinAmmoRow);
+        innerLayout.Controls.Add(invGrid);
         grp.Controls.Add(innerLayout);
         // Events
         _gridInventory.SlotSelected += (s, idx) => OnGridSlotSelected(_gridInventory, idx, _player?.MainInventory, "inv");
