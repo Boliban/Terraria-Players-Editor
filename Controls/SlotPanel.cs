@@ -244,10 +244,16 @@ public class SlotPanel : UserControl
         // Child controls on top
         base.OnPaint(e);
 
-        // Simple rect border — gray, thicker when selected
-        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        // Simple rect border — gray normally, themed yellow when selected.
+        // The pen is centered on the rectangle line: the 2px selected border is
+        // drawn on an inset rect so all four sides get a full 2px (an edge rect
+        // would clip the left/top halves, making them 1px vs 2px on right/bottom).
+        var rect = _selected
+            ? new Rectangle(1, 1, Width - 2, Height - 2)
+            : new Rectangle(0, 0, Width - 1, Height - 1);
         float borderW = _selected ? 2f : 1f;
-        using var borderPen = new Pen(ThemeManager.ControlInputBorder, borderW);
+        var borderColor = _selected ? ThemeManager.SlotSelectedBorder : ThemeManager.ControlInputBorder;
+        using var borderPen = new Pen(borderColor, borderW);
         e.Graphics.DrawRectangle(borderPen, rect);
     }
 

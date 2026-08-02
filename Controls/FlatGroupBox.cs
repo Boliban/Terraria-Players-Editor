@@ -30,6 +30,11 @@ public class FlatGroupBox : Panel
         };
         Controls.Add(_titleLabel);
 
+        // ThemeChanged fires in Program.Main BEFORE any control exists, so initialize colors
+        // from the current theme here; the handler below covers any future runtime switches.
+        DividerColor = ThemeManager.ControlInputBorder;
+        _titleLabel.ForeColor = ThemeManager.TextPrimary;
+
         ThemeManager.ThemeChanged += () =>
         {
             _titleLabel.ForeColor = ThemeManager.TextPrimary;

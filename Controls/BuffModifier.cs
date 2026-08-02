@@ -10,7 +10,7 @@ namespace Terraria_Players_Editor.Controls;
 /// </summary>
 public class BuffModifier : UserControl
 {
-    private readonly PictureBox _icon;
+    private readonly FlatPictureBox _icon;
     private readonly Label _lblName;
     private readonly Label _lblId;
     private readonly ComboBox _cmbBuffSearch;
@@ -29,15 +29,16 @@ public class BuffModifier : UserControl
     {
         Width = 400;
         Height = 110;
-        BorderStyle = BorderStyle.FixedSingle;
+        // FixedSingle is system-drawn and ignores the app theme (black in light mode),
+        // so the border is painted in OnPaint with ThemeManager.ControlInputBorder.
+        BorderStyle = BorderStyle.None;
 
         // Icon (top-left)
-        _icon = new PictureBox
+        _icon = new FlatPictureBox
         {
             Size = new Size(32, 32),
             Location = new Point(10, 6),
             SizeMode = PictureBoxSizeMode.Zoom,
-            BorderStyle = BorderStyle.FixedSingle,
             BackColor = ThemeManager.IconModifierBg
         };
 
@@ -113,6 +114,12 @@ public class BuffModifier : UserControl
         _lblTimeUnit.ForeColor = ThemeManager.TextSecondary;
         RefreshNameColor();
         Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        Win11Renderer.DrawThemedBorder(e.Graphics, this);
     }
 
     /// <summary>Fired when Set button is clicked.</summary>

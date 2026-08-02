@@ -134,6 +134,18 @@ public static class Win11Renderer
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 
+    /// <summary>Draw a 1px themed border around a control's client area (replaces system FixedSingle, which ignores the app theme).</summary>
+    public static void DrawThemedBorder(Graphics g, Control control)
+    {
+        // Guards against layout passes that paint the control at 0 size,
+        // where DrawRectangle would throw with negative width/height.
+        if (control.Width <= 0 || control.Height <= 0) return;
+        // Use a local pen — ThemeManager.GetPen returns a CACHED pen shared
+        // across callers; disposing it here would poison the cache for everyone.
+        using var pen = new Pen(ThemeManager.ControlInputBorder, 1f);
+        g.DrawRectangle(pen, 0, 0, control.Width - 1, control.Height - 1);
+    }
+
     /// <summary>Get a cached Pen from ThemeManager for common colors.</summary>
     private static Pen GetPen(Color color)
     {

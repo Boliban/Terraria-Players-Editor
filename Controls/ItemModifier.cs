@@ -11,7 +11,7 @@ namespace Terraria_Players_Editor.Controls;
 /// </summary>
 public class ItemModifier : UserControl
 {
-    private readonly PictureBox _icon;
+    private readonly FlatPictureBox _icon;
     private readonly Label _lblName;
     private readonly Label _lblId;
     private readonly ComboBox _cmbItemSearch;
@@ -41,15 +41,16 @@ public class ItemModifier : UserControl
     {
         Width = 400;
         Height = 130;
-        BorderStyle = BorderStyle.FixedSingle;
+        // FixedSingle is system-drawn and ignores the app theme (black in light mode),
+        // so the border is painted in OnPaint with ThemeManager.ControlInputBorder.
+        BorderStyle = BorderStyle.None;
 
         // Icon (top-left)
-        _icon = new PictureBox
+        _icon = new FlatPictureBox
         {
             Size = new Size(32, 32),
             Location = new Point(10, 6),
             SizeMode = PictureBoxSizeMode.Zoom,
-            BorderStyle = BorderStyle.FixedSingle,
             BackColor = ThemeManager.IconModifierBg
         };
 
@@ -130,6 +131,12 @@ public class ItemModifier : UserControl
         _icon.BackColor = ThemeManager.IconModifierBg;
         _lblId.ForeColor = ThemeManager.TextSecondary;
         Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        Win11Renderer.DrawThemedBorder(e.Graphics, this);
     }
 
     /// <summary>Whether stack controls are visible (hidden for equipment).</summary>

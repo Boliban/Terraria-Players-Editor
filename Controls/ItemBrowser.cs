@@ -25,6 +25,10 @@ public class ItemBrowser : UserControl
     public ItemBrowser()
     {
         Dock = DockStyle.Fill;
+        // Leave 1px for the theme-aware border painted in OnPaint
+        // (DataGridView BorderStyle.FixedSingle is system-drawn and
+        // stays white in dark mode regardless of the app theme).
+        Padding = new Padding(1);
 
         var layout = new TableLayoutPanel
         {
@@ -66,6 +70,7 @@ public class ItemBrowser : UserControl
         _dgvItems = new DataGridView
         {
             Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None, // themed border is painted by the parent ItemBrowser
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
@@ -173,7 +178,7 @@ public class ItemBrowser : UserControl
         // Apply theme colors to DataGridView
         ApplyDgvTheme();
         _dgvItems.EnableHeadersVisualStyles = false;
-        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); RefreshBuffRowColors(); _dgvItems.Invalidate(); };
+        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); RefreshBuffRowColors(); _dgvItems.Invalidate(); Invalidate(); };
 
         // Refresh scrollbar when this control becomes visible (tab switch, etc.)
         VisibleChanged += (s, e) =>
@@ -184,6 +189,12 @@ public class ItemBrowser : UserControl
                 _dgvItems.ScrollBars = ScrollBars.Vertical;
             }
         };
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        Win11Renderer.DrawThemedBorder(e.Graphics, this);
     }
 
     /// <summary>Filter mode: show all items, dyes only, or buffs only.</summary>

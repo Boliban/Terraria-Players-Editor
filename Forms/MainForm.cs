@@ -87,6 +87,9 @@ public partial class MainForm : Form
                 }
                 if (c is ComboBox cmb)
                 {
+                    // Flat style makes the closed box AND dropdown popup honor
+                    // BackColor/ForeColor (the native themed combo ignores them).
+                    cmb.FlatStyle = FlatStyle.Flat;
                     cmb.BackColor = ThemeManager.ControlInputBg;
                     cmb.ForeColor = ThemeManager.TextPrimary;
                 }
@@ -745,11 +748,24 @@ public partial class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 85));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 15));
 
-        dgvSpawnPoints = new DataGridView { Dock = DockStyle.Fill, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AllowUserToAddRows = false, BackgroundColor = ThemeManager.SurfaceCard };
+        dgvSpawnPoints = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None, // themed border is painted by the wrapper panel
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            AllowUserToAddRows = false,
+            BackgroundColor = ThemeManager.SurfaceCard
+        };
         dgvSpawnPoints.Columns.Add("WorldId", AppLocale.Get("Spawn.WorldId"));
         dgvSpawnPoints.Columns.Add("WorldName", AppLocale.Get("Spawn.WorldName"));
         dgvSpawnPoints.Columns.Add("X", AppLocale.Get("Spawn.X"));
         dgvSpawnPoints.Columns.Add("Y", AppLocale.Get("Spawn.Y"));
+
+        // Match the item/buff browsers: themed colors + 1px themed border
+        ApplySpawnGridTheme();
+        ThemeManager.ThemeChanged += ApplySpawnGridTheme;
+        var dgvWrap = new ThemedBorderPanel { Dock = DockStyle.Fill };
+        dgvWrap.Controls.Add(dgvSpawnPoints);
 
         var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(5) };
         btnAddSpawn = new Button { Text = AppLocale.Get("Spawn.Add"), Width = 130 };
@@ -758,10 +774,22 @@ public partial class MainForm : Form
         btnRemoveSpawn.Click += OnRemoveSpawnPoint;
         btnPanel.Controls.AddRange([btnAddSpawn, btnRemoveSpawn]);
 
-        layout.Controls.Add(dgvSpawnPoints, 0, 0);
+        layout.Controls.Add(dgvWrap, 0, 0);
         layout.Controls.Add(btnPanel, 0, 1);
         tabSpawnPoints.Controls.Add(layout);
         return tabSpawnPoints;
+    }
+
+    /// <summary>Apply theme colors to the spawn points grid (matches the item/buff browsers).</summary>
+    private void ApplySpawnGridTheme()
+    {
+        dgvSpawnPoints.BackgroundColor = ThemeManager.SurfaceCard;
+        dgvSpawnPoints.DefaultCellStyle.BackColor = ThemeManager.SurfaceCard;
+        dgvSpawnPoints.DefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
+        dgvSpawnPoints.ColumnHeadersDefaultCellStyle.BackColor = ThemeManager.SurfaceBackground;
+        dgvSpawnPoints.ColumnHeadersDefaultCellStyle.ForeColor = ThemeManager.TextPrimary;
+        dgvSpawnPoints.GridColor = ThemeManager.ControlInputBorder;
+        dgvSpawnPoints.EnableHeadersVisualStyles = false;
     }
 
     #endregion
