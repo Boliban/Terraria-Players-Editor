@@ -826,7 +826,7 @@ public sealed class CardCell : DataGridViewTextBoxCell
                     : ThemeManager.BuffText)
                 : ThemeManager.TextPrimary;
 
-        var font = cellStyle.Font ?? DataGridView?.Font ?? SystemFonts.MessageBoxFont;
+        var font = cellStyle.Font ?? DataGridView?.Font ?? SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
         int textX = card.X + 4;
         int textW = card.Width - 8;
         int nameTop = iconY + icon.Height + 4;
