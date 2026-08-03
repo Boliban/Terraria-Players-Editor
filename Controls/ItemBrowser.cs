@@ -33,16 +33,21 @@ public class ItemBrowser : UserControl
     private DataGridViewTextBoxColumn? _nameCol;
     private DataGridViewTextBoxColumn? _idCol;
 
+    // Item-mode category keys, parallel to _cmbCategory.Items indices
+    // (index 0 = "All"). Buff mode keeps its index-based All/Buff/Debuff logic.
+    private readonly List<string> _itemCategoryKeys = new();
+
+    // Fixed display order of the curated item taxonomy (categories.json keys)
+    private static readonly string[] ItemCategoryOrder =
+    {
+        "Weapon", "Armor", "Accessory", "Tool", "Ammo", "Potion", "Consumable",
+        "Material", "Block", "Wall", "Furniture", "Dye", "Mount", "Vanity", "Misc"
+    };
+
     private const int MaxCards = 32;
     private const int MinColumnWidth = 60;
     private int CardWidth => Math.Max(88, _iconSize + 56);
     private int CardRowHeight => 26 + _iconSize + 3 * _dgvItems.Font.Height;
-
-    // Buff-granting item categories (exact match on items.json categories)
-    private static readonly HashSet<string> BuffCategories = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Potion", "Consumable"
-    };
 
     public ItemBrowser()
     {
@@ -273,8 +278,9 @@ public class ItemBrowser : UserControl
                         IconService.GetBuffIcon(buffId) ?? IconService.DefaultIcon));
                 }
 
-                // Populate category filter: All, Buff, Debuff
+                // Populate category filter: All, Buff, Debuff (index-based)
                 _cmbCategory.Items.Clear();
+                _itemCategoryKeys.Clear();
                 _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
                 _cmbCategory.Items.Add(AppLocale.Get("Browser.Buff") ?? "Buff");
                 _cmbCategory.Items.Add(AppLocale.Get("Browser.Debuff") ?? "Debuff");
@@ -314,7 +320,6 @@ public class ItemBrowser : UserControl
                 return;
             }
 
-            var itemCategories = new HashSet<string> { "All" };
             var allItems = ItemDatabase.GetAllItems();
             var itemData = new List<(int id, string name, string cat, Bitmap icon)>();
 
@@ -327,13 +332,19 @@ public class ItemBrowser : UserControl
                 }
                 itemData.Add((item.Id, item.ToString(), cat,
                     IconService.GetItemIcon(item.Id) ?? IconService.DefaultIcon));
-                if (!string.IsNullOrEmpty(cat) && cat != "None")
-                    itemCategories.Add(cat);
             }
 
-            // Populate category filter
+            // Populate category filter: All + the curated taxonomy, localized,
+            // in a fixed order. Keys live in _itemCategoryKeys (parallel to indices).
             _cmbCategory.Items.Clear();
+            _itemCategoryKeys.Clear();
             _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
+            _itemCategoryKeys.Add("All");
+            foreach (var key in ItemCategoryOrder)
+            {
+                _cmbCategory.Items.Add(AppLocale.Get("Browser.Cat." + key) ?? key);
+                _itemCategoryKeys.Add(key);
+            }
             _cmbCategory.SelectedIndex = 0;
 
             if (_viewMode == BrowserViewMode.LargeIcons)
@@ -393,6 +404,18 @@ public class ItemBrowser : UserControl
             _cmbCategory.Items[0] = AppLocale.Get("Browser.All") ?? "All";
             _cmbCategory.Items[1] = AppLocale.Get("Browser.Buff") ?? "Buff";
             _cmbCategory.Items[2] = AppLocale.Get("Browser.Debuff") ?? "Debuff";
+            _cmbCategory.SelectedIndex = sel;
+        }
+        else if (_filterMode != ItemFilterMode.BuffOnly && _cmbCategory.Items.Count == _itemCategoryKeys.Count)
+        {
+            int sel = _cmbCategory.SelectedIndex;
+            for (int i = 0; i < _itemCategoryKeys.Count; i++)
+            {
+                var key = _itemCategoryKeys[i];
+                _cmbCategory.Items[i] = key == "All"
+                    ? (AppLocale.Get("Browser.All") ?? "All")
+                    : (AppLocale.Get("Browser.Cat." + key) ?? key);
+            }
             _cmbCategory.SelectedIndex = sel;
         }
 
@@ -613,15 +636,22 @@ public class ItemBrowser : UserControl
 
         var query = _txtSearch.Text.Trim();
 
-        // Category filter: 0 = All, 1 = Buff, 2 = Debuff (uses index to avoid locale text mismatch)
+        // Buff mode: 0 = All, 1 = Buff, 2 = Debuff (index-based).
+        // Item mode: the selected category key from the parallel list.
         int categoryFilter = _filterMode == ItemFilterMode.BuffOnly ? _cmbCategory.SelectedIndex : 0;
+        string? itemCategoryKey = null;
+        if (_filterMode != ItemFilterMode.BuffOnly)
+        {
+            int idx = _cmbCategory.SelectedIndex;
+            itemCategoryKey = idx > 0 && idx < _itemCategoryKeys.Count ? _itemCategoryKeys[idx] : null;
+        }
 
         bool hasTextFilter = !string.IsNullOrEmpty(query);
-        bool hasCategoryFilter = categoryFilter > 0;
+        bool hasCategoryFilter = categoryFilter > 0 || itemCategoryKey != null;
 
         if (_viewMode == BrowserViewMode.LargeIcons)
         {
-            ApplyFilterLarge(query, categoryFilter, hasTextFilter, hasCategoryFilter);
+            ApplyFilterLarge(query, categoryFilter, itemCategoryKey, hasTextFilter, hasCategoryFilter);
             return;
         }
 
@@ -640,14 +670,23 @@ public class ItemBrowser : UserControl
         {
             bool visible = true;
 
-            // Category filter: compare against English type names ("Buff"/"Debuff") from database
+            // Category filter (buff mode: index-based Buff/Debuff;
+            // item mode: category key compared against the curated taxonomy)
             if (hasCategoryFilter && row.Tag is int rowId)
             {
-                var rowType = BuffDatabase.GetType(rowId);
-                if (categoryFilter == 1)
-                    visible = rowType.Equals("Buff", StringComparison.OrdinalIgnoreCase);
-                else if (categoryFilter == 2)
-                    visible = rowType.Equals("Debuff", StringComparison.OrdinalIgnoreCase);
+                if (_filterMode == ItemFilterMode.BuffOnly)
+                {
+                    var rowType = BuffDatabase.GetType(rowId);
+                    if (categoryFilter == 1)
+                        visible = rowType.Equals("Buff", StringComparison.OrdinalIgnoreCase);
+                    else if (categoryFilter == 2)
+                        visible = rowType.Equals("Debuff", StringComparison.OrdinalIgnoreCase);
+                }
+                else if (itemCategoryKey != null)
+                {
+                    visible = ItemDatabase.GetCategory(rowId)
+                        .Equals(itemCategoryKey, StringComparison.OrdinalIgnoreCase);
+                }
             }
 
             // Text filter
@@ -679,7 +718,8 @@ public class ItemBrowser : UserControl
     /// into card rows (a single row holds several items, so row.Visible can't express
     /// per-card visibility).
     /// </summary>
-    private void ApplyFilterLarge(string query, int categoryFilter, bool hasTextFilter, bool hasCategoryFilter)
+    private void ApplyFilterLarge(string query, int categoryFilter, string? itemCategoryKey,
+        bool hasTextFilter, bool hasCategoryFilter)
     {
         if (!hasTextFilter && !hasCategoryFilter)
         {
@@ -692,20 +732,26 @@ public class ItemBrowser : UserControl
         _filteredIds = new List<int>(_flatIds.Count);
         foreach (int id in _flatIds)
         {
-            if (PassesFilter(id, GetDisplayName(id), query, isNumeric, numericQuery, categoryFilter))
+            if (PassesFilter(id, GetDisplayName(id), query, isNumeric, numericQuery, categoryFilter, itemCategoryKey))
                 _filteredIds.Add(id);
         }
         RebuildChunkedRows();
     }
 
     /// <summary>Shared per-item filter semantics: category (buffs) plus numeric-ID / name substring.</summary>
-    private bool PassesFilter(int id, string name, string query, bool isNumeric, int numericQuery, int categoryFilter)
+    private bool PassesFilter(int id, string name, string query, bool isNumeric, int numericQuery,
+        int categoryFilter, string? itemCategoryKey)
     {
         if (categoryFilter > 0 && _filterMode == ItemFilterMode.BuffOnly)
         {
             var rowType = BuffDatabase.GetType(id);
             if (categoryFilter == 1 && !rowType.Equals("Buff", StringComparison.OrdinalIgnoreCase)) return false;
             if (categoryFilter == 2 && !rowType.Equals("Debuff", StringComparison.OrdinalIgnoreCase)) return false;
+        }
+        if (itemCategoryKey != null && _filterMode != ItemFilterMode.BuffOnly)
+        {
+            if (!ItemDatabase.GetCategory(id).Equals(itemCategoryKey, StringComparison.OrdinalIgnoreCase))
+                return false;
         }
 
         if (string.IsNullOrEmpty(query)) return true;

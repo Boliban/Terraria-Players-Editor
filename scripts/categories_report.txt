@@ -1,0 +1,295 @@
+== category counts ==
+  Accessory: 401
+  Ammo: 85
+  Armor: 255
+  Block: 198
+  Consumable: 262
+  Dye: 144
+  Furniture: 2701
+  Material: 249
+  Misc: 155
+  Mount: 148
+  None: 1
+  Potion: 57
+  Tool: 367
+  Vanity: 399
+  Wall: 292
+  Weapon: 433
+
+== stage usage (how each item got its category) ==
+  Accessory: 401
+  Ammo: 85
+  Armor: 255
+  Block: 198
+  Consumable: 262
+  Dye: 144
+  Furniture: 2701
+  Material: 249
+  Misc: 155
+  Mount: 148
+  Potion: 57
+  Tool: 367
+  Vanity: 399
+  Wall: 292
+  Weapon: 433
+
+== wiki pages not matched to items.json ==
+
+  (0 total)
+
+== overrides applied ==
+  Torch: Furniture -> Furniture
+  GrapplingHook: Armor -> Tool
+  BottledWater: Weapon -> Consumable
+  IvyWhip: Tool -> Tool
+  EmptyBucket: Misc -> Tool
+  WaterBucket: Misc -> Tool
+  LavaBucket: Misc -> Tool
+  Ale: Accessory -> Consumable
+  BowlofSoup: Accessory -> Consumable
+  DualHook: Weapon -> Tool
+  Wrench: Material -> Tool
+  BluePresent: Armor -> Consumable
+  GreenPresent: Armor -> Consumable
+  YellowPresent: Armor -> Consumable
+  BlueWrench: Mount -> Tool
+  GreenWrench: Mount -> Tool
+  LandMine: Misc -> Weapon
+  WebSlinger: Misc -> Tool
+  Campfire: Misc -> Furniture
+  HoneyBucket: Misc -> Tool
+  BottledHoney: Accessory -> Consumable
+  AmethystHook: Misc -> Tool
+  TopazHook: Misc -> Tool
+  SapphireHook: Misc -> Tool
+  EmeraldHook: Misc -> Tool
+  RubyHook: Misc -> Tool
+  DiamondHook: Misc -> Tool
+  SkeletronHand: Misc -> Tool
+  BatHook: Misc -> Tool
+  SpookyHook: Misc -> Tool
+  Present: Misc -> Consumable
+  ChristmasPudding: Misc -> Consumable
+  Eggnog: Misc -> Consumable
+  CandyCaneHook: Misc -> Tool
+  ChristmasHook: Misc -> Tool
+  Sake: Consumable -> Consumable
+  Pho: Misc -> Consumable
+  Honeyfin: Misc -> Consumable
+  FishHook: Misc -> Tool
+  SlimeHook: Misc -> Tool
+  AntiGravityHook: Misc -> Tool
+  TendonHook: Misc -> Tool
+  ThornHook: Misc -> Tool
+  IlluminantHook: Misc -> Tool
+  WormHook: Misc -> Tool
+  BottomlessBucket: Misc -> Tool
+  SuperAbsorbantSponge: Misc -> Tool
+  GrubSoup: Consumable -> Consumable
+  KingSlimeBossBag: Misc -> Consumable
+  EyeOfCthulhuBossBag: Misc -> Consumable
+  EaterOfWorldsBossBag: Misc -> Consumable
+  BrainOfCthulhuBossBag: Misc -> Consumable
+  QueenBeeBossBag: Misc -> Consumable
+  SkeletronBossBag: Misc -> Consumable
+  WallOfFleshBossBag: Block -> Consumable
+  DestroyerBossBag: Misc -> Consumable
+  TwinsBossBag: Misc -> Consumable
+  SkeletronPrimeBossBag: Misc -> Consumable
+  PlanteraBossBag: Misc -> Consumable
+  GolemBossBag: Misc -> Consumable
+  FishronBossBag: Misc -> Consumable
+  CultistBossBag: Misc -> Consumable
+  MoonLordBossBag: Misc -> Consumable
+  LunarHook: Misc -> Tool
+  YellowWrench: Misc -> Tool
+  StaticHook: Misc -> Tool
+  MulticolorWrench: Misc -> Tool
+  BossBagBetsy: Misc -> Consumable
+  BananaSplit: Misc -> Consumable
+  CreamSoda: Misc -> Consumable
+  IceCream: Misc -> Consumable
+  Milkshake: Misc -> Consumable
+  AmberHook: Misc -> Tool
+  SandcastleBucket: Misc -> Tool
+  ChumBucket: Misc -> Tool
+  GrapeJuice: Consumable -> Consumable
+  PrismaticPunch: Misc -> Consumable
+  SquirrelHook: Misc -> Tool
+  FairyQueenBossBag: Misc -> Consumable
+  CombatWrench: Misc -> Tool
+  BottomlessLavaBucket: Misc -> Tool
+  LavaAbsorbantSponge: Misc -> Tool
+  QueenSlimeBossBag: Misc -> Consumable
+  CoffeeCup: Misc -> Consumable
+  DeerclopsBossBag: Misc -> Consumable
+  BottomlessHoneyBucket: Misc -> Tool
+  HoneyAbsorbantSponge: Misc -> Tool
+  UltraAbsorbantSponge: Misc -> Tool
+  BottomlessShimmerBucket: Misc -> Tool
+  LifeFruitHealingPotion: Consumable -> Consumable
+  TorchGodPotion: Misc -> Consumable
+
+== legacy category changes ==
+  ShadowOrb: Wall -> Misc
+
+  (1 total)
+
+== items without luadata ==
+
+== leftover Misc (curated review list) ==
+  AmanitaFungifin (Amanita Fungifin)
+  Angelfish (Angelfish)
+  ApprenticeBait (Apprentice Bait)
+  Batfish (Batfish)
+  BlackPearl (Black Pearl)
+  BloodyManowar (Bloody Manowar)
+  BlueAndGreenLights (Blue and Green Lights)
+  BlueAndYellowLights (Blue and Yellow Lights)
+  BlueJellyfish (Blue Jellyfish)
+  BlueLights (Blue Lights)
+  Bonefish (Bonefish)
+  BoringBow (n/a (No official name))
+  BossBagDarkMage (n/a (No official name))
+  BossBagOgre (n/a (No official name))
+  BubbleWand (Bubble Wand)
+  BumblebeeTuna (Bumblebee Tuna)
+  Bunnyfish (Bunnyfish)
+  CandyApple (Candy Apple)
+  CandyCane (Candy Cane)
+  CapnTunabeard (Cap'n Tunabeard)
+  Catfish (Catfish)
+  ClosedVoidBag (Closed Void Bag)
+  Cloudfish (Cloudfish)
+  Clownfish (Clownfish)
+  Coal (Coal)
+  ColorOnlyDye (n/a (No official name))
+  CorruptionKey (Corruption Key)
+  CrimsonAltarIcon (Crimson Altar(unobtainable/not implemented))
+  CrimsonKey (Crimson Key)
+  Cursedfish (Cursedfish)
+  DD2EnergyCrystal (Etherian Mana)
+  DefenderMedal (Defender Medal)
+  DemonAltarIcon (Demon Altar(unobtainable/not implemented))
+  DemonicHellfish (Demonic Hellfish)
+  Derpfish (Derpfish)
+  DirtRod (Dirt Rod)
+  Dirtfish (Dirtfish)
+  DontHurtComboBookInactive (Guide to Peaceful Coexistence (Inactive))
+  DontHurtCrittersBookInactive (Guide to Critter Companionship (Inactive))
+  DontHurtNatureBookInactive (Guide to Environmental Preservation (Inactive))
+  DrumStick (Drumstick)
+  DungeonDesertKey (Desert Key)
+  DynamiteFish (Dynamite Fish)
+  EaterofPlankton (Eater of Plankton)
+  EtherianJavelin (n/a (No official name))
+  Fishotron (Fishotron)
+  Fishron (Fishron)
+  FoxparksTagEffect (n/a (No official name))
+  FrozenKey (Frozen Key)
+  GasTrap (Gas Trap)
+  GoblinBomberCap (n/a (No official name))
+  GoblinMask (n/a (No official name))
+  GolfClubBronzeWedge (Worn Golf Club (Wedge))
+  GolfClubChlorophyteDriver (Premium Golf Club (Driver))
+  GolfClubDiamondWedge (Premium Golf Club (Wedge))
+  GolfClubDriver (Golf Club (Driver))
+  GolfClubGoldWedge (Fancy Golf Club (Wedge))
+  GolfClubIron (Golf Club (Iron))
+  GolfClubLeadPutter (Fancy Golf Club (Putter))
+  GolfClubMythrilIron (Fancy Golf Club (Iron))
+  GolfClubPearlwoodDriver (Fancy Golf Club (Driver))
+  GolfClubPutter (Golf Club (Putter))
+  GolfClubRustyPutter (Worn Golf Club (Putter))
+  GolfClubShroomitePutter (Premium Golf Club (Putter))
+  GolfClubStoneIron (Worn Golf Club (Iron))
+  GolfClubTitaniumIron (Premium Golf Club (Iron))
+  GolfClubWedge (Golf Club (Wedge))
+  GolfClubWoodDriver (Worn Golf Club (Driver))
+  GreenAndWhiteGarland (Green and White Garland)
+  GreenBulb (Green Bulb)
+  GreenGardland (Green Garland)
+  GreenJellyfish (Green Jellyfish)
+  GreenLights (Green Lights)
+  GuideVoodooFish (Guide Voodoo Fish)
+  HallowedKey (Hallowed Key)
+  Harpyfish (Harpyfish)
+  Heart (Heart)
+  Hungerfish (Hungerfish)
+  IceMirror (Ice Mirror)
+  Ichorfish (Ichorfish)
+  Jewelfish (Jewelfish)
+  JimsDrone (Kwad Racer Drone)
+  JourneymanBait (Journeyman Bait)
+  JungleKey (Jungle Key)
+  KoboldDynamiteBackpack (n/a (No official name))
+  LargeAmber (Large Amber)
+  LargeAmethyst (Large Amethyst)
+  LargeDiamond (Large Diamond)
+  LargeEmerald (Large Emerald)
+  LargeRuby (Large Ruby)
+  LargeSapphire (Large Sapphire)
+  LargeTopaz (Large Topaz)
+  ManaCloakStar (n/a (No official name))
+  MarshmallowonaStick (Marshmallow on a Stick)
+  MasterBait (Master Bait)
+  MirageFish (Mirage Fish)
+  Mudfish (Mudfish)
+  MutantFlinxfin (Mutant Flinxfin)
+  NebulaPickup1 (Damage Booster)
+  NebulaPickup2 (Life Booster)
+  NebulaPickup3 (Mana Booster)
+  OgreMask (n/a (No official name))
+  OldShoe (Old Shoe)
+  PalworldDigtoise (Digtoise)
+  Pengfish (Pengfish)
+  PhasicWarpEjector (Phasic Warp Ejector(unobtainable/not implemented))
+  PinkJellyfish (Pink Jellyfish)
+  PinkPearl (Pink Pearl)
+  PinkThread (Pink Thread)
+  Pixiefish (Pixiefish)
+  RedAndBlueLights (Red and Blue Lights)
+  RedAndGreenBulb (Red and Green Bulb)
+  RedAndGreenGardland (Red and Green Garland)
+  RedAndGreenLights (Red and Green Lights)
+  RedAndYellowBulb (Red and Yellow Bulb)
+  RedAndYellowLights (Red and Yellow Lights)
+  RedBulb (Red Bulb)
+  RedGardland (Red Garland)
+  RedLights (Red Lights)
+  RemoteControlCar (Wall Racer Car)
+  ScarabFish (Scarab Fish)
+  ScorpioFish (Scorpio Fish)
+  ShadowOrb (Shadow Orb)
+  ShimmerGun (Shimmer Gun)
+  SilkRopeCoil (Silk Rope Coil)
+  SleepingIcon (n/a (No official name))
+  SlimeGun (Slime Gun)
+  Slimefish (Slimefish)
+  SoulCake (Soul Cake)
+  SoundGun (The Imploder(unobtainable/not implemented))
+  Spiderfish (Spiderfish)
+  Star (Star)
+  SugarPlum (Sugar Plum)
+  TheFishofCthulu (The Fish of Cthulhu)
+  TinCan (Tin Can)
+  TundraTrout (Tundra Trout)
+  UnicornFish (Unicorn Fish)
+  UsedGasTrap (Used Gas Trap)
+  ViciousPowder (Vicious Powder)
+  VineRopeCoil (Vine Rope Coil)
+  WaterGun (Water Gun)
+  WebRopeCoil (Web Rope Coil)
+  WhiteAndGreenBulb (White and Green Bulb)
+  WhiteAndRedBulb (White and Red Bulb)
+  WhiteAndRedGarland (White and Red Garland)
+  WhiteAndYellowBulb (White and Yellow Bulb)
+  WhiteBulb (White Bulb)
+  WhiteGarland (White Garland)
+  WhitePearl (White Pearl)
+  Wyverntail (Wyverntail)
+  YellowAndGreenBulb (Yellow and Green Bulb)
+  YellowAndGreenLights (Yellow and Green Lights)
+  YellowBulb (Yellow Bulb)
+  YellowLights (Yellow Lights)
+  ZombieFish (Zombie Fish)

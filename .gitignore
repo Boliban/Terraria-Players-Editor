@@ -28,3 +28,6 @@ DemoFile/
 .claude/
 Release/publish/
 publish/
+# Regenerable wiki data cache (fetch_wiki_data.py)
+scripts/wiki_cache/
+__pycache__/

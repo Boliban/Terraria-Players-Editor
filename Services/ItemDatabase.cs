@@ -42,12 +42,52 @@ public static class ItemDatabase
                 if (item.Id > MaxId) MaxId = item.Id;
             }
 
+            // Curated taxonomy (categories.json) overrides the legacy items.json
+            // category values. Missing/partial file degrades to the legacy data.
+            var categories = LoadCategoryOverrides();
+            if (categories != null)
+            {
+                foreach (var item in items)
+                {
+                    if (categories.TryGetValue(item.Internal ?? "", out var cat) && !string.IsNullOrEmpty(cat))
+                        IdToCategory[item.Id] = cat;
+                }
+            }
+
             // Build Chinese name → ID reverse lookup
             BuildZhReverseLookup();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to load item database: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Load the curated taxonomy (Data/categories.json, internal name → category).
+    /// Returns null when the resource is missing or unreadable (callers then
+    /// keep the legacy items.json categories).
+    /// </summary>
+    private static Dictionary<string, string>? LoadCategoryOverrides()
+    {
+        try
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream("Terraria_Players_Editor.Data.categories.json");
+            if (stream == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Warning: categories.json not found as embedded resource.");
+                return null;
+            }
+            using var reader = new StreamReader(stream);
+            var json = reader.ReadToEnd();
+            return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to load category overrides: {ex.Message}");
+            return null;
         }
     }
 
