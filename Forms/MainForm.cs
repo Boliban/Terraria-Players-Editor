@@ -11,6 +11,7 @@ public partial class MainForm : Form
     private string? _filePath;
 
     private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem, _verticalLabelsItem, _refreshMenuItem, _contextRefreshItem;
+    private ToolStripMenuItem? _browserViewDetailsItem, _browserViewLargeItem, _iconSize32Item, _iconSize48Item, _iconSize64Item;
 
     // Right-click context menu
     private ContextMenuStrip? _contextMenu;
@@ -182,6 +183,26 @@ public partial class MainForm : Form
         };
         settingsMenu.DropDownItems.Add(_verticalLabelsItem);
 
+        settingsMenu.DropDownItems.Add(new ToolStripSeparator());
+
+        // Browser display mode: details rows or large-icon card grid
+        var browserViewMenu = new ToolStripMenuItem(AppLocale.Get("Menu.BrowserView"));
+        _browserViewDetailsItem = new ToolStripMenuItem(AppLocale.Get("Menu.ViewDetails"),
+            null, (_, _) => ApplyBrowserViewMode(BrowserViewMode.Details));
+        _browserViewLargeItem = new ToolStripMenuItem(AppLocale.Get("Menu.ViewLargeIcons"),
+            null, (_, _) => ApplyBrowserViewMode(BrowserViewMode.LargeIcons));
+        browserViewMenu.DropDownItems.AddRange([_browserViewDetailsItem, _browserViewLargeItem]);
+        settingsMenu.DropDownItems.Add(browserViewMenu);
+
+        // Large-icon card size
+        var iconSizeMenu = new ToolStripMenuItem(AppLocale.Get("Menu.IconSize"));
+        _iconSize32Item = new ToolStripMenuItem(AppLocale.Get("Menu.IconSize32"), null, (_, _) => ApplyBrowserIconSize(32));
+        _iconSize48Item = new ToolStripMenuItem(AppLocale.Get("Menu.IconSize48"), null, (_, _) => ApplyBrowserIconSize(48));
+        _iconSize64Item = new ToolStripMenuItem(AppLocale.Get("Menu.IconSize64"), null, (_, _) => ApplyBrowserIconSize(64));
+        iconSizeMenu.DropDownItems.AddRange([_iconSize32Item, _iconSize48Item, _iconSize64Item]);
+        settingsMenu.DropDownItems.Add(iconSizeMenu);
+        ApplyBrowserViewCheckState();
+
         var darkModeItem = new ToolStripMenuItem(AppLocale.Get("Menu.DarkMode"))
         {
             Checked = SettingsManager.DarkMode,
@@ -217,6 +238,41 @@ public partial class MainForm : Form
         _contextRefreshItem = new ToolStripMenuItem(AppLocale.Get("Menu.Refresh"), null, OnRefresh) { ShortcutKeys = Keys.Control | Keys.R };
         _contextMenu.Items.Add(_contextRefreshItem);
         ContextMenuStrip = _contextMenu;
+    }
+
+    /// <summary>Switch both browsers' view mode (details / large icons).</summary>
+    private void ApplyBrowserViewMode(BrowserViewMode mode)
+    {
+        SettingsManager.BrowserViewMode = mode;
+        SettingsManager.Save();
+        ApplyBrowserViewCheckState();
+        SetBrowserView();
+    }
+
+    /// <summary>Change the large-icon card size for both browsers.</summary>
+    private void ApplyBrowserIconSize(int size)
+    {
+        SettingsManager.BrowserIconSize = size;
+        SettingsManager.Save();
+        ApplyBrowserViewCheckState();
+        SetBrowserView();
+    }
+
+    /// <summary>Apply the view mode and icon size to both browsers.</summary>
+    private void SetBrowserView()
+    {
+        _browserItems.SetView(SettingsManager.BrowserViewMode, SettingsManager.BrowserIconSize);
+        _browserBuffs.SetView(SettingsManager.BrowserViewMode, SettingsManager.BrowserIconSize);
+    }
+
+    /// <summary>Synchronize the check state of the browser view menu items with settings.</summary>
+    private void ApplyBrowserViewCheckState()
+    {
+        _browserViewDetailsItem!.Checked = SettingsManager.BrowserViewMode == BrowserViewMode.Details;
+        _browserViewLargeItem!.Checked = SettingsManager.BrowserViewMode == BrowserViewMode.LargeIcons;
+        _iconSize32Item!.Checked = SettingsManager.BrowserIconSize == 32;
+        _iconSize48Item!.Checked = SettingsManager.BrowserIconSize == 48;
+        _iconSize64Item!.Checked = SettingsManager.BrowserIconSize == 64;
     }
 
     private void BuildStatusBar()

@@ -21,6 +21,12 @@ public static class SettingsManager
     /// <summary>Whether equipment column labels are arranged vertically on the grids' left (true) or horizontally above the grids (false).</summary>
     public static bool VerticalEquipLabels { get; set; } = true;
 
+    /// <summary>Item/buff browser display mode (details rows or large-icon card grid).</summary>
+    public static BrowserViewMode BrowserViewMode { get; set; } = BrowserViewMode.Details;
+
+    /// <summary>Large-icon card size in pixels (32, 48, or 64).</summary>
+    public static int BrowserIconSize { get; set; } = 48;
+
     /// <summary>Load saved settings and apply language. Call once at startup before creating UI.</summary>
     public static void Load()
     {
@@ -36,6 +42,8 @@ public static class SettingsManager
                     EnableAnimatedIcons = settings.EnableAnimatedIcons;
                     DarkMode = settings.DarkMode;
                     VerticalEquipLabels = settings.VerticalEquipLabels;
+                    BrowserViewMode = settings.BrowserViewMode;
+                    BrowserIconSize = settings.BrowserIconSize;
                 }
             }
         }
@@ -56,7 +64,9 @@ public static class SettingsManager
                 Language = AppLocale.Current,
                 EnableAnimatedIcons = EnableAnimatedIcons,
                 DarkMode = DarkMode,
-                VerticalEquipLabels = VerticalEquipLabels
+                VerticalEquipLabels = VerticalEquipLabels,
+                BrowserViewMode = BrowserViewMode,
+                BrowserIconSize = BrowserIconSize
             };
             var json = JsonSerializer.Serialize(settings);
             File.WriteAllText(SettingsFile, json);
@@ -73,5 +83,14 @@ public static class SettingsManager
         public bool EnableAnimatedIcons { get; set; } = true;
         public bool DarkMode { get; set; } = false;
         public bool VerticalEquipLabels { get; set; } = true;
+        public BrowserViewMode BrowserViewMode { get; set; } = BrowserViewMode.Details;
+        public int BrowserIconSize { get; set; } = 48;
     }
+}
+
+/// <summary>Display mode for the item/buff browser.</summary>
+public enum BrowserViewMode
+{
+    Details,
+    LargeIcons
 }

@@ -209,7 +209,7 @@ public static class IconService
     /// Scale image to fit within targetW×targetH, maintaining aspect ratio.
     /// Centered with transparent padding. Uses NearestNeighbor for crisp pixel art.
     /// </summary>
-    private static Bitmap ScaleContain(Bitmap src, int targetW, int targetH)
+    public static Bitmap ScaleContain(Bitmap src, int targetW, int targetH)
     {
         if (src.Width == targetW && src.Height == targetH)
             return new Bitmap(src); // Exact match, just clone
