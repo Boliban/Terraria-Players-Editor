@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
     <RootNamespace>Terraria_Players_Editor</RootNamespace>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
@@ -17,6 +17,7 @@
     <EmbeddedResource Include="Data\icons_items.json" />
     <EmbeddedResource Include="Data\icons_buffs.json" />
     <EmbeddedResource Include="Data\buffs.json" />
+    <EmbeddedResource Include="Data\item-groups.json" />
   </ItemGroup>
 
   <ItemGroup>

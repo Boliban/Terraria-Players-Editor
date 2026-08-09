@@ -54,6 +54,17 @@ public static class ThemeManager
     public static Color BuffText { get; private set; }
     public static Color DebuffText { get; private set; }
 
+    // ── Item Category Text Colors (colored-category browser feature) ──
+    public static Color ItemColorRed { get; private set; }
+    public static Color ItemColorBlue { get; private set; }
+    public static Color ItemColorGreen { get; private set; }
+    public static Color ItemColorYellow { get; private set; }
+    public static Color ItemColorBlueGray { get; private set; }
+    public static Color ItemColorCyan { get; private set; }
+    public static Color ItemColorOrange { get; private set; }
+    public static Color ItemColorTeal { get; private set; }
+    public static Color ItemColorLightBlue { get; private set; }
+
     // ── Typography (cached Font objects — never recreated) ──
     public static class Typography
     {
@@ -139,6 +150,16 @@ public static class ThemeManager
 
             BuffText = Color.FromArgb(129, 199, 132);
             DebuffText = Color.FromArgb(239, 83, 80);
+
+            ItemColorRed = Color.FromArgb(0xFF, 0x8A, 0x80);        // weapons / ammo
+            ItemColorBlue = Color.FromArgb(0x81, 0xD4, 0xFA);       // armor
+            ItemColorGreen = Color.FromArgb(0xA5, 0xD6, 0xA7);      // potions & food
+            ItemColorYellow = Color.FromArgb(0xFF, 0xE0, 0x82);     // materials / treasure / coins
+            ItemColorBlueGray = Color.FromArgb(0x90, 0xA4, 0xAE);   // blocks & walls
+            ItemColorCyan = Color.FromArgb(0x80, 0xCB, 0xC4);       // placeables
+            ItemColorOrange = Color.FromArgb(0xFF, 0xAB, 0x91);     // wiring / tools
+            ItemColorTeal = Color.FromArgb(0x80, 0xDE, 0xEA);       // accessories / mounts / dyes
+            ItemColorLightBlue = Color.FromArgb(0xB3, 0xE5, 0xFC);  // fishing
         }
         else
         {
@@ -176,6 +197,16 @@ public static class ThemeManager
 
             BuffText = Color.FromArgb(21, 101, 45);
             DebuffText = Color.FromArgb(183, 28, 28);
+
+            ItemColorRed = Color.FromArgb(0xC6, 0x28, 0x28);        // weapons / ammo
+            ItemColorBlue = Color.FromArgb(0x15, 0x65, 0xC0);       // armor
+            ItemColorGreen = Color.FromArgb(0x2E, 0x7D, 0x32);      // potions & food
+            ItemColorYellow = Color.FromArgb(0xF9, 0xA8, 0x25);     // materials / treasure / coins
+            ItemColorBlueGray = Color.FromArgb(0x54, 0x6E, 0x7A);   // blocks & walls
+            ItemColorCyan = Color.FromArgb(0x00, 0x69, 0x5C);       // placeables
+            ItemColorOrange = Color.FromArgb(0xE6, 0x4A, 0x19);     // wiring / tools
+            ItemColorTeal = Color.FromArgb(0x00, 0x83, 0x8F);       // accessories / mounts / dyes
+            ItemColorLightBlue = Color.FromArgb(0x02, 0x77, 0xBD);  // fishing
         }
 
         ThemeChanged?.Invoke();

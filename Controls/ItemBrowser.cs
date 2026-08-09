@@ -38,12 +38,9 @@ public class ItemBrowser : UserControl
     // (index 0 = "All"). Buff mode keeps its index-based All/Buff/Debuff logic.
     private readonly List<string> _itemCategoryKeys = new();
 
-    // Fixed display order of the curated item taxonomy (categories.json keys)
-    private static readonly string[] ItemCategoryOrder =
-    {
-        "Weapon", "Armor", "Accessory", "Tool", "Ammo", "Potion", "Consumable",
-        "Material", "Block", "Wall", "Furniture", "Dye", "Mount", "Vanity", "Misc"
-    };
+    // Category dropdown mode (synced from SettingsManager on every LoadItems fill):
+    // true = all 54 game groups; false = 16 merged supergroups.
+    private bool _categoryMenuAllMode;
 
     private const int MaxCards = 32;
     private const int MinColumnWidth = 60;
@@ -194,7 +191,7 @@ public class ItemBrowser : UserControl
         // Apply theme colors to DataGridView
         ApplyDgvTheme();
         _dgvItems.EnableHeadersVisualStyles = false;
-        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); RefreshBuffRowColors(); _dgvItems.Invalidate(); Invalidate(); };
+        ThemeManager.ThemeChanged += () => { ApplyDgvTheme(); RefreshRowColors(); _dgvItems.Invalidate(); Invalidate(); };
 
         // Refresh scrollbar when this control becomes visible (tab switch, etc.)
         VisibleChanged += (s, e) =>
@@ -335,15 +332,20 @@ public class ItemBrowser : UserControl
                     IconService.GetItemIcon(item.Id) ?? IconService.DefaultIcon));
             }
 
-            // Populate category filter: All + the curated taxonomy, localized,
-            // in a fixed order. Keys live in _itemCategoryKeys (parallel to indices).
+            // Populate category filter: All + either the 54 game groups (All mode)
+            // or the 16 merged supergroups (Fewer mode), localized, in display order.
+            // Keys live in _itemCategoryKeys (parallel to indices).
             _cmbCategory.Items.Clear();
             _itemCategoryKeys.Clear();
             _cmbCategory.Items.Add(AppLocale.Get("Browser.All") ?? "All");
             _itemCategoryKeys.Add("All");
-            foreach (var key in ItemCategoryOrder)
+            _categoryMenuAllMode = SettingsManager.CategoryMenuMode == BrowserCategoryMode.All;
+            foreach (var key in _categoryMenuAllMode ? ItemGroupDatabase.GetAllGroupKeys()
+                                                     : ItemGroupDatabase.GetAllSuperGroupKeys())
             {
-                _cmbCategory.Items.Add(AppLocale.Get("Browser.Cat." + key) ?? key);
+                _cmbCategory.Items.Add(_categoryMenuAllMode
+                    ? ItemGroupDatabase.GetGroupDisplayName(key)
+                    : ItemGroupDatabase.GetSuperGroupDisplayName(key));
                 _itemCategoryKeys.Add(key);
             }
             _cmbCategory.SelectedIndex = 0;
@@ -371,6 +373,7 @@ public class ItemBrowser : UserControl
                 row.Cells[2].Value = d.id;
                 row.Tag = d.id;
             }
+            ApplyItemRowColors();
 
             // Force layout update so scrollbar appears immediately
             // Force scrollbar recalculation after bulk row loading
@@ -415,7 +418,9 @@ public class ItemBrowser : UserControl
                 var key = _itemCategoryKeys[i];
                 _cmbCategory.Items[i] = key == "All"
                     ? (AppLocale.Get("Browser.All") ?? "All")
-                    : (AppLocale.Get("Browser.Cat." + key) ?? key);
+                    : (_categoryMenuAllMode
+                        ? (ItemGroupDatabase.GetGroupDisplayName(key))
+                        : (ItemGroupDatabase.GetSuperGroupDisplayName(key)));
             }
             _cmbCategory.SelectedIndex = sel;
         }
@@ -458,22 +463,71 @@ public class ItemBrowser : UserControl
         _dgvItems.GridColor = ThemeManager.ControlInputBorder;
     }
 
-    /// <summary>Refresh per-row buff/debuff colors when theme changes.</summary>
-    private void RefreshBuffRowColors()
+    /// <summary>
+    /// Refresh per-row colors when the theme or the colored-text toggle changes.
+    /// Buff rows keep their Buff/Debuff colors; item rows use the category color
+    /// (or the default text color when the feature is off / item is Misc).
+    /// </summary>
+    private void RefreshRowColors()
     {
         // In large-icon mode colors are resolved at paint time from each card's id
         if (_viewMode == BrowserViewMode.LargeIcons) return;
-        if (_filterMode != ItemFilterMode.BuffOnly) return;
+        if (_filterMode == ItemFilterMode.BuffOnly)
+        {
+            foreach (DataGridViewRow row in _dgvItems.Rows)
+            {
+                if (row.Tag is int buffId)
+                {
+                    var type = BuffDatabase.GetType(buffId);
+                    row.DefaultCellStyle.ForeColor = type.Equals("Debuff", StringComparison.OrdinalIgnoreCase)
+                        ? ThemeManager.DebuffText
+                        : ThemeManager.BuffText;
+                }
+            }
+            return;
+        }
+        ApplyItemRowColors();
+    }
+
+    /// <summary>Apply per-row category colors to item rows (details view only).</summary>
+    private void ApplyItemRowColors()
+    {
+        if (_viewMode == BrowserViewMode.LargeIcons) return;
+        if (_filterMode == ItemFilterMode.BuffOnly) return;
         foreach (DataGridViewRow row in _dgvItems.Rows)
         {
-            if (row.Tag is int buffId)
-            {
-                var type = BuffDatabase.GetType(buffId);
-                row.DefaultCellStyle.ForeColor = type.Equals("Debuff", StringComparison.OrdinalIgnoreCase)
-                    ? ThemeManager.DebuffText
-                    : ThemeManager.BuffText;
-            }
+            if (row.Tag is int id)
+                row.DefaultCellStyle.ForeColor = ItemGroupDatabase.GetItemColor(id) ?? ThemeManager.TextPrimary;
         }
+    }
+
+    /// <summary>Re-fill the category dropdown for the current Fewer/All setting (item browser only).</summary>
+    public void RefreshCategoryMenu()
+    {
+        if (_filterMode == ItemFilterMode.BuffOnly) return; // buff browser keeps its 3 fixed modes
+        string? keepKey = _cmbCategory.SelectedIndex >= 0 && _cmbCategory.SelectedIndex < _itemCategoryKeys.Count
+            ? _itemCategoryKeys[_cmbCategory.SelectedIndex]
+            : null;
+        LoadItems(); // re-fills the dropdown per the new setting and resets to All
+        if (keepKey != null)
+        {
+            int idx = _itemCategoryKeys.IndexOf(keepKey); // same-named keys (Wiring/Ammo/Mount/Dye/Coin) map to the same supergroup
+            if (idx >= 0)
+                _cmbCategory.SelectedIndex = idx; // fires SelectedIndexChanged → ApplyFilter
+        }
+    }
+
+    /// <summary>Re-apply category text colors after the colored-text toggle changes.</summary>
+    public void ApplyColoredText()
+    {
+        if (_filterMode == ItemFilterMode.BuffOnly) return;
+        if (_viewMode == BrowserViewMode.LargeIcons)
+        {
+            _dgvItems.Invalidate(); // CardCell.Paint resolves colors live
+            return;
+        }
+        ApplyItemRowColors();
+        _dgvItems.Invalidate();
     }
 
     /// <summary>Build the three details-mode columns (recreated whenever the grid holds card columns).</summary>
@@ -693,8 +747,7 @@ public class ItemBrowser : UserControl
                 }
                 else if (itemCategoryKey != null)
                 {
-                    visible = ItemDatabase.GetCategory(rowId)
-                        .Equals(itemCategoryKey, StringComparison.OrdinalIgnoreCase);
+                    visible = MatchesCategory(rowId, itemCategoryKey);
                 }
             }
 
@@ -759,13 +812,26 @@ public class ItemBrowser : UserControl
         }
         if (itemCategoryKey != null && _filterMode != ItemFilterMode.BuffOnly)
         {
-            if (!ItemDatabase.GetCategory(id).Equals(itemCategoryKey, StringComparison.OrdinalIgnoreCase))
+            if (!MatchesCategory(id, itemCategoryKey))
                 return false;
         }
 
         if (string.IsNullOrEmpty(query)) return true;
         if (isNumeric && id == numericQuery) return true;
         return name.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Category match for item-mode filtering. All mode compares the game group
+    /// key; Fewer mode compares the merged supergroup key.
+    /// </summary>
+    private bool MatchesCategory(int id, string? itemCategoryKey)
+    {
+        if (itemCategoryKey == null) return true;
+        var group = ItemGroupDatabase.GetGroup(id);
+        return _categoryMenuAllMode
+            ? group.Equals(itemCategoryKey, StringComparison.OrdinalIgnoreCase)
+            : (ItemGroupDatabase.GetSuperGroup(group)?.Equals(itemCategoryKey, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 }
 
@@ -879,7 +945,7 @@ public sealed class CardCell : DataGridViewTextBoxCell
                 ? (BuffDatabase.GetType(id).Equals("Debuff", StringComparison.OrdinalIgnoreCase)
                     ? ThemeManager.DebuffText
                     : ThemeManager.BuffText)
-                : ThemeManager.TextPrimary;
+                : (ItemGroupDatabase.GetItemColor(id) ?? ThemeManager.TextPrimary);
 
         var font = cellStyle.Font ?? DataGridView?.Font ?? SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
         int textX = card.X + 4;

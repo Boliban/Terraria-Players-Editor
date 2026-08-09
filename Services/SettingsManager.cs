@@ -27,6 +27,12 @@ public static class SettingsManager
     /// <summary>Large-icon card size in pixels (32, 48, or 64).</summary>
     public static int BrowserIconSize { get; set; } = 48;
 
+    /// <summary>Item browser category dropdown mode: merged supergroups (Fewer) or all game groups (All).</summary>
+    public static BrowserCategoryMode CategoryMenuMode { get; set; } = BrowserCategoryMode.Fewer;
+
+    /// <summary>Color item names in the browser by their category.</summary>
+    public static bool EnableColoredText { get; set; } = false;
+
     /// <summary>Load saved settings and apply language. Call once at startup before creating UI.</summary>
     public static void Load()
     {
@@ -44,6 +50,8 @@ public static class SettingsManager
                     VerticalEquipLabels = settings.VerticalEquipLabels;
                     BrowserViewMode = settings.BrowserViewMode;
                     BrowserIconSize = settings.BrowserIconSize;
+                    CategoryMenuMode = settings.CategoryMenuMode;
+                    EnableColoredText = settings.EnableColoredText;
                 }
             }
         }
@@ -66,7 +74,9 @@ public static class SettingsManager
                 DarkMode = DarkMode,
                 VerticalEquipLabels = VerticalEquipLabels,
                 BrowserViewMode = BrowserViewMode,
-                BrowserIconSize = BrowserIconSize
+                BrowserIconSize = BrowserIconSize,
+                CategoryMenuMode = CategoryMenuMode,
+                EnableColoredText = EnableColoredText
             };
             var json = JsonSerializer.Serialize(settings);
             File.WriteAllText(SettingsFile, json);
@@ -85,7 +95,19 @@ public static class SettingsManager
         public bool VerticalEquipLabels { get; set; } = true;
         public BrowserViewMode BrowserViewMode { get; set; } = BrowserViewMode.Details;
         public int BrowserIconSize { get; set; } = 48;
+        public BrowserCategoryMode CategoryMenuMode { get; set; } = BrowserCategoryMode.Fewer;
+        public bool EnableColoredText { get; set; } = false;
     }
+}
+
+/// <summary>Item browser category dropdown mode.</summary>
+public enum BrowserCategoryMode
+{
+    /// <summary>Show 16 merged supergroups (default).</summary>
+    Fewer,
+
+    /// <summary>Show all 54 game groups.</summary>
+    All
 }
 
 /// <summary>Display mode for the item/buff browser.</summary>

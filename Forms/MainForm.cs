@@ -12,6 +12,7 @@ public partial class MainForm : Form
 
     private ToolStripMenuItem? _langEnItem, _langZhItem, _animIconItem, _verticalLabelsItem, _refreshMenuItem, _contextRefreshItem;
     private ToolStripMenuItem? _browserViewDetailsItem, _browserViewLargeItem, _iconSize32Item, _iconSize48Item, _iconSize64Item;
+    private ToolStripMenuItem? _categoryMenuParentItem, _catModeFewerItem, _catModeAllItem, _coloredTextItem;
 
     // Right-click context menu
     private ContextMenuStrip? _contextMenu;
@@ -203,6 +204,30 @@ public partial class MainForm : Form
         settingsMenu.DropDownItems.Add(iconSizeMenu);
         ApplyBrowserViewCheckState();
 
+        // Item category dropdown: Fewer (merged supergroups) or All (game groups)
+        _categoryMenuParentItem = new ToolStripMenuItem(AppLocale.Get("Menu.CategoryMenu"));
+        _catModeFewerItem = new ToolStripMenuItem(AppLocale.Get("Menu.CatFewer"),
+            null, (_, _) => ApplyCategoryMenuMode(BrowserCategoryMode.Fewer));
+        _catModeAllItem = new ToolStripMenuItem(AppLocale.Get("Menu.CatAll"),
+            null, (_, _) => ApplyCategoryMenuMode(BrowserCategoryMode.All));
+        _categoryMenuParentItem.DropDownItems.AddRange([_catModeFewerItem, _catModeAllItem]);
+        settingsMenu.DropDownItems.Add(_categoryMenuParentItem);
+        ApplyCategoryMenuCheckState();
+
+        // Colored category text in the item browser
+        _coloredTextItem = new ToolStripMenuItem(AppLocale.Get("Menu.ColoredText"))
+        {
+            Checked = SettingsManager.EnableColoredText,
+            CheckOnClick = true
+        };
+        _coloredTextItem.Click += (_, _) =>
+        {
+            SettingsManager.EnableColoredText = _coloredTextItem.Checked;
+            SettingsManager.Save();
+            _browserItems.ApplyColoredText(); // _browserItems exists once BuildTabControl has run
+        };
+        settingsMenu.DropDownItems.Add(_coloredTextItem);
+
         var darkModeItem = new ToolStripMenuItem(AppLocale.Get("Menu.DarkMode"))
         {
             Checked = SettingsManager.DarkMode,
@@ -256,6 +281,22 @@ public partial class MainForm : Form
         SettingsManager.Save();
         ApplyBrowserViewCheckState();
         SetBrowserView();
+    }
+
+    /// <summary>Switch the item browser's category dropdown between merged supergroups and all game groups.</summary>
+    private void ApplyCategoryMenuMode(BrowserCategoryMode mode)
+    {
+        SettingsManager.CategoryMenuMode = mode;
+        SettingsManager.Save();
+        ApplyCategoryMenuCheckState();
+        _browserItems.RefreshCategoryMenu();
+    }
+
+    /// <summary>Synchronize the check state of the category-menu mode items with settings.</summary>
+    private void ApplyCategoryMenuCheckState()
+    {
+        _catModeFewerItem!.Checked = SettingsManager.CategoryMenuMode == BrowserCategoryMode.Fewer;
+        _catModeAllItem!.Checked = SettingsManager.CategoryMenuMode == BrowserCategoryMode.All;
     }
 
     /// <summary>Apply the view mode and icon size to both browsers.</summary>
@@ -1773,6 +1814,12 @@ public partial class MainForm : Form
                 if (_langZhItem != null) _langZhItem.Text = L("Menu.LangZH");
             }
         }
+
+        // Settings menu items (newer entries kept as fields)
+        if (_categoryMenuParentItem != null) _categoryMenuParentItem.Text = L("Menu.CategoryMenu");
+        if (_catModeFewerItem != null) _catModeFewerItem.Text = L("Menu.CatFewer");
+        if (_catModeAllItem != null) _catModeAllItem.Text = L("Menu.CatAll");
+        if (_coloredTextItem != null) _coloredTextItem.Text = L("Menu.ColoredText");
 
         // Tab titles
         tabPlayerInfo.Text = L("Tab.PlayerInfo");
