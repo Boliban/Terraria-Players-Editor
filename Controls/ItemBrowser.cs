@@ -23,6 +23,7 @@ public class ItemBrowser : UserControl
     private int _iconSize = SettingsManager.BrowserIconSize;
     private int _cardColumns;        // number of card columns currently built
     private int _columnsIconSize;    // icon size the current card columns were built with
+    private bool _columnsBuffMode;   // whether the current card columns render buffs (IsBuffMode)
     private bool _loading;           // suppresses ApplyFilter reentrancy during LoadItems
     private bool _inLayout;          // suppresses SizeChanged reentrancy during column rebuild
     private List<int> _flatIds = new();
@@ -485,6 +486,7 @@ public class ItemBrowser : UserControl
         // column state so the next EnsureLargeColumns() forces a rebuild.
         _cardColumns = 0;
         _columnsIconSize = 0;
+        _columnsBuffMode = false;
 
         _iconCol = new DataGridViewImageColumn
         {
@@ -533,10 +535,11 @@ public class ItemBrowser : UserControl
             _nameCol.Width = newNameWidth;
     }
 
-    /// <summary>Ensure the card columns exist for the current width and icon size.</summary>
+    /// <summary>Ensure the card columns exist for the current width, icon size, and buff mode.</summary>
     private void EnsureLargeColumns()
     {
-        if (_cardColumns == 0 || _columnsIconSize != _iconSize)
+        if (_cardColumns == 0 || _columnsIconSize != _iconSize
+            || _columnsBuffMode != (_filterMode == ItemFilterMode.BuffOnly))
             RecomputeGridLayout();
     }
 
@@ -555,8 +558,13 @@ public class ItemBrowser : UserControl
         int colW = Math.Max(MinColumnWidth, avail / k);
         int remainder = Math.Max(0, avail - colW * k);
 
-        // Width-only change: adjust existing columns and keep rows untouched
-        if (_cardColumns == k && _columnsIconSize == _iconSize && _dgvItems.Columns.Count == k)
+        bool buffMode = _filterMode == ItemFilterMode.BuffOnly;
+
+        // Width-only change: adjust existing columns and keep rows untouched.
+        // A buff-mode mismatch (e.g. columns built by an early SizeChanged before
+        // FilterMode was set) forces a full rebuild so cards render buff icons.
+        if (_cardColumns == k && _columnsIconSize == _iconSize
+            && _dgvItems.Columns.Count == k && _columnsBuffMode == buffMode)
         {
             for (int c = 0; c < k; c++)
                 _dgvItems.Columns[c].Width = colW + (c == k - 1 ? remainder : 0);
@@ -574,10 +582,11 @@ public class ItemBrowser : UserControl
         {
             _cardColumns = k;
             _columnsIconSize = _iconSize;
+            _columnsBuffMode = buffMode;
             _dgvItems.Columns.Clear();
             for (int c = 0; c < k; c++)
             {
-                _dgvItems.Columns.Add(new CardColumn(_iconSize, _filterMode == ItemFilterMode.BuffOnly)
+                _dgvItems.Columns.Add(new CardColumn(_iconSize, buffMode)
                 {
                     Width = colW + (c == k - 1 ? remainder : 0)
                 });
