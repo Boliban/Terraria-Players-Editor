@@ -253,14 +253,24 @@ public class ItemModifier : UserControl
         // Try to parse item ID from search combo text; fall back to current item
         var searchText = _cmbItemSearch.Text;
         int itemId;
-        if (!string.IsNullOrWhiteSpace(searchText))
+        // If the combo text matches the currently loaded item's display name,
+        // use _currentItemId directly to avoid duplicate-name ambiguity (multiple
+        // items can share the same display name like "n/a (No official name)").
+        string currentItemName = _currentItemId > 0 ? ItemDatabase.GetName(_currentItemId) : "";
+        if (!string.IsNullOrWhiteSpace(searchText) && !string.Equals(searchText.Trim(), currentItemName, StringComparison.OrdinalIgnoreCase))
         {
+            // User typed a different item name — resolve it
             itemId = ItemDatabase.FindIdByPartialName(searchText);
             if (itemId < 0) itemId = _currentItemId;
         }
+        else if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            // Text matches current item name — user only changed quantity/prefix/favorite
+            itemId = _currentItemId;
+        }
         else
         {
-            itemId = _currentItemId;
+            itemId = 0;
         }
 
         DebugLog.Log($"[ItemMod] BuildItemData: slot={_currentSlotIndex}, itemId={itemId}, stack={_cachedStack}, prefix={_cachedPrefix}, favorited={_chkFavorite.Checked}");
