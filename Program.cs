@@ -16,6 +16,7 @@ namespace Terraria_Players_Editor
 
             // Load persisted settings before creating UI
             SettingsManager.Load();
+            Services.Memory.MemorySettings.Load();
 
             // Set system color mode for native controls (scrollbars, borders, etc.)
             Application.SetColorMode(SettingsManager.DarkMode

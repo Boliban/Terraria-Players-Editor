@@ -162,6 +162,10 @@ partial class MainForm
     private Label lblRestorationCd = null!;
     private NumericUpDown nudRestorationCd = null!;
 
+    // === Tab 9: Memory editing ===
+    private TabPage tabMemory = null!;
+    private Controls.MemoryPanel _memoryPanel = null!;
+
     // Equipment column labels (for language switching)
     private Label _lblArmorDye = null!, _lblVanityArmor = null!, _lblArmor = null!;
     private Label _lblMiscDye = null!, _lblMisc = null!;

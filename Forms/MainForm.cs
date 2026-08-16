@@ -14,6 +14,9 @@ public partial class MainForm : Form
     private ToolStripMenuItem? _browserViewDetailsItem, _browserViewLargeItem, _iconSize32Item, _iconSize48Item, _iconSize64Item;
     private ToolStripMenuItem? _categoryMenuParentItem, _catModeFewerItem, _catModeAllItem, _coloredTextItem;
 
+    // Memory editing menu
+    private ToolStripMenuItem? _memMenu, _memAutoRefreshItem, _memDisconnectItem;
+
     // Right-click context menu
     private ContextMenuStrip? _contextMenu;
 
@@ -256,6 +259,27 @@ public partial class MainForm : Form
         fileMenu.DropDownItems.AddRange([openMenuItem, _refreshMenuItem!, saveMenuItem, new ToolStripSeparator(), saveAsMenuItem, new ToolStripSeparator(), exitMenuItem]);
         menuStrip.Items.Add(fileMenu);
         menuStrip.Items.Add(settingsMenu);
+
+        // === Memory editing menu ===
+        _memMenu = new ToolStripMenuItem(AppLocale.Get("MemEdit.Title"));
+        var memOpenItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.OpenTab"), null, (_, _) => SelectMemoryTab());
+        var memSelectItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.SelectProcess"), null, OnMemorySelectProcess);
+        _memDisconnectItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Disconnect"), null, (_, _) => _memoryPanel.Disconnect());
+        _memAutoRefreshItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.AutoRefresh"))
+        {
+            Checked = Services.Memory.MemorySettings.AutoRefresh,
+            CheckOnClick = true
+        };
+        _memAutoRefreshItem.Click += (_, _) =>
+        {
+            _memoryPanel.AutoRefreshEnabled = _memAutoRefreshItem.Checked;
+            Services.Memory.MemorySettings.AutoRefresh = _memAutoRefreshItem.Checked;
+            Services.Memory.MemorySettings.Save();
+        };
+        var memSettingsItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Settings"), null, (_, _) => _memoryPanel.ShowSettingsDialog());
+        _memMenu.DropDownItems.AddRange([memOpenItem, memSelectItem, _memDisconnectItem, new ToolStripSeparator(), _memAutoRefreshItem, memSettingsItem]);
+        menuStrip.Items.Add(_memMenu);
+
         Controls.Add(menuStrip);
 
         // Right-click context menu with Refresh
@@ -341,7 +365,8 @@ public partial class MainForm : Form
             BuildItemsTab(),
             BuildBuffsTab(),
             BuildUpgradesMiscTab(),
-            BuildSpawnPointsTab()
+            BuildSpawnPointsTab(),
+            BuildMemoryTab()
         };
 
         tabControl.TabPages.AddRange(pages);
@@ -353,6 +378,31 @@ public partial class MainForm : Form
 
         Controls.Add(tabControl);
         tabControl.BringToFront();
+    }
+
+    /// <summary>Tab 9: live memory editing (process finder + in-memory inventory).</summary>
+    private TabPage BuildMemoryTab()
+    {
+        tabMemory = new TabPage("Memory");
+        _memoryPanel = new Controls.MemoryPanel { Dock = DockStyle.Fill };
+        tabMemory.Controls.Add(_memoryPanel);
+        return tabMemory;
+    }
+
+    private void SelectMemoryTab()
+    {
+        tabControl.SelectedTab = tabMemory;
+    }
+
+    /// <summary>Open the process picker, connect, and switch to the memory tab.</summary>
+    private async void OnMemorySelectProcess(object? sender, EventArgs e)
+    {
+        using var dlg = new Forms.ProcessSelectDialog();
+        if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectedProcess != null)
+        {
+            SelectMemoryTab();
+            await _memoryPanel.ConnectToAsync(dlg.SelectedProcess);
+        }
     }
 
     #endregion
@@ -1821,6 +1871,11 @@ public partial class MainForm : Form
         if (_catModeAllItem != null) _catModeAllItem.Text = L("Menu.CatAll");
         if (_coloredTextItem != null) _coloredTextItem.Text = L("Menu.ColoredText");
 
+        // Memory editing menu
+        if (_memMenu != null) _memMenu.Text = L("MemEdit.Title");
+        if (_memAutoRefreshItem != null) _memAutoRefreshItem.Text = L("MemEdit.AutoRefresh");
+        if (_memDisconnectItem != null) _memDisconnectItem.Text = L("MemEdit.Disconnect");
+
         // Tab titles
         tabPlayerInfo.Text = L("Tab.PlayerInfo");
         tabAppearance.Text = L("Tab.Appearance");
@@ -1828,6 +1883,7 @@ public partial class MainForm : Form
         tabBuffs.Text = L("Tab.Buffs");
         tabUpgrades.Text = L("Tab.UpgradesMisc");
         tabSpawnPoints.Text = L("Tab.SpawnPoints");
+        tabMemory.Text = L("MemEdit.Tab");
 
         // Tab 1: Player Info
         lblPlayerName.Text = L("Info.Name");
@@ -1955,6 +2011,9 @@ public partial class MainForm : Form
         // Refresh browser display text (always, even without loaded player)
         _browserItems.RefreshDisplayText();
         _browserBuffs.RefreshDisplayText();
+
+        // Memory editing tab
+        _memoryPanel.RefreshLocale();
 
         // Repopulate data if player is loaded (refresh display text with new language)
         if (_player != null)

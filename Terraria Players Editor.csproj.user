@@ -19,6 +19,9 @@
     <Compile Update="Controls\ItemModifier.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Controls\MemoryPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Controls\SlotGrid.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -50,6 +53,12 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\MemorySettingsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\ProcessSelectDialog.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>

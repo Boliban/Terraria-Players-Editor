@@ -174,7 +174,7 @@ public class ItemBrowser : UserControl
 
             if (newRow != currentRow && _dgvItems.Rows[newRow].Visible)
             {
-                _dgvItems.FirstDisplayedScrollingRowIndex = newRow;
+                SafeScrollToRow(newRow);
                 ((HandledMouseEventArgs)e).Handled = true;
             }
         };
@@ -656,7 +656,7 @@ public class ItemBrowser : UserControl
         if (anchor > 0 && _dgvItems.RowCount > 0)
         {
             int newRow = Math.Min(anchor / k, _dgvItems.RowCount - 1);
-            _dgvItems.FirstDisplayedScrollingRowIndex = newRow;
+            SafeScrollToRow(newRow);
         }
     }
 
@@ -685,13 +685,32 @@ public class ItemBrowser : UserControl
         if (rows > 0)
         {
             _dgvItems.CurrentCell = _dgvItems.Rows[0].Cells[0];
-            _dgvItems.FirstDisplayedScrollingRowIndex = 0;
+            SafeScrollToRow(0);
         }
     }
 
     /// <summary>Locale-aware display name for an item or buff id.</summary>
     private string GetDisplayName(int id) =>
         _filterMode == ItemFilterMode.BuffOnly ? BuffDatabase.GetName(id) : ItemDatabase.GetName(id);
+
+    /// <summary>
+    /// Scroll so the given row is the first displayed row. No-op when the grid
+    /// has no display space yet (e.g. LoadItems runs before the control has been
+    /// laid out), which would otherwise throw InvalidOperationException.
+    /// </summary>
+    private void SafeScrollToRow(int rowIndex)
+    {
+        try
+        {
+            if (_dgvItems.Rows.Count == 0) return;
+            if (_dgvItems.DisplayedRowCount(false) > 0)
+                _dgvItems.FirstDisplayedScrollingRowIndex = Math.Clamp(rowIndex, 0, _dgvItems.Rows.Count - 1);
+        }
+        catch (InvalidOperationException)
+        {
+            // No display rows available — the control has no laid-out area yet.
+        }
+    }
 
     private void ApplyFilter()
     {
@@ -723,8 +742,7 @@ public class ItemBrowser : UserControl
             // Clear all filters — show all rows and reset scroll position
             foreach (DataGridViewRow row in _dgvItems.Rows)
                 row.Visible = true;
-            if (_dgvItems.Rows.Count > 0)
-                _dgvItems.FirstDisplayedScrollingRowIndex = 0;
+            SafeScrollToRow(0);
             return;
         }
 
