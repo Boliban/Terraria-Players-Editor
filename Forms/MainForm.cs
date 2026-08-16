@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.IO;
 using Terraria_Players_Editor.Controls;
 using Terraria_Players_Editor.Models;
 using Terraria_Players_Editor.Services;
+using Terraria_Players_Editor.Services.Memory;
 
 namespace Terraria_Players_Editor;
 
@@ -15,7 +17,14 @@ public partial class MainForm : Form
     private ToolStripMenuItem? _categoryMenuParentItem, _catModeFewerItem, _catModeAllItem, _coloredTextItem;
 
     // Memory editing menu
-    private ToolStripMenuItem? _memMenu, _memAutoRefreshItem, _memDisconnectItem;
+    private ToolStripMenuItem? _memMenu, _memModeItem, _memConnectItem, _memDisconnectItem, _memSettingsItem;
+
+    // === Live memory editing mode ===
+    private PlayerMemorySession? _memorySession;
+    private Process? _memoryProcess;
+    private bool _memoryMode;
+    private Controls.ItemMemoryPanel _itemAttrPanel = null!;
+    private Controls.SlotGrid _gridTrash = null!;
 
     // Right-click context menu
     private ContextMenuStrip? _contextMenu;
@@ -262,22 +271,34 @@ public partial class MainForm : Form
 
         // === Memory editing menu ===
         _memMenu = new ToolStripMenuItem(AppLocale.Get("MemEdit.Title"));
-        var memOpenItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.OpenTab"), null, (_, _) => SelectMemoryTab());
-        var memSelectItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.SelectProcess"), null, OnMemorySelectProcess);
-        _memDisconnectItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Disconnect"), null, (_, _) => _memoryPanel.Disconnect());
-        _memAutoRefreshItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.AutoRefresh"))
+        _memModeItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Mode"))
         {
-            Checked = Services.Memory.MemorySettings.AutoRefresh,
-            CheckOnClick = true
+            CheckOnClick = true,
+            Checked = false
         };
-        _memAutoRefreshItem.Click += (_, _) =>
+        _memModeItem.Click += async (_, _) => await ToggleMemoryModeAsync(_memModeItem.Checked);
+        _memConnectItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.SelectProcess"), null, async (_, _) =>
         {
-            _memoryPanel.AutoRefreshEnabled = _memAutoRefreshItem.Checked;
-            Services.Memory.MemorySettings.AutoRefresh = _memAutoRefreshItem.Checked;
-            Services.Memory.MemorySettings.Save();
-        };
-        var memSettingsItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Settings"), null, (_, _) => _memoryPanel.ShowSettingsDialog());
-        _memMenu.DropDownItems.AddRange([memOpenItem, memSelectItem, _memDisconnectItem, new ToolStripSeparator(), _memAutoRefreshItem, memSettingsItem]);
+            using var dlg = new Forms.ProcessSelectDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectedProcess != null)
+                await ConnectMemoryAsync(dlg.SelectedProcess);
+        });
+        _memDisconnectItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Disconnect"), null, (_, _) => DisconnectMemory());
+        _memSettingsItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.Settings"), null, (_, _) =>
+        {
+            if (Forms.MemorySettingsDialog.ShowAndApply(this, _memorySession != null))
+            {
+                if (_memorySession != null && !_memorySession.ResolvePlayerBase() && !_memorySession.FindPlayerByScan())
+                {
+                    DisconnectMemory();
+                }
+                else if (_memorySession != null && _memoryMode)
+                {
+                    LoadFromMemory();
+                }
+            }
+        });
+        _memMenu.DropDownItems.AddRange([_memModeItem, _memConnectItem, _memDisconnectItem, new ToolStripSeparator(), _memSettingsItem]);
         menuStrip.Items.Add(_memMenu);
 
         Controls.Add(menuStrip);
@@ -365,8 +386,7 @@ public partial class MainForm : Form
             BuildItemsTab(),
             BuildBuffsTab(),
             BuildUpgradesMiscTab(),
-            BuildSpawnPointsTab(),
-            BuildMemoryTab()
+            BuildSpawnPointsTab()
         };
 
         tabControl.TabPages.AddRange(pages);
@@ -380,30 +400,207 @@ public partial class MainForm : Form
         tabControl.BringToFront();
     }
 
-    /// <summary>Tab 9: live memory editing (process finder + in-memory inventory).</summary>
-    private TabPage BuildMemoryTab()
-    {
-        tabMemory = new TabPage("Memory");
-        _memoryPanel = new Controls.MemoryPanel { Dock = DockStyle.Fill };
-        tabMemory.Controls.Add(_memoryPanel);
-        return tabMemory;
-    }
+    #region Memory editing mode
 
-    private void SelectMemoryTab()
+    /// <summary>
+    /// Toggle live memory editing: when enabled, the regular tabs edit the
+    /// in-game Player object (read on connect / Ctrl+R, write back on Ctrl+S).
+    /// </summary>
+    private async Task ToggleMemoryModeAsync(bool enabled)
     {
-        tabControl.SelectedTab = tabMemory;
-    }
-
-    /// <summary>Open the process picker, connect, and switch to the memory tab.</summary>
-    private async void OnMemorySelectProcess(object? sender, EventArgs e)
-    {
-        using var dlg = new Forms.ProcessSelectDialog();
-        if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectedProcess != null)
+        if (enabled)
         {
-            SelectMemoryTab();
-            await _memoryPanel.ConnectToAsync(dlg.SelectedProcess);
+            if (_memorySession == null)
+            {
+                using var dlg = new Forms.ProcessSelectDialog();
+                if (dlg.ShowDialog(this) != DialogResult.OK || dlg.SelectedProcess == null)
+                {
+                    _memModeItem!.Checked = false;
+                    return;
+                }
+                if (!await ConnectMemoryAsync(dlg.SelectedProcess))
+                {
+                    _memModeItem!.Checked = false;
+                    return;
+                }
+            }
+            _memoryMode = true;
+            EnableMemoryModeUI(true);
+            LoadFromMemory();
+        }
+        else
+        {
+            _memoryMode = false;
+            EnableMemoryModeUI(false);
+            _itemAttrPanel.ClearItem();
+            // Restore the file-backed view if a file is still open.
+            if (!string.IsNullOrEmpty(_filePath) && File.Exists(_filePath))
+            {
+                try
+                {
+                    var bytes = File.ReadAllBytes(_filePath);
+                    _player = PlrFileReader.Read(PlrCrypto.Decrypt(bytes));
+                    PopulateAllTabs();
+                    statusLabel.Text = string.Format(AppLocale.Get("Status.Loaded"),
+                        Path.GetFileName(_filePath), _player.Name, VersionMapper.GetDisplayString(_player.FileVersion));
+                }
+                catch
+                {
+                    _player = null;
+                    statusLabel.Text = AppLocale.Get("MemEdit.Status.Disconnected");
+                }
+            }
+            else
+            {
+                _player = null;
+                statusLabel.Text = AppLocale.Get("MemEdit.Status.Disconnected");
+            }
         }
     }
+
+    /// <summary>Connect to a game process and resolve the live Player object.</summary>
+    private async Task<bool> ConnectMemoryAsync(Process process)
+    {
+        DisconnectMemory();
+
+        var mp = await Task.Run(() => MemoryProcess.TryOpen(process, out _));
+        if (mp == null)
+        {
+            statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.OpenFailed"), process.Id);
+            return false;
+        }
+
+        var session = new PlayerMemorySession(mp);
+        bool resolved = session.ResolvePlayerBase() && session.PlayerBase != 0;
+        if (!resolved && MemorySettings.AutoScanFallback)
+        {
+            statusLabel.Text = AppLocale.Get("MemEdit.Status.Scanning");
+            resolved = await Task.Run(() => session.FindPlayerByScan());
+        }
+        if (!resolved || session.PlayerBase == 0)
+        {
+            statusLabel.Text = AppLocale.Get("MemEdit.Status.ResolveFailed");
+            session.Dispose();
+            return false;
+        }
+
+        var info = session.ReadPlayerInfo();
+        if (info == null)
+        {
+            statusLabel.Text = AppLocale.Get("MemEdit.Status.VerifyFailed");
+            session.Dispose();
+            return false;
+        }
+
+        _memorySession = session;
+        _memoryProcess = process;
+        _memDisconnectItem!.Enabled = true;
+        _memConnectItem!.Enabled = false;
+        statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.Connected"),
+            process.ProcessName, process.Id, session.PlayerBase.ToString("X8"), info.Name);
+        return true;
+    }
+
+    /// <summary>Disconnect from the game process and leave memory mode.</summary>
+    private void DisconnectMemory()
+    {
+        bool wasMode = _memoryMode;
+        _memoryMode = false;
+        if (_memModeItem != null) _memModeItem.Checked = false;
+        _memorySession?.Dispose();
+        _memorySession = null;
+        _memoryProcess = null;
+        if (_memDisconnectItem != null) _memDisconnectItem.Enabled = false;
+        if (_memConnectItem != null) _memConnectItem.Enabled = true;
+        if (wasMode)
+        {
+            EnableMemoryModeUI(false);
+            _itemAttrPanel.ClearItem();
+        }
+        if (!string.IsNullOrEmpty(_filePath) && File.Exists(_filePath) && !_populating)
+        {
+            try
+            {
+                var bytes = File.ReadAllBytes(_filePath);
+                _player = PlrFileReader.Read(PlrCrypto.Decrypt(bytes));
+                PopulateAllTabs();
+            }
+            catch
+            {
+                _player = null;
+            }
+        }
+        statusLabel.Text = AppLocale.Get("MemEdit.Status.Disconnected");
+    }
+
+    /// <summary>Read the live Player object from memory into the editor model.</summary>
+    private void LoadFromMemory()
+    {
+        if (_memorySession == null) return;
+        _player = _memorySession.ReadToPlayerData();
+        _itemAttrPanel.ClearItem();
+        PopulateAllTabs();
+        statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.ModeOn"),
+            _memorySession.Process.Process.ProcessName, _memorySession.PlayerBase.ToString("X8"), _player.Name);
+    }
+
+    /// <summary>
+    /// Apply the memory-mode UI state: disable tabs/fields that cannot be
+    /// written to memory (greyed out), unlock the health/mana caps, show the
+    /// trash slot and the in-memory item attribute editor.
+    /// </summary>
+    private void EnableMemoryModeUI(bool enabled)
+    {
+        // Items tab: trash slot + attribute editor + loadout switching
+        _gridTrash.Visible = enabled;
+        _itemAttrPanel.Visible = enabled;
+        _rbLoadout2.Enabled = !enabled;
+        _rbLoadout3.Enabled = !enabled;
+
+        // Player info: writable fields stay enabled, others are greyed out.
+        txtPlayerName.Enabled = !enabled;
+        txtPlayTime.Enabled = !enabled;
+        txtFileVersion.Enabled = !enabled;
+        cmbCurrentLoadout.Enabled = !enabled;
+        nudDeathsPvP.Enabled = !enabled;
+        nudAnglerQuests.Enabled = !enabled;
+        nudGolferScore.Enabled = !enabled;
+
+        // Unlock health / mana caps in memory mode (no max, no min on max health).
+        if (enabled)
+        {
+            nudHealth.Maximum = 99999; nudMaxHealth.Maximum = 99999;
+            nudMana.Maximum = 99999; nudMaxMana.Maximum = 99999;
+            nudMaxHealth.Minimum = 0;
+        }
+        else
+        {
+            nudHealth.Maximum = 600; nudMaxHealth.Maximum = 600;
+            nudMana.Maximum = 400; nudMaxMana.Maximum = 400;
+            nudMaxHealth.Minimum = 100;
+        }
+
+        // Appearance: hair / hair dye / skin stay enabled; colors + visibility are greyed out.
+        for (int i = 0; i < colorButtons.Length; i++) colorButtons[i].Enabled = !enabled;
+        for (int i = 0; i < chkHideVisual.Length; i++) chkHideVisual[i].Enabled = !enabled;
+
+        // Upgrades / misc / spawn points tabs are not writable in memory mode.
+        foreach (Control c in tabUpgrades.Controls) c.Enabled = !enabled;
+        foreach (Control c in tabSpawnPoints.Controls) c.Enabled = !enabled;
+    }
+
+    /// <summary>Write the editor model back into the live Player object.</summary>
+    private void WriteToMemory()
+    {
+        if (_memorySession == null || _player == null) return;
+        CollectAllTabs();
+        int failures = _memorySession.WriteFromPlayerData(_player);
+        statusLabel.Text = failures == 0
+            ? string.Format(AppLocale.Get("MemEdit.Status.Written"), _player.Name)
+            : string.Format(AppLocale.Get("MemEdit.Status.WriteFailed"), failures);
+    }
+
+    #endregion
 
     #endregion
 
@@ -512,6 +709,15 @@ public partial class MainForm : Form
         layout.Controls.Add(hpMpRow);
         layout.Controls.Add(grpCounters);
 
+        // Memory mode: stats and difficulty write to the game immediately.
+        nudHealth.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteStatLife((int)nudHealth.Value); };
+        nudMaxHealth.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteStatLifeMax((int)nudMaxHealth.Value); };
+        nudMana.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteStatMana((int)nudMana.Value); };
+        nudMaxMana.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteStatManaMax((int)nudMaxMana.Value); };
+        nudDeathsPvE.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteDeathsPvE((int)nudDeathsPvE.Value); };
+        nudTaxMoney.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteTaxMoney((int)nudTaxMoney.Value); };
+        cmbDifficulty.SelectedIndexChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null && cmbDifficulty.SelectedIndex >= 0) _memorySession.WriteDifficulty((byte)cmbDifficulty.SelectedIndex); };
+
         tabPlayerInfo.Controls.Add(layout);
         return tabPlayerInfo;
     }
@@ -573,6 +779,12 @@ public partial class MainForm : Form
         grpVisibility.Controls.Add(visGrid);
 
         mainPanel.Controls.AddRange([topRow, grpColors, grpVisibility]);
+
+        // Memory mode: hair / hair dye / skin variant write to the game immediately.
+        nudHairStyle.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteHair((int)nudHairStyle.Value); };
+        nudHairDye.ValueChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null) _memorySession.WriteHairDye((byte)nudHairDye.Value); };
+        cmbSkinVariant.SelectedIndexChanged += (_, _) => { if (!_populating && _memoryMode && _memorySession != null && cmbSkinVariant.SelectedIndex >= 0) _memorySession.WriteSkinVariant(cmbSkinVariant.SelectedIndex); };
+
         tabAppearance.Controls.Add(mainPanel);
         return tabAppearance;
     }
@@ -633,7 +845,25 @@ public partial class MainForm : Form
         };
         _scrollPanelItems.Controls.Add(sectionsLayout);
         right.Controls.Add(_scrollPanelItems, 0, 1);
-        split.Panel2.Controls.Add(right);
+
+        // === RIGHTMOST: in-memory item attribute editor (memory mode only) ===
+        var innerSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            FixedPanel = FixedPanel.Panel2,
+            Orientation = Orientation.Vertical
+        };
+        innerSplit.Panel1.Controls.Add(right);
+        _itemAttrPanel = new Controls.ItemMemoryPanel { Dock = DockStyle.Fill, Visible = false };
+        innerSplit.Panel2.Controls.Add(_itemAttrPanel);
+        split.Panel2.Controls.Add(innerSplit);
+
+        // Right pane fixed at ~270px once laid out.
+        Load += (_, _) =>
+        {
+            if (innerSplit.Width > 600)
+                innerSplit.SplitterDistance = Math.Max(320, innerSplit.Width - 270);
+        };
 
         // === Events ===
         _modItems.SetClicked += OnModSet;
@@ -673,7 +903,7 @@ public partial class MainForm : Form
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 13,
+            ColumnCount = 14,
             RowCount = 6,
             // Box internal padding; left edge aligned with the other sections
             Margin = new Padding(5, 5, 10, 10)
@@ -683,6 +913,7 @@ public partial class MainForm : Form
         invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30)); // gap before coins/ammo
         invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50)); // coins
         invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50)); // ammo
+        invGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50)); // trash (bottom-right, memory mode)
         invGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 16)); // grid titles
         for (int r = 0; r < 5; r++)
             invGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
@@ -692,6 +923,8 @@ public partial class MainForm : Form
         _gridInventory.Margin = new Padding(0);
         _gridCoins.Margin = new Padding(0);
         _gridAmmo.Margin = new Padding(0);
+        _gridTrash = new SlotGrid(1, 1, gridTitle: AppLocale.Get("MemEdit.Trash")) { Tag = "Trash", Margin = new Padding(0), Visible = false };
+        _allItemGrids.Add(_gridTrash);
 
         invGrid.Controls.Add(_gridInventory, 0, 0);
         invGrid.SetColumnSpan(_gridInventory, 10);
@@ -700,6 +933,8 @@ public partial class MainForm : Form
         invGrid.SetRowSpan(_gridCoins, 5);
         invGrid.Controls.Add(_gridAmmo, 12, 0);
         invGrid.SetRowSpan(_gridAmmo, 5);
+        invGrid.Controls.Add(_gridTrash, 13, 4);
+        invGrid.SetRowSpan(_gridTrash, 1);
 
         var innerLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
         innerLayout.Controls.Add(invGrid);
@@ -708,6 +943,7 @@ public partial class MainForm : Form
         _gridInventory.SlotSelected += (s, idx) => OnGridSlotSelected(_gridInventory, idx, _player?.MainInventory, "inv");
         _gridCoins.SlotSelected += (s, idx) => OnGridSlotSelected(_gridCoins, idx, _player?.Coins, "coins");
         _gridAmmo.SlotSelected += (s, idx) => OnGridSlotSelected(_gridAmmo, idx, _player?.Ammo, "ammo");
+        _gridTrash.SlotSelected += (s, idx) => OnGridSlotSelected(_gridTrash, idx, null, "trash");
 
         return grp;
     }
@@ -1162,6 +1398,15 @@ public partial class MainForm : Form
     private void OnRefresh(object? sender, EventArgs e)
     {
         TraceLog("[OnRefresh] === START ===");
+
+        // Memory mode: re-read the live Player object from the game.
+        if (_memoryMode && _memorySession != null)
+        {
+            LoadFromMemory();
+            TraceLog("[OnRefresh] memory mode: reloaded from game");
+            return;
+        }
+
         if (_player == null) { TraceLog("[OnRefresh] no player, abort"); return; }
         if (string.IsNullOrEmpty(_filePath)) { TraceLog("[OnRefresh] no file path, fallback to Open"); OnOpen(sender, e); return; }
 
@@ -1298,6 +1543,14 @@ public partial class MainForm : Form
     private void OnSave(object? sender, EventArgs e)
     {
         if (_player == null) { MessageBox.Show(AppLocale.Get("Dialog.NoPlayer"), "Info"); return; }
+
+        // Memory mode: write the edited model back into the game's memory.
+        if (_memoryMode && _memorySession != null)
+        {
+            WriteToMemory();
+            return;
+        }
+
         if (string.IsNullOrEmpty(_filePath)) { OnSaveAs(sender, e); return; }
 
         DoSave(_filePath);
@@ -1355,6 +1608,60 @@ public partial class MainForm : Form
     #region Unified Event Handlers (Items tab)
 
     /// <summary>Unified slot selection handler for all grids in the Items tab.</summary>
+    /// <summary>Map a grid + slot to the live in-memory item section (memory mode).</summary>
+    private (MemoryItemSection section, int index) SectionOf(SlotGrid grid, int slotIdx)
+    {
+        if (grid == _gridInventory) return (MemoryItemSection.Inventory, slotIdx);
+        if (grid == _gridCoins) return (MemoryItemSection.Inventory, 50 + slotIdx);
+        if (grid == _gridAmmo) return (MemoryItemSection.Inventory, 54 + slotIdx);
+        if (grid == _equipSlots[0]) return (MemoryItemSection.Armor, slotIdx);
+        if (grid == _vanitySlots[0]) return (MemoryItemSection.Armor, 3 + slotIdx);
+        if (grid == _accSlots[0]) return (MemoryItemSection.Armor, 6 + slotIdx);
+        if (grid == _vaccSlots[0]) return (MemoryItemSection.Armor, 13 + slotIdx);
+        if (grid == _miscSlots[0]) return (MemoryItemSection.MiscEquips, slotIdx);
+        if (grid == _armorDyeSlots[0]) return (MemoryItemSection.Dye, slotIdx);
+        if (grid == _accDyeSlots[0]) return (MemoryItemSection.Dye, 3 + slotIdx);
+        if (grid == _miscDyeSlots[0]) return (MemoryItemSection.MiscDyes, slotIdx);
+        if (grid == _gridPiggy) return (MemoryItemSection.Bank, slotIdx);
+        if (grid == _gridSafe) return (MemoryItemSection.Bank2, slotIdx);
+        if (grid == _gridDefender) return (MemoryItemSection.Bank3, slotIdx);
+        if (grid == _gridVoid) return (MemoryItemSection.Bank4, slotIdx);
+        return (MemoryItemSection.Inventory, slotIdx);
+    }
+
+    /// <summary>Write the trash item into its dedicated field (Player+0xC4).</summary>
+    private bool WriteTrashItem(ItemData item)
+    {
+        if (_memorySession == null) return false;
+        uint trashPtr = _memorySession.Process.ReadUInt32(_memorySession.PlayerBase + MemorySettings.Offsets.TrashItem);
+        return trashPtr != 0 && _memorySession.WriteItemAt(trashPtr, item);
+    }
+
+    /// <summary>Point the in-memory attribute editor at the selected live Item (or clear it).</summary>
+    private void UpdateItemAttrPanel(SlotGrid grid, string context, int slotIdx)
+    {
+        if (_memoryMode && _memorySession != null)
+        {
+            if (context == "trash")
+            {
+                uint trashPtr = _memorySession.Process.ReadUInt32(_memorySession.PlayerBase + MemorySettings.Offsets.TrashItem);
+                _itemAttrPanel.SetItem(_memorySession.Process, trashPtr);
+            }
+            else if (_memorySession.ResolveItemAddress(SectionOf(grid, slotIdx).section, SectionOf(grid, slotIdx).index, out uint itemAddr))
+            {
+                _itemAttrPanel.SetItem(_memorySession.Process, itemAddr);
+            }
+            else
+            {
+                _itemAttrPanel.ClearItem();
+            }
+        }
+        else
+        {
+            _itemAttrPanel.ClearItem();
+        }
+    }
+
     private void OnGridSlotSelected(SlotGrid grid, int slotIdx, List<ItemData>? list, string context)
     {
         if (_player == null) return;
@@ -1369,6 +1676,7 @@ public partial class MainForm : Form
             case "inv":
             case "coins":
             case "ammo":
+            case "trash":
                 _modItems.ShowStack = true;
                 _modItems.ShowPrefix = true;
                 _modItems.ShowFavorite = true;
@@ -1385,11 +1693,13 @@ public partial class MainForm : Form
                 break;
         }
 
-        // For equipment slots (list is null), read the current item from the grid slot
+        // For equipment/trash slots (list is null), read the current item from the grid slot
         var item = list != null && slotIdx < list.Count ? list[slotIdx]
             : (slotIdx < grid.Slots.Length ? (grid.Slots[slotIdx].Item ?? new ItemData()) : new ItemData());
         TraceLog($"[SlotSelect] ctx={context} grid={grid.Tag} idx={slotIdx} itemId={item.ItemId} prefix={item.Prefix} SLOT_Item={grid.Slots[slotIdx].Item?.ItemId}:{grid.Slots[slotIdx].Item?.Prefix}");
         _modItems.LoadFromSlot(slotIdx, item);
+
+        UpdateItemAttrPanel(grid, context, slotIdx);
     }
 
     /// <summary>Unified Set handler for the shared modifier.</summary>
@@ -1398,6 +1708,25 @@ public partial class MainForm : Form
         if (_player == null || _activeModGrid == null || slotIdx < 0) return;
         var item = _modItems.BuildItemData();
         TraceLog($"[OnModSet] grid={_activeModGrid.Tag} idx={slotIdx} itemId={item.ItemId} prefix={item.Prefix} listNull={_activeModList == null}");
+
+        // Memory mode: write straight into the game.
+        if (_memoryMode && _memorySession != null)
+        {
+            bool ok = _activeModContext == "trash"
+                ? WriteTrashItem(item)
+                : _memorySession.WriteItem(SectionOf(_activeModGrid, slotIdx).section, SectionOf(_activeModGrid, slotIdx).index, item);
+            _activeModGrid.SetSlot(slotIdx, item);
+            if (_activeModContext == "trash")
+                _player.TrashItem = item;
+            else if (_activeModList != null && slotIdx < _activeModList.Count)
+                _activeModList[slotIdx] = item;
+            else
+                CollectEquipToLoadout();
+            _modItems.LoadFromSlot(slotIdx, item);
+            if (!ok) statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.WriteFailed"), 1);
+            return;
+        }
+
         // Write to backing list if available (inv/coins/ammo/storage);
         // equipment slots have null list — write grid, then sync back to data model immediately
         if (_activeModList != null && slotIdx < _activeModList.Count)
@@ -1410,6 +1739,26 @@ public partial class MainForm : Form
     private void OnModClear(object? sender, int slotIdx)
     {
         if (_player == null || _activeModGrid == null || slotIdx < 0) return;
+
+        // Memory mode: clear straight into the game.
+        if (_memoryMode && _memorySession != null)
+        {
+            var empty = new ItemData();
+            bool ok = _activeModContext == "trash"
+                ? WriteTrashItem(empty)
+                : _memorySession.WriteItem(SectionOf(_activeModGrid, slotIdx).section, SectionOf(_activeModGrid, slotIdx).index, empty);
+            _activeModGrid.SetSlot(slotIdx, empty);
+            if (_activeModContext == "trash")
+                _player.TrashItem = empty;
+            else if (_activeModList != null && slotIdx < _activeModList.Count)
+                _activeModList[slotIdx] = empty;
+            else
+                CollectEquipToLoadout();
+            _modItems.LoadFromSlot(slotIdx, empty);
+            if (!ok) statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.WriteFailed"), 1);
+            return;
+        }
+
         if (_activeModList != null && slotIdx < _activeModList.Count)
             _activeModList[slotIdx] = new ItemData();
         _activeModGrid.SetSlot(slotIdx, new ItemData());
@@ -1422,6 +1771,26 @@ public partial class MainForm : Form
         if (_activeModGrid == null || _activeModGrid.SelectedIndex < 0) return;
         var idx = _activeModGrid.SelectedIndex;
         var item = new ItemData { ItemId = itemId, StackSize = 1 };
+
+        // Memory mode: write straight into the game.
+        if (_memoryMode && _memorySession != null)
+        {
+            bool ok = _activeModContext == "trash"
+                ? WriteTrashItem(item)
+                : _memorySession.WriteItem(SectionOf(_activeModGrid, idx).section, SectionOf(_activeModGrid, idx).index, item);
+            _activeModGrid.SetSlot(idx, item);
+            if (_activeModContext == "trash")
+                _player.TrashItem = item;
+            else if (_activeModList != null && idx < _activeModList.Count)
+                _activeModList[idx] = item;
+            else
+                CollectEquipToLoadout();
+            _modItems.LoadFromSlot(idx, item);
+            UpdateItemAttrPanel(_activeModGrid, _activeModContext, idx);
+            if (!ok) statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.WriteFailed"), 1);
+            return;
+        }
+
         if (_activeModList != null && idx < _activeModList.Count)
             _activeModList[idx] = item;
         _activeModGrid.SetSlot(idx, item);
@@ -1502,6 +1871,8 @@ public partial class MainForm : Form
         _player!.BuffTypes[idx] = itemId;
         _gridBuffs.SetSlot(idx, new ItemData { ItemId = itemId, StackSize = _cachedBuffDur });
         _buffMod.LoadFromSlot(idx, itemId, _cachedBuffDur);
+        if (_memoryMode && _memorySession != null)
+            _memorySession.WriteBuffSlot(idx, itemId, _cachedBuffDur);
     }
 
     private void OnBuffModSet()
@@ -1516,6 +1887,8 @@ public partial class MainForm : Form
         _gridBuffs.SetSlot(idx, new ItemData { ItemId = type, StackSize = dur });
         _cachedBuffType = type;
         _cachedBuffDur = dur;
+        if (_memoryMode && _memorySession != null)
+            _memorySession.WriteBuffSlot(idx, type, dur);
     }
 
     private void OnBuffModClear()
@@ -1526,6 +1899,8 @@ public partial class MainForm : Form
         _player.BuffTimes[idx] = 0;
         _gridBuffs.SetSlot(idx, new ItemData());
         _buffMod.LoadFromSlot(idx, 0, 0);
+        if (_memoryMode && _memorySession != null)
+            _memorySession.WriteBuffSlot(idx, 0, 0);
     }
 
     #endregion
@@ -1574,6 +1949,7 @@ public partial class MainForm : Form
         _gridInventory.SetItems(_player.MainInventory);
         _gridCoins.SetItems(_player.Coins);
         _gridAmmo.SetItems(_player.Ammo);
+        _gridTrash.SetItems([_player.TrashItem ?? new ItemData()]);
 
         // Tab 4: Items — Equipment (Loadout 1 = the saved loadout[0]; misc equips
         // and their dyes are GLOBAL, shared across all loadouts)
@@ -1873,8 +2249,10 @@ public partial class MainForm : Form
 
         // Memory editing menu
         if (_memMenu != null) _memMenu.Text = L("MemEdit.Title");
-        if (_memAutoRefreshItem != null) _memAutoRefreshItem.Text = L("MemEdit.AutoRefresh");
+        if (_memModeItem != null) _memModeItem.Text = L("MemEdit.Mode");
+        if (_memConnectItem != null) _memConnectItem.Text = L("MemEdit.SelectProcess");
         if (_memDisconnectItem != null) _memDisconnectItem.Text = L("MemEdit.Disconnect");
+        if (_memSettingsItem != null) _memSettingsItem.Text = L("MemEdit.Settings");
 
         // Tab titles
         tabPlayerInfo.Text = L("Tab.PlayerInfo");
@@ -1883,7 +2261,6 @@ public partial class MainForm : Form
         tabBuffs.Text = L("Tab.Buffs");
         tabUpgrades.Text = L("Tab.UpgradesMisc");
         tabSpawnPoints.Text = L("Tab.SpawnPoints");
-        tabMemory.Text = L("MemEdit.Tab");
 
         // Tab 1: Player Info
         lblPlayerName.Text = L("Info.Name");
@@ -1959,6 +2336,8 @@ public partial class MainForm : Form
         _gridInventory.GridTitle = L("Grid.MainInventory");
         _gridCoins.GridTitle = L("Grid.Coins");
         _gridAmmo.GridTitle = L("Grid.Ammo");
+        _gridTrash.GridTitle = L("MemEdit.Trash");
+        _itemAttrPanel.RefreshLocale();
         _rbLoadout1.Text = L("Loadout.Select1");
         _rbLoadout2.Text = L("Loadout.Select2");
         _rbLoadout3.Text = L("Loadout.Select3");
@@ -2011,9 +2390,6 @@ public partial class MainForm : Form
         // Refresh browser display text (always, even without loaded player)
         _browserItems.RefreshDisplayText();
         _browserBuffs.RefreshDisplayText();
-
-        // Memory editing tab
-        _memoryPanel.RefreshLocale();
 
         // Repopulate data if player is loaded (refresh display text with new language)
         if (_player != null)

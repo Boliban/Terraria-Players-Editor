@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using Terraria_Players_Editor.Controls;
 using Terraria_Players_Editor.Services;
+using Terraria_Players_Editor.Services.Memory;
 
 namespace Terraria_Players_Editor.Forms;
 
@@ -64,7 +64,7 @@ public sealed class ProcessSelectDialog : Form
     {
         _list.BeginUpdate();
         _list.Items.Clear();
-        foreach (var p in MemoryPanel.FindGameProcesses())
+        foreach (var p in MemoryProcess.FindGameProcesses())
         {
             string title = "";
             try { title = p.MainWindowTitle; } catch { }

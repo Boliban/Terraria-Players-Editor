@@ -407,6 +407,190 @@ public sealed class PlayerMemorySession : IDisposable
 
     #endregion
 
+    #region PlayerData mapping (memory mode)
+
+    /// <summary>
+    /// Read the live Player object into the editor's PlayerData model so the
+    /// regular tabs can display/edit it. Equipment mapping follows the 1.4.x
+    /// layout: armor = Item[20] (0-2 armor, 3-5 vanity, 6-12 accessories,
+    /// 13-19 vanity accessories), dye = Item[10], miscEquips/miscDyes = Item[5].
+    /// </summary>
+    public PlayerData ReadToPlayerData()
+    {
+        var p = new PlayerData();
+        if (PlayerBase == 0) return p;
+
+        var info = ReadPlayerInfo();
+        if (info != null)
+        {
+            p.Name = info.Name;
+            p.Difficulty = (byte)info.Difficulty;
+            p.Stats.Health = info.StatLife;
+            p.Stats.MaxHealth = info.StatLifeMax;
+            p.Stats.Mana = info.StatMana;
+            p.Stats.MaxMana = info.StatManaMax;
+            p.Appearance.HairStyle = info.Hair;
+        }
+        _proc.ReadByte(PlayerBase + _o.HairDye, out byte hairDye);
+        p.Appearance.HairDye = hairDye;
+        _proc.ReadByte(PlayerBase + _o.SkinVariant, out byte skinVariant);
+        p.Appearance.SkinVariant = skinVariant;
+        p.TaxMoney = _proc.ReadInt32(PlayerBase + _o.TaxMoney);
+        p.NumberOfDeathsPvE = _proc.ReadInt32(PlayerBase + _o.DeathsPvE);
+
+        // Inventory: 0-49 main, 50-53 coins, 54-57 ammo
+        p.MainInventory = ReadItemSection(MemoryItemSection.Inventory, 50);
+        p.Coins = ReadItemSection(MemoryItemSection.Inventory, 4, 50);
+        p.Ammo = ReadItemSection(MemoryItemSection.Inventory, 4, 54);
+
+        // Trash is a dedicated Item field (Player+0xC4), not an inventory slot.
+        uint trashPtr = _proc.ReadUInt32(PlayerBase + _o.TrashItem);
+        p.TrashItem = trashPtr != 0 ? (ReadItemAt(trashPtr) ?? new ItemData()) : new ItemData();
+
+        // Equipment (loadout 1 = the in-game active equipment)
+        var lo = p.Loadout1 ??= new PlayerLoadout();
+        lo.Armor = ReadItemSection(MemoryItemSection.Armor, 3, 0);
+        lo.VanityArmor = ReadItemSection(MemoryItemSection.Armor, 3, 3);
+        lo.Accessories = ReadItemSection(MemoryItemSection.Armor, 7, 6);
+        lo.VanityAccessories = ReadItemSection(MemoryItemSection.Armor, 7, 13);
+        lo.ArmorDyes = ReadItemSection(MemoryItemSection.Dye, 10);
+        p.MiscEquips = lo.MiscEquips = ReadItemSection(MemoryItemSection.MiscEquips, 5);
+        p.MiscEquipDyes = lo.MiscEquipDyes = ReadItemSection(MemoryItemSection.MiscDyes, 5);
+
+        // Storage
+        p.PiggyBank = ReadItemSection(MemoryItemSection.Bank, 40);
+        p.Safe = ReadItemSection(MemoryItemSection.Bank2, 40);
+        p.DefenderForge = ReadItemSection(MemoryItemSection.Bank3, 40);
+        p.VoidVault = ReadItemSection(MemoryItemSection.Bank4, 40);
+
+        // Buffs
+        if (ReadIntArray(_o.BuffType, 44, out var buffTypes))
+            p.BuffTypes = buffTypes;
+        if (ReadIntArray(_o.BuffTime, 44, out var buffTimes))
+            p.BuffTimes = buffTimes;
+
+        return p;
+    }
+
+    /// <summary>
+    /// Write the editor's PlayerData back into the live Player object.
+    /// Supports: inventory/equipment/storage, buffs, stats, difficulty,
+    /// hair/hairDye. Returns the number of failed slot writes (0 = all ok).
+    /// </summary>
+    public int WriteFromPlayerData(PlayerData p)
+    {
+        int failures = 0;
+        if (PlayerBase == 0) return int.MaxValue;
+
+        bool WriteList(MemoryItemSection section, int start, List<ItemData> items)
+        {
+            bool ok = true;
+            for (int i = 0; i < items.Count; i++)
+                ok &= WriteItem(section, start + i, items[i]);
+            return ok;
+        }
+
+        // Inventory: 0-49 main, 50-53 coins, 54-57 ammo
+        failures += WriteList(MemoryItemSection.Inventory, 0, p.MainInventory) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Inventory, 50, p.Coins) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Inventory, 54, p.Ammo) ? 0 : 1;
+        // Trash: dedicated Item field (Player+0xC4).
+        if (p.TrashItem != null)
+        {
+            uint trashPtr = _proc.ReadUInt32(PlayerBase + _o.TrashItem);
+            failures += trashPtr != 0 && WriteItemAt(trashPtr, p.TrashItem) ? 0 : 1;
+        }
+
+        // Equipment: armor[20] = 3 armor + 3 vanity + 7 acc + 7 vanity acc
+        var lo = p.Loadout1 ?? new PlayerLoadout();
+        failures += WriteList(MemoryItemSection.Armor, 0, lo.Armor) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Armor, 3, lo.VanityArmor) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Armor, 6, lo.Accessories) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Armor, 13, lo.VanityAccessories) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Dye, 0, lo.ArmorDyes) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.MiscEquips, 0, p.MiscEquips) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.MiscDyes, 0, p.MiscEquipDyes) ? 0 : 1;
+
+        // Storage
+        failures += WriteList(MemoryItemSection.Bank, 0, p.PiggyBank) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Bank2, 0, p.Safe) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Bank3, 0, p.DefenderForge) ? 0 : 1;
+        failures += WriteList(MemoryItemSection.Bank4, 0, p.VoidVault) ? 0 : 1;
+
+        // Buffs
+        if (!WriteIntArray(_o.BuffType, p.BuffTypes)) failures++;
+        if (!WriteIntArray(_o.BuffTime, p.BuffTimes)) failures++;
+
+        // Stats / identity
+        if (!_proc.WriteInt32(PlayerBase + _o.StatLife, p.Stats.Health)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.StatLifeMax, p.Stats.MaxHealth)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.StatMana, p.Stats.Mana)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.StatManaMax, p.Stats.MaxMana)) failures++;
+        if (!_proc.WriteByte(PlayerBase + _o.Difficulty, p.Difficulty)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.Hair, p.Appearance.HairStyle)) failures++;
+        if (!_proc.WriteByte(PlayerBase + _o.HairDye, (byte)p.Appearance.HairDye)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.SkinVariant, p.Appearance.SkinVariant)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.TaxMoney, p.TaxMoney)) failures++;
+        if (!_proc.WriteInt32(PlayerBase + _o.DeathsPvE, p.NumberOfDeathsPvE)) failures++;
+
+        return failures;
+    }
+
+    /// <summary>Read an int array field (e.g. buffType) from the Player object.</summary>
+    public bool ReadIntArray(uint fieldOffset, int count, out int[] values)
+    {
+        values = new int[count];
+        uint arrPtr = _proc.ReadUInt32(PlayerBase + fieldOffset);
+        if (arrPtr == 0) return false;
+        if (_proc.ReadInt32(arrPtr + PlayerMemoryOffsets.ArrayLength) < count) return false;
+        var buf = new byte[count * 4];
+        if (!_proc.ReadBytes(arrPtr + PlayerMemoryOffsets.ArrayData, buf.AsSpan(0, buf.Length)))
+            return false;
+        for (int i = 0; i < count; i++)
+            values[i] = BitConverter.ToInt32(buf, i * 4);
+        return true;
+    }
+
+    /// <summary>Write an int array field (e.g. buffType) into the Player object.</summary>
+    public bool WriteIntArray(uint fieldOffset, int[] values)
+    {
+        uint arrPtr = _proc.ReadUInt32(PlayerBase + fieldOffset);
+        if (arrPtr == 0) return false;
+        if (_proc.ReadInt32(arrPtr + PlayerMemoryOffsets.ArrayLength) < values.Length) return false;
+        var buf = new byte[values.Length * 4];
+        for (int i = 0; i < values.Length; i++)
+            BitConverter.GetBytes(values[i]).CopyTo(buf, i * 4);
+        return _proc.WriteBytes(arrPtr + PlayerMemoryOffsets.ArrayData, buf);
+    }
+
+    #region Immediate single-field writes (memory mode)
+
+    public bool WriteStatLife(int value) => _proc.WriteInt32(PlayerBase + _o.StatLife, value);
+    public bool WriteStatLifeMax(int value) => _proc.WriteInt32(PlayerBase + _o.StatLifeMax, value);
+    public bool WriteStatMana(int value) => _proc.WriteInt32(PlayerBase + _o.StatMana, value);
+    public bool WriteStatManaMax(int value) => _proc.WriteInt32(PlayerBase + _o.StatManaMax, value);
+    public bool WriteDifficulty(byte value) => _proc.WriteByte(PlayerBase + _o.Difficulty, value);
+    public bool WriteHair(int value) => _proc.WriteInt32(PlayerBase + _o.Hair, value);
+    public bool WriteHairDye(byte value) => _proc.WriteByte(PlayerBase + _o.HairDye, value);
+    public bool WriteSkinVariant(int value) => _proc.WriteInt32(PlayerBase + _o.SkinVariant, value);
+    public bool WriteTaxMoney(int value) => _proc.WriteInt32(PlayerBase + _o.TaxMoney, value);
+    public bool WriteDeathsPvE(int value) => _proc.WriteInt32(PlayerBase + _o.DeathsPvE, value);
+
+    /// <summary>Immediately write one buff slot (type + remaining time).</summary>
+    public bool WriteBuffSlot(int index, int type, int time)
+    {
+        if (index < 0 || index >= 44) return false;
+        if (!ReadIntArray(_o.BuffType, 44, out var types) || !ReadIntArray(_o.BuffTime, 44, out var times))
+            return false;
+        types[index] = type;
+        times[index] = time;
+        return WriteIntArray(_o.BuffType, types) & WriteIntArray(_o.BuffTime, times);
+    }
+
+    #endregion
+
+    #endregion
+
     public void Dispose()
     {
         _proc.Dispose();

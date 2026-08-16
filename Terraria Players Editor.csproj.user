@@ -16,10 +16,10 @@
     <Compile Update="Controls\ItemBrowser.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Controls\ItemModifier.cs">
+    <Compile Update="Controls\ItemMemoryPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Controls\MemoryPanel.cs">
+    <Compile Update="Controls\ItemModifier.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Controls\SlotGrid.cs">

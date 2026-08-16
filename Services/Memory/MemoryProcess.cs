@@ -20,6 +20,25 @@ public sealed class MemoryProcess : IDisposable
     public bool IsConnected { get; private set; }
     public string? LastError { get; private set; }
 
+    /// <summary>List candidate game processes (Terraria / tModLoader).</summary>
+    public static List<Process> FindGameProcesses()
+    {
+        var result = new List<Process>();
+        foreach (var name in new[] { "Terraria", "tModLoader", "TerrariaServer" })
+        {
+            try
+            {
+                foreach (var p in Process.GetProcessesByName(name))
+                    result.Add(p);
+            }
+            catch
+            {
+                // process list race — ignore
+            }
+        }
+        return result.OrderBy(p => p.ProcessName).ThenBy(p => p.Id).ToList();
+    }
+
     private MemoryProcess(Process process, IntPtr handle, uint mainThreadId)
     {
         Process = process;
@@ -266,6 +285,15 @@ public sealed class MemoryProcess : IDisposable
         return true;
     }
 
+    public bool ReadFloat(uint address, out float value)
+    {
+        value = 0;
+        var buf = new byte[4];
+        if (!ReadBytes(address, buf, 0, 4)) return false;
+        value = BitConverter.ToSingle(buf, 0);
+        return true;
+    }
+
     public uint ReadUInt32(uint address) => ReadUInt32(address, out var v) ? v : 0;
 
     public int ReadInt32(uint address) => ReadInt32(address, out var v) ? v : 0;
@@ -282,6 +310,8 @@ public sealed class MemoryProcess : IDisposable
     public bool WriteInt32(uint address, int value) => WriteBytes(address, BitConverter.GetBytes(value));
 
     public bool WriteByte(uint address, byte value) => WriteBytes(address, new[] { value });
+
+    public bool WriteFloat(uint address, float value) => WriteBytes(address, BitConverter.GetBytes(value));
 
     /// <summary>Read a .NET System.String referenced by the 4-byte pointer at <paramref name="refAddress"/>.</summary>
     public string? ReadDotNetString(uint refAddress)
