@@ -17,7 +17,7 @@ public partial class MainForm : Form
     private ToolStripMenuItem? _categoryMenuParentItem, _catModeFewerItem, _catModeAllItem, _coloredTextItem;
 
     // Memory editing menu
-    private ToolStripMenuItem? _memMenu, _memModeItem, _memConnectItem, _memDisconnectItem, _memSettingsItem;
+    private ToolStripMenuItem? _memMenu, _memModeItem, _memConnectItem, _memDisconnectItem, _memSettingsItem, _memAutoRefreshItem;
 
     // === Live memory editing mode ===
     private PlayerMemorySession? _memorySession;
@@ -25,6 +25,9 @@ public partial class MainForm : Form
     private bool _memoryMode;
     private Controls.ItemMemoryPanel _itemAttrPanel = null!;
     private Controls.SlotGrid _gridTrash = null!;
+    private Label _lblTrash = null!;
+    private System.Windows.Forms.Timer? _memRefreshTimer;
+    private string _memSnapshot = "";
 
     // Right-click context menu
     private ContextMenuStrip? _contextMenu;
@@ -298,7 +301,23 @@ public partial class MainForm : Form
                 }
             }
         });
-        _memMenu.DropDownItems.AddRange([_memModeItem, _memConnectItem, _memDisconnectItem, new ToolStripSeparator(), _memSettingsItem]);
+        // Auto-refresh: detect in-game memory changes and refresh the UI (memory mode only).
+        _memAutoRefreshItem = new ToolStripMenuItem(AppLocale.Get("MemEdit.AutoRefresh"))
+        {
+            Checked = MemorySettings.AutoRefresh,
+            CheckOnClick = true
+        };
+        _memAutoRefreshItem.Click += (_, _) =>
+        {
+            MemorySettings.AutoRefresh = _memAutoRefreshItem.Checked;
+            MemorySettings.Save();
+            UpdateAutoRefreshTimer();
+        };
+        _memRefreshTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+        _memRefreshTimer.Tick += (_, _) => MemoryAutoRefreshTick();
+
+        _memMenu.DropDownItems.AddRange([_memModeItem, _memConnectItem, _memDisconnectItem, new ToolStripSeparator(),
+            _memAutoRefreshItem, _memSettingsItem]);
         menuStrip.Items.Add(_memMenu);
 
         Controls.Add(menuStrip);
@@ -427,10 +446,12 @@ public partial class MainForm : Form
             _memoryMode = true;
             EnableMemoryModeUI(true);
             LoadFromMemory();
+            UpdateAutoRefreshTimer();
         }
         else
         {
             _memoryMode = false;
+            UpdateAutoRefreshTimer();
             EnableMemoryModeUI(false);
             _itemAttrPanel.ClearItem();
             // Restore the file-backed view if a file is still open.
@@ -471,15 +492,96 @@ public partial class MainForm : Form
         }
 
         var session = new PlayerMemorySession(mp);
-        bool resolved = session.ResolvePlayerBase() && session.PlayerBase != 0;
+        bool resolved = false;
+        string method = "chain";
+
+        // 1) Cached player base from a previous successful connection to this
+        //    running game — instant, stable and correct. Validated before use.
+        if (MemorySettings.LastPlayerBase != 0 && session.ValidatePlayerBase(MemorySettings.LastPlayerBase))
+        {
+            session.PlayerBase = MemorySettings.LastPlayerBase;
+            resolved = true;
+            method = "cached";
+        }
+
+        // 2) Pointer chain (auto threadstack0 candidates).
+        if (!resolved && (session.ResolvePlayerBase() && session.PlayerBase != 0 && session.ValidatePlayerBase(session.PlayerBase)))
+        {
+            resolved = true;
+            method = "chain";
+        }
+
+        // 3) Memory feature scan + active-player detection + inventory fallback.
         if (!resolved && MemorySettings.AutoScanFallback)
         {
             statusLabel.Text = AppLocale.Get("MemEdit.Status.Scanning");
-            resolved = await Task.Run(() => session.FindPlayerByScan());
+            resolved = await Task.Run(() =>
+            {
+                var candidates = session.FindPlayerCandidates();
+                TraceLog($"[MemConnect] scan stats: {session.LastScanStats}");
+                if (candidates.Count > 0)
+                {
+                    // The live player is the candidate whose state changes while
+                    // the game runs; otherwise let the user pick.
+                    uint active = session.PickActivePlayer(candidates);
+                    if (active != 0)
+                    {
+                        session.PlayerBase = active;
+                        TraceLog($"[MemConnect] active player by sampling: {active:X8}");
+                        return true;
+                    }
+                    if (candidates.Count == 1)
+                    {
+                        session.PlayerBase = candidates[0];
+                        TraceLog($"[MemConnect] single candidate: {candidates[0]:X8}");
+                        return true;
+                    }
+                    var dialogResult = (uint)0;
+                    bool picked = false;
+                    Invoke(() =>
+                    {
+                        using var dlg = new Forms.PlayerSelectDialog(candidates.Select(c =>
+                        {
+                            var saved = session.PlayerBase;
+                            session.PlayerBase = c;
+                            var info = session.ReadPlayerInfo();
+                            session.PlayerBase = saved;
+                            return (c, info?.Name ?? "?");
+                        }));
+                        if (dlg.ShowDialog(this) == DialogResult.OK)
+                        {
+                            dialogResult = dlg.SelectedBase;
+                            picked = true;
+                        }
+                    });
+                    if (picked)
+                    {
+                        session.PlayerBase = dialogResult;
+                        TraceLog($"[MemConnect] user picked: {dialogResult:X8}");
+                        return true;
+                    }
+                    return false;
+                }
+                // No 256/255 player array: fall back to the inventory-59 scan.
+                uint x = session.FindPlayerByInventoryFallback();
+                TraceLog($"[MemConnect] inventory-59 fallback: {(x != 0 ? x.ToString("X8") : "none")}");
+                if (x != 0)
+                {
+                    session.PlayerBase = x;
+                    return true;
+                }
+                return false;
+            });
+            method = "scan";
         }
         if (!resolved || session.PlayerBase == 0)
         {
-            statusLabel.Text = AppLocale.Get("MemEdit.Status.ResolveFailed");
+            // Distinguish "no player objects at all" (title screen / world not
+            // entered) from "could not resolve which one is the player"; append
+            // scan statistics to the message for diagnostics.
+            statusLabel.Text = session.LastError != null && session.LastError.Contains("no player")
+                ? AppLocale.Get("MemEdit.Status.NoPlayerInWorld")
+                : AppLocale.Get("MemEdit.Status.ResolveFailed") + (session.LastScanStats.Length > 0 ? " (" + session.LastScanStats + ")" : "");
             session.Dispose();
             return false;
         }
@@ -496,8 +598,16 @@ public partial class MainForm : Form
         _memoryProcess = process;
         _memDisconnectItem!.Enabled = true;
         _memConnectItem!.Enabled = false;
+        MemorySettings.LastPlayerBase = session.PlayerBase;
+        MemorySettings.Save();
+        string methodTag = method switch
+        {
+            "cached" => AppLocale.Get("MemEdit.Method.Cached"),
+            "chain" => AppLocale.Get("MemEdit.Method.Chain"),
+            _ => AppLocale.Get("MemEdit.Method.Scan")
+        };
         statusLabel.Text = string.Format(AppLocale.Get("MemEdit.Status.Connected"),
-            process.ProcessName, process.Id, session.PlayerBase.ToString("X8"), info.Name);
+            process.ProcessName, process.Id, session.PlayerBase.ToString("X8"), info.Name) + methodTag;
         return true;
     }
 
@@ -506,6 +616,7 @@ public partial class MainForm : Form
     {
         bool wasMode = _memoryMode;
         _memoryMode = false;
+        UpdateAutoRefreshTimer();
         if (_memModeItem != null) _memModeItem.Checked = false;
         _memorySession?.Dispose();
         _memorySession = null;
@@ -544,8 +655,91 @@ public partial class MainForm : Form
             _memorySession.Process.Process.ProcessName, _memorySession.PlayerBase.ToString("X8"), _player.Name);
     }
 
-    /// <summary>
-    /// Apply the memory-mode UI state: disable tabs/fields that cannot be
+    /// <summary>Start/stop the auto-refresh timer according to the mode + setting.</summary>
+    private void UpdateAutoRefreshTimer()
+    {
+        if (_memRefreshTimer == null) return;
+        _memRefreshTimer.Enabled = _memoryMode && _memorySession != null && MemorySettings.AutoRefresh;
+        if (_memRefreshTimer.Enabled) _memSnapshot = "";
+    }
+
+    /// <summary>Build a cheap signature of the live player state for change detection.</summary>
+    private string MemorySnapshot()
+    {
+        if (_memorySession == null) return "";
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append(_memorySession.ReadPlayerInfo()?.StatLife).Append('|')
+              .Append(_memorySession.ReadPlayerInfo()?.StatMana).Append('|');
+            for (int i = 0; i < 4; i++)
+            {
+                var it = _memorySession.ReadItem(MemoryItemSection.Inventory, i);
+                sb.Append(it?.ItemId).Append(':').Append(it?.StackSize).Append(';');
+            }
+            return sb.ToString();
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    /// <summary>Auto-refresh tick: reload the UI when the in-game data changed.</summary>
+    private void MemoryAutoRefreshTick()
+    {
+        if (!_memoryMode || _memorySession == null) return;
+        string now = MemorySnapshot();
+        if (now.Length == 0) return;
+        if (now == _memSnapshot) return;
+        _memSnapshot = now;
+        try
+        {
+            if (_memorySession.Process.Process.HasExited)
+            {
+                DisconnectMemory();
+                return;
+            }
+        }
+        catch
+        {
+            DisconnectMemory();
+            return;
+        }
+        // Lightweight refresh: update the item grids + info fields without
+        // touching the attribute editor or the modifier's pending input.
+        _player = _memorySession.ReadToPlayerData();
+        _populating = true;
+        try
+        {
+            _gridInventory.SetItems(_player.MainInventory);
+            _gridCoins.SetItems(_player.Coins);
+            _gridAmmo.SetItems(_player.Ammo);
+            _gridTrash.SetItems([_player.TrashItem ?? new ItemData()]);
+            for (int i = 0; i < 3; i++) _equipSlots[0].SetSlot(i, _player.Loadout1?.Armor.Count > i ? _player.Loadout1.Armor[i] : new ItemData());
+            for (int i = 0; i < 3; i++) _vanitySlots[0].SetSlot(i, _player.Loadout1?.VanityArmor.Count > i ? _player.Loadout1.VanityArmor[i] : new ItemData());
+            for (int i = 0; i < 7; i++) _accSlots[0].SetSlot(i, _player.Loadout1?.Accessories.Count > i ? _player.Loadout1.Accessories[i] : new ItemData());
+            for (int i = 0; i < 7; i++) _vaccSlots[0].SetSlot(i, _player.Loadout1?.VanityAccessories.Count > i ? _player.Loadout1.VanityAccessories[i] : new ItemData());
+            for (int i = 0; i < 5; i++) _miscSlots[0].SetSlot(i, _player.MiscEquips.Count > i ? _player.MiscEquips[i] : new ItemData());
+            for (int i = 0; i < 3; i++) _armorDyeSlots[0].SetSlot(i, _player.Loadout1?.ArmorDyes.Count > i ? _player.Loadout1.ArmorDyes[i] : new ItemData());
+            for (int i = 3; i < 10; i++) _accDyeSlots[0].SetSlot(i - 3, _player.Loadout1?.ArmorDyes.Count > i ? _player.Loadout1.ArmorDyes[i] : new ItemData());
+            for (int i = 0; i < 5; i++) _miscDyeSlots[0].SetSlot(i, _player.MiscEquipDyes.Count > i ? _player.MiscEquipDyes[i] : new ItemData());
+            _gridPiggy.SetItems(_player.PiggyBank);
+            _gridSafe.SetItems(_player.Safe);
+            _gridDefender.SetItems(_player.DefenderForge);
+            _gridVoid.SetItems(_player.VoidVault);
+            nudHealth.Value = Math.Clamp(_player.Stats.Health, nudHealth.Minimum, nudHealth.Maximum);
+            nudMaxHealth.Value = Math.Clamp(_player.Stats.MaxHealth, nudMaxHealth.Minimum, nudMaxHealth.Maximum);
+            nudMana.Value = Math.Clamp(_player.Stats.Mana, nudMana.Minimum, nudMana.Maximum);
+            nudMaxMana.Value = Math.Clamp(_player.Stats.MaxMana, nudMaxMana.Minimum, nudMaxMana.Maximum);
+        }
+        finally
+        {
+            _populating = false;
+        }
+    }
+
+    /// <summary>Apply the memory-mode UI state: disable tabs/fields that cannot be
     /// written to memory (greyed out), unlock the health/mana caps, show the
     /// trash slot and the in-memory item attribute editor.
     /// </summary>
@@ -553,6 +747,7 @@ public partial class MainForm : Form
     {
         // Items tab: trash slot + attribute editor + loadout switching
         _gridTrash.Visible = enabled;
+        _lblTrash.Visible = enabled;
         _itemAttrPanel.Visible = enabled;
         _rbLoadout2.Enabled = !enabled;
         _rbLoadout3.Enabled = !enabled;
@@ -923,8 +1118,17 @@ public partial class MainForm : Form
         _gridInventory.Margin = new Padding(0);
         _gridCoins.Margin = new Padding(0);
         _gridAmmo.Margin = new Padding(0);
-        _gridTrash = new SlotGrid(1, 1, gridTitle: AppLocale.Get("MemEdit.Trash")) { Tag = "Trash", Margin = new Padding(0), Visible = false };
+        _gridTrash = new SlotGrid(1, 1) { Tag = "Trash", Margin = new Padding(0), Visible = false };
         _allItemGrids.Add(_gridTrash);
+        _lblTrash = new Label
+        {
+            Text = AppLocale.Get("MemEdit.Trash"),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Dock = DockStyle.Fill,
+            ForeColor = ThemeManager.TextSecondary,
+            Tag = "secondary",
+            Visible = false
+        };
 
         invGrid.Controls.Add(_gridInventory, 0, 0);
         invGrid.SetColumnSpan(_gridInventory, 10);
@@ -933,8 +1137,9 @@ public partial class MainForm : Form
         invGrid.SetRowSpan(_gridCoins, 5);
         invGrid.Controls.Add(_gridAmmo, 12, 0);
         invGrid.SetRowSpan(_gridAmmo, 5);
-        invGrid.Controls.Add(_gridTrash, 13, 4);
-        invGrid.SetRowSpan(_gridTrash, 1);
+        // Trash slot below the coins column; the "垃圾桶" label sits below ammo.
+        invGrid.Controls.Add(_gridTrash, 11, 5);
+        invGrid.Controls.Add(_lblTrash, 12, 5);
 
         var innerLayout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
         innerLayout.Controls.Add(invGrid);
@@ -2253,6 +2458,7 @@ public partial class MainForm : Form
         if (_memConnectItem != null) _memConnectItem.Text = L("MemEdit.SelectProcess");
         if (_memDisconnectItem != null) _memDisconnectItem.Text = L("MemEdit.Disconnect");
         if (_memSettingsItem != null) _memSettingsItem.Text = L("MemEdit.Settings");
+        if (_memAutoRefreshItem != null) _memAutoRefreshItem.Text = L("MemEdit.AutoRefresh");
 
         // Tab titles
         tabPlayerInfo.Text = L("Tab.PlayerInfo");
@@ -2336,7 +2542,7 @@ public partial class MainForm : Form
         _gridInventory.GridTitle = L("Grid.MainInventory");
         _gridCoins.GridTitle = L("Grid.Coins");
         _gridAmmo.GridTitle = L("Grid.Ammo");
-        _gridTrash.GridTitle = L("MemEdit.Trash");
+        _lblTrash.Text = L("MemEdit.Trash");
         _itemAttrPanel.RefreshLocale();
         _rbLoadout1.Text = L("Loadout.Select1");
         _rbLoadout2.Text = L("Loadout.Select2");

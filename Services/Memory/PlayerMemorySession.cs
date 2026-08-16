@@ -49,70 +49,180 @@ public sealed class PlayerMemorySession : IDisposable
     public MemoryProcess Process => _proc;
 
     /// <summary>Resolved Player object base address (0 = failed).</summary>
-    public uint PlayerBase { get; private set; }
+    public uint PlayerBase { get; set; }
 
     /// <summary>Anchor address the chain starts from (threadstack0 - subtract).</summary>
     public uint ChainAnchor { get; private set; }
 
     public string? LastError { get; private set; }
 
+    /// <summary>Scan statistics from the last FindPlayerCandidates call (for diagnostics).</summary>
+    public string LastScanStats { get; private set; } = "";
+
     /// <summary>
-    /// Resolve the Player base through the configured pointer chain.
+    /// Fallback used when no 256/255 player array is found: locate a 59-length
+    /// array whose elements are Items (the inventory), then find the object X
+    /// that references it at Player+0xD8. Works regardless of the player array
+    /// length used by the game build.
+    /// </summary>
+    public uint FindPlayerByInventoryFallback(uint scanEnd = 0xFFFE0000)
+    {
+        uint x = FindPlayerByArrayReferenceForInventory(scanEnd);
+        if (x != 0)
+        {
+            LastError = null;
+            return x;
+        }
+        LastError = "no player object found in memory";
+        return 0;
+    }
+
+    /// <summary>Check whether the given address still points at a valid Player object.</summary>
+    public bool ValidatePlayerBase(uint baseAddr)
+    {
+        if (baseAddr == 0) return false;
+        return LooksLikePlayerCore(baseAddr);
+    }
+
+    /// <summary>
+    /// Resolve the Player base through the configured pointer chain. The chain
+    /// starts at ChainBaseOverride when set (a CE pointer-scan heap address);
+    /// otherwise every candidate "threadstack0" value (each thread's 64/32-bit
+    /// TEB stack base and common variants) is tried automatically, and the
+    /// first result that validates as a Player object wins.
     /// </summary>
     public bool ResolvePlayerBase()
     {
         LastError = null;
-        uint stackBase = _proc.MainThreadStackBase;
-        if (stackBase == 0)
+        if (MemorySettings.ChainBaseOverride != 0)
         {
-            LastError = "no thread stack base";
-            return false;
+            ChainAnchor = MemorySettings.ChainBaseOverride;
+            if (!_proc.ResolveChain(ChainAnchor, MemorySettings.ChainOffsets, MemorySettings.ChainFinalDeref, out uint baseAddr) || baseAddr == 0)
+            {
+                LastError = "chain resolve failed (custom base)";
+                return false;
+            }
+            PlayerBase = baseAddr;
+            return true;
         }
-        ChainAnchor = stackBase - MemorySettings.ChainStackSubtract;
-        if (!_proc.ResolveChain(ChainAnchor, MemorySettings.ChainOffsets, MemorySettings.ChainFinalDeref, out uint baseAddr) || baseAddr == 0)
+
+        // Try every candidate threadstack0 automatically.
+        foreach (uint ts0 in _proc.GetThreadStackCandidates())
         {
-            LastError = "chain resolve failed";
-            return false;
+            uint anchor = ts0 - MemorySettings.ChainStackSubtract;
+            if (_proc.ResolveChain(anchor, MemorySettings.ChainOffsets, MemorySettings.ChainFinalDeref, out uint baseAddr) &&
+                baseAddr != 0 && LooksLikePlayerCore(baseAddr))
+            {
+                ChainAnchor = anchor;
+                PlayerBase = baseAddr;
+                return true;
+            }
         }
-        PlayerBase = baseAddr;
-        return true;
+        LastError = "chain resolve failed";
+        return false;
     }
 
     /// <summary>
     /// Locate the live Player object (Main.player[0]) by scanning the target's
-    /// memory. Preferred signature: the Main.player array — a 255-length object
-    /// whose first element is the local Player. Fallback: the inventory array
-    /// (Item[59]) referenced at Player+0xD8. Used when the pointer chain does
-    /// not match the game build. The scan covers the lower 1 GB of the 32-bit
-    /// address space; modified game builds can place the managed heap higher.
+    /// memory. The Main.player array length depends on the game build (vanilla
+    /// 255, some content packs 256), so both are tried. Several "player-like"
+    /// objects can exist (save/character caches); the active one is picked by
+    /// sampling stat changes, falling back to the first candidate. The scan
+    /// covers the full 32-bit user space (2 GB) because in-world games can
+    /// place the managed heap above 1 GB.
     /// </summary>
-    public bool FindPlayerByScan(uint scanEnd = 0x40000000)
+    public bool FindPlayerByScan(uint scanEnd = 0xFFFE0000)
     {
         LastError = null;
 
-        // Pass 1: Main.player array (length 255); element[0] is the local player.
-        uint x = FindPlayerViaArrayLength(255, scanEnd);
-        if (x != 0)
+        var candidates = FindPlayerCandidates(scanEnd);
+        if (candidates.Count == 0)
         {
-            PlayerBase = x;
-            return true;
+            // Last resort: inventory array (Item[59]) referenced at Player+0xD8.
+            uint x = FindPlayerByArrayReferenceForInventory(scanEnd);
+            if (x != 0)
+            {
+                PlayerBase = x;
+                return true;
+            }
+            LastError = "no player object found in memory";
+            return false;
         }
 
-        // Pass 2 (fallback): inventory array (length 59) referenced at Player+0xD8.
-        x = FindPlayerByArrayReferenceForInventory(scanEnd);
-        if (x != 0)
-        {
-            PlayerBase = x;
-            return true;
-        }
-
-        LastError = "no player object found in memory";
-        return false;
+        // Several candidate Player objects exist (active player + save caches).
+        // The active one is the only one whose stats change while playing.
+        uint active = PickActivePlayer(candidates);
+        PlayerBase = active != 0 ? active : candidates[0];
+        return true;
     }
 
-    /// <summary>Scan for an array of the given length whose element [0] is a Player object.</summary>
-    private uint FindPlayerViaArrayLength(int length, uint scanEnd)
+    /// <summary>
+    /// Scan for arrays whose element [0] is a Player object. Main.player is a
+    /// large array (255 or 256); save/character caches produce extra hits.
+    /// </summary>
+    public List<uint> FindPlayerCandidates(uint scanEnd = 0xFFFE0000)
     {
+        var result = new List<uint>();
+        int arrays256 = 0, arrays255 = 0;
+        foreach (int len in new[] { 256, 255 })
+        {
+            var (list, count) = FindPlayerViaArrayLength(len, scanEnd);
+            if (len == 256) arrays256 = count; else arrays255 = count;
+            foreach (var x in list)
+                if (!result.Contains(x))
+                    result.Add(x);
+        }
+        LastScanStats = $"256-arrays={arrays256}, 255-arrays={arrays255}, player-candidates={result.Count}";
+        LastError = result.Count == 0 ? "no player object found in memory" : null;
+        return result;
+    }
+
+    /// <summary>
+    /// Pick the live player from several candidates. The live in-world player
+    /// is updated every frame (animation counter, position, stats keep
+    /// changing); save/character caches are static snapshots. Samples up to
+    /// ~1.6s; returns 0 when nothing is updating (game paused / on the menu).
+    /// </summary>
+    public uint PickActivePlayer(IReadOnlyList<uint> candidates)
+    {
+        if (candidates.Count <= 1) return candidates.Count == 1 ? candidates[0] : 0;
+
+        var prev = new (long frame, int life, int mana, float x, float y)[candidates.Count];
+        for (int i = 0; i < candidates.Count; i++)
+            prev[i] = ReadActivitySnapshot(candidates[i]);
+
+        for (int round = 0; round < 3; round++)
+        {
+            System.Threading.Thread.Sleep(400);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var now = ReadActivitySnapshot(candidates[i]);
+                if (now.frame != prev[i].frame || now.life != prev[i].life ||
+                    now.mana != prev[i].mana || now.x != prev[i].x || now.y != prev[i].y)
+                    return candidates[i];
+            }
+            prev = prev.Select((_, i) => ReadActivitySnapshot(candidates[i])).ToArray();
+        }
+        return 0;
+    }
+
+    private (long frame, int life, int mana, float x, float y) ReadActivitySnapshot(uint x)
+    {
+        long frame = 0;
+        _proc.ReadUInt64(x + _o.BodyFrameCounter, out ulong f);
+        frame = (long)f;
+        int life = _proc.ReadInt32(x + _o.StatLife);
+        int mana = _proc.ReadInt32(x + _o.StatMana);
+        float px = _proc.ReadFloat(x + _o.PositionX, out float fx) ? fx : 0;
+        float py = _proc.ReadFloat(x + _o.PositionY, out float fy) ? fy : 0;
+        return (frame, life, mana, px, py);
+    }
+
+    /// <summary>Scan for arrays of the given length whose element [0] is a Player object.</summary>
+    private (List<uint> players, int arraysFound) FindPlayerViaArrayLength(int length, uint scanEnd)
+    {
+        var result = new List<uint>();
+        int arraysFound = 0;
         byte low = (byte)length;
         byte hi = (byte)(length >> 8);
         var buf = new byte[0x10000];
@@ -134,23 +244,27 @@ public sealed class PlayerMemorySession : IDisposable
                         uint pattern = baseAddr + (uint)off + (uint)idx;
                         if (pattern % 4 != 0) { idx += 4; continue; }
                         uint arr = pattern - 4;
+                        arraysFound++;
                         uint p0 = _proc.ReadUInt32(arr + PlayerMemoryOffsets.ArrayData);
-                        if (p0 >= 0x10000 && p0 <= 0x7FFEFFFF && LooksLikePlayerCore(p0))
-                            return p0;
+                        if (p0 >= 0x10000 && p0 <= 0xFFFEFFFF && LooksLikePlayerCore(p0))
+                            result.Add(p0);
                     }
                     idx += 4;
                 }
             }
         }
-        return 0;
+        return (result, arraysFound);
     }
 
     /// <summary>
-    /// Fallback scan: find a 59-length array whose elements are Item objects
-    /// (the inventory), then find the object X that references it at Player+0xD8.
+    /// Fallback scan: find 59-length arrays whose elements are Item objects
+    /// (the inventory), then find the object X that references one of them at
+    /// Player+0xD8. Uses a single batched memory pass for the reference lookup
+    /// so the candidate count does not multiply the scan time.
     /// </summary>
     private uint FindPlayerByArrayReferenceForInventory(uint scanEnd)
     {
+        // Pass 1: collect 59-length arrays whose first 20 elements look like Items.
         var arrays = new List<uint>();
         var buf = new byte[0x10000];
         foreach (var (baseAddr, size) in _proc.EnumerateReadableRegions(0x00400000, scanEnd))
@@ -172,33 +286,56 @@ public sealed class PlayerMemorySession : IDisposable
                         // array base + 4 ([0]=MethodTable, [4]=length).
                         uint patternPos = baseAddr + (uint)off + (uint)idx;
                         uint arr = patternPos - 4;
-                        if (arr % 4 == 0 && LooksLikeInventoryArrayFast(arr))
+                        if (arr % 4 == 0 && LooksLikeInventoryArrayDeep(arr))
                             arrays.Add(arr);
                     }
                     idx += 4;
                 }
             }
         }
-        foreach (uint arr in arrays)
+        if (arrays.Count == 0) return 0;
+
+        // Pass 2: one memory pass; any dword equal to a candidate array address
+        // that sits at X+0xD8 and validates as a Player wins.
+        var targets = new HashSet<uint>(arrays);
+        foreach (var (baseAddr, size) in _proc.EnumerateReadableRegions(0x00400000, scanEnd))
         {
-            uint x = FindPlayerByArrayReference(arr, scanEnd);
-            if (x != 0)
-                return x;
+            for (long off = 0; off < size; off += buf.Length)
+            {
+                int chunk = (int)Math.Min(buf.Length, size - off);
+                if (!_proc.ReadBytes(baseAddr + (uint)off, buf.AsSpan(0, chunk)))
+                    continue;
+                for (int i = 0; i <= chunk - 4; i += 4)
+                {
+                    uint v = BitConverter.ToUInt32(buf, i);
+                    if (targets.Contains(v))
+                    {
+                        uint pos = baseAddr + (uint)off + (uint)i;
+                        if (pos >= 0xD8)
+                        {
+                            uint x = pos - 0xD8;
+                            if (LooksLikePlayer(x, v))
+                                return x;
+                        }
+                    }
+                }
+            }
         }
         return 0;
     }
 
-    private bool LooksLikeInventoryArrayFast(uint arrAddr)
+    /// <summary>Strict inventory-array check: length 59 and the first 20 elements look like Items.</summary>
+    private bool LooksLikeInventoryArrayDeep(uint arrAddr)
     {
-        int len = _proc.ReadInt32(arrAddr + PlayerMemoryOffsets.ArrayLength);
-        if (len != 59) return false;
-        for (int i = 0; i < 3; i++)
+        if (_proc.ReadInt32(arrAddr + PlayerMemoryOffsets.ArrayLength) != 59) return false;
+        for (int i = 0; i < 20; i++)
         {
             uint item = _proc.ReadUInt32(arrAddr + PlayerMemoryOffsets.ArrayData + (uint)(i * 4));
             if (item == 0) continue;
-            if (item < 0x10000 || item > 0x7FFEFFFF) return false;
+            if (item < 0x10000 || item > 0xFFFEFFFF) return false;
             int type = _proc.ReadInt32(item + _o.ItemType);
-            if (type < 0 || type > 6000) return false;
+            int stack = _proc.ReadInt32(item + _o.ItemStack);
+            if (type < 0 || type > 99999 || stack < 0 || stack > 999999) return false;
         }
         return true;
     }
@@ -246,14 +383,15 @@ public sealed class PlayerMemorySession : IDisposable
 
     /// <summary>
     /// Core validation: the object at X has plausible Player fields and a
-    /// 59-slot inventory array whose elements are Item objects.
+    /// 59-slot inventory array whose elements are Item objects. Stat ranges are
+    /// generous (players may have edited life/mana far beyond the vanilla caps).
     /// </summary>
     private bool LooksLikePlayerCore(uint x)
     {
         int lifeMax = _proc.ReadInt32(x + _o.StatLifeMax);
         int life = _proc.ReadInt32(x + _o.StatLife);
         int mana = _proc.ReadInt32(x + _o.StatMana);
-        if (lifeMax < 20 || lifeMax > 1000 || life < 0 || life > 1000 || mana < 0 || mana > 1000)
+        if (lifeMax < 20 || lifeMax > 99999 || life < 0 || life > 99999 || mana < 0 || mana > 99999)
             return false;
         // Difficulty is a 1-byte field (0=softcore .. 3=journey); read it as a byte.
         if (!_proc.ReadByte(x + _o.Difficulty, out byte difficulty) || difficulty > 3)
@@ -264,7 +402,7 @@ public sealed class PlayerMemorySession : IDisposable
             return false;
         // The inventory array must have 59 slots whose elements are Item objects.
         uint invPtr = _proc.ReadUInt32(x + _o.Inventory);
-        if (invPtr < 0x10000 || invPtr > 0x7FFEFFFF)
+        if (invPtr < 0x10000 || invPtr > 0xFFFEFFFF)
             return false;
         if (_proc.ReadInt32(invPtr + PlayerMemoryOffsets.ArrayLength) != 59)
             return false;
@@ -272,13 +410,13 @@ public sealed class PlayerMemorySession : IDisposable
         {
             uint item = _proc.ReadUInt32(invPtr + PlayerMemoryOffsets.ArrayData + (uint)(i * 4));
             if (item == 0) continue;
-            if (item < 0x10000 || item > 0x7FFEFFFF) return false;
+            if (item < 0x10000 || item > 0xFFFEFFFF) return false;
             int type = _proc.ReadInt32(item + _o.ItemType);
             int stack = _proc.ReadInt32(item + _o.ItemStack);
             if (type < 0 || type > 6000 || stack < 0 || stack > 99999) return false;
         }
         uint namePtr = _proc.ReadUInt32(x + _o.Name);
-        if (namePtr < 0x10000 || namePtr > 0x7FFEFFFF)
+        if (namePtr < 0x10000 || namePtr > 0xFFFEFFFF)
             return false;
         return _proc.ReadDotNetString(x + _o.Name) != null;
     }
@@ -375,7 +513,7 @@ public sealed class PlayerMemorySession : IDisposable
         for (int i = 0; i < count; i++)
         {
             var item = ReadItem(section, startIndex + i) ?? new ItemData();
-            // The game stores "air" as type 0 / stack 0 — normalize like the file editor.
+            // The game stores "air" as type 0 / stack 0 �?normalize like the file editor.
             if (item.ItemId <= 0 || item.StackSize < 0)
                 item = new ItemData();
             list.Add(item);
@@ -596,3 +734,4 @@ public sealed class PlayerMemorySession : IDisposable
         _proc.Dispose();
     }
 }
+

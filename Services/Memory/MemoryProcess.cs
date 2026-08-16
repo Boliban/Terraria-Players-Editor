@@ -33,7 +33,7 @@ public sealed class MemoryProcess : IDisposable
             }
             catch
             {
-                // process list race â€” ignore
+                // process list race â€?ignore
             }
         }
         return result.OrderBy(p => p.ProcessName).ThenBy(p => p.Id).ToList();
@@ -119,7 +119,7 @@ public sealed class MemoryProcess : IDisposable
             // fall through
         }
 
-        // Fallback: the earliest-created thread â€” for a normal process that is
+        // Fallback: the earliest-created thread â€?for a normal process that is
         // the main thread (Process.Threads enumeration order is not guaranteed).
         try
         {
@@ -190,11 +190,64 @@ public sealed class MemoryProcess : IDisposable
     #region Raw read / write
 
     /// <summary>
+    /// Collect candidate "threadstack0" values from every thread's TEBs (64-bit
+    /// stack base and the 32-bit TEB stack base, plus common CE variants).
+    /// CE's threadstack0 symbol points at one of these depending on the build.
+    /// </summary>
+    public List<uint> GetThreadStackCandidates()
+    {
+        var result = new List<uint>();
+        try
+        {
+            foreach (ProcessThread t in Process.Threads)
+            {
+                uint tid = (uint)t.Id;
+                var th = Win32Api.OpenThread(Win32Api.THREAD_QUERY_INFORMATION, false, tid);
+                if (th == IntPtr.Zero) continue;
+                try
+                {
+                    if (Win32Api.NtQueryInformationThread(th, Win32Api.ThreadBasicInformation,
+                            out var tbi, System.Runtime.InteropServices.Marshal.SizeOf<Win32Api.THREAD_BASIC_INFORMATION>(),
+                            out _) != 0)
+                        continue;
+                    uint teb64 = (uint)tbi.TebBaseAddress;
+                    if (teb64 == 0) continue;
+                    if (ReadUInt64(teb64 + 0x08, out ulong sb64))
+                    {
+                        uint low = (uint)(sb64 & 0xFFFFFFFF);
+                        if (low > 0x10000 && low < 0xFFFE0000)
+                            result.Add(low);
+                    }
+                    // WOW64: the 32-bit TEB usually sits at teb64 + 0x2000
+                    // (verified via its Self pointer at +0x18).
+                    uint teb32 = teb64 + 0x2000;
+                    if (ReadUInt32(teb32 + 0x18, out uint self) && self == teb32 &&
+                        ReadUInt32(teb32 + 0x04, out uint sb32) && sb32 > 0x10000 && sb32 < 0xFFFE0000)
+                    {
+                        result.Add(sb32);
+                        // CE has been observed reporting stack-base minus 0x420.
+                        if (sb32 > 0x420) result.Add(sb32 - 0x420);
+                    }
+                }
+                finally
+                {
+                    Win32Api.CloseHandle(th);
+                }
+            }
+        }
+        catch
+        {
+            // best effort
+        }
+        return result.Distinct().ToList();
+    }
+
+    /// <summary>
     /// Enumerate committed, readable memory regions in the 32-bit target address
     /// space. Regions are capped at 32 MB per iteration so scanners can process
     /// them in bounded chunks.
     /// </summary>
-    public IEnumerable<(uint BaseAddress, int Size)> EnumerateReadableRegions(uint start = 0x00400000, uint end = 0x20000000)
+    public IEnumerable<(uint BaseAddress, int Size)> EnumerateReadableRegions(uint start = 0x00400000, uint end = 0xFFFE0000)
     {
         long cursor = start;
         while (cursor < end)

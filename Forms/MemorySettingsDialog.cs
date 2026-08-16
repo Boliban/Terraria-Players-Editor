@@ -13,6 +13,7 @@ public sealed class MemorySettingsDialog : Form
     private readonly bool _connected;
     private TextBox _txtStackSubtract = null!;
     private TextBox _txtChain = null!;
+    private TextBox _txtBaseOverride = null!;
     private CheckBox _chkFinalDeref = null!;
     private readonly Dictionary<string, TextBox> _offsetBoxes = new();
     private Label _lblBase = null!;
@@ -75,12 +76,15 @@ public sealed class MemorySettingsDialog : Form
         _txtStackSubtract = MakeHexBox(MemorySettings.ChainStackSubtract);
         _txtChain = MakeText(MemorySettings.ChainToString(MemorySettings.ChainOffsets));
         _chkFinalDeref = new CheckBox { Text = AppLocale.Get("MemEdit.ChainFinalDeref"), Checked = MemorySettings.ChainFinalDeref, AutoSize = true };
+        _txtBaseOverride = MakeHexBox(MemorySettings.ChainBaseOverride);
 
         chainLayout.Controls.Add(MakeFieldLabel(AppLocale.Get("MemEdit.ChainStackSubtract")), 0, 0);
         chainLayout.Controls.Add(_txtStackSubtract, 1, 0);
         chainLayout.Controls.Add(MakeFieldLabel(AppLocale.Get("MemEdit.ChainOffsets")), 0, 1);
         chainLayout.Controls.Add(_txtChain, 1, 1);
         chainLayout.Controls.Add(_chkFinalDeref, 1, 2);
+        chainLayout.Controls.Add(MakeFieldLabel(AppLocale.Get("MemEdit.ChainBaseOverride")), 0, 3);
+        chainLayout.Controls.Add(_txtBaseOverride, 1, 3);
         chainGroup.Controls.Add(chainLayout);
         layout.Controls.Add(chainGroup, 0, 2);
 
@@ -135,8 +139,10 @@ public sealed class MemorySettingsDialog : Form
             MemorySettings.ChainStackSubtract = 0x3D8;
             MemorySettings.ChainOffsets = new List<uint> { 0x32C, 0x4, 0x550, 0x0, 0x0, 0xD8 };
             MemorySettings.ChainFinalDeref = false;
+            MemorySettings.ChainBaseOverride = 0;
             _txtStackSubtract.Text = "3D8";
             _txtChain.Text = MemorySettings.ChainToString(MemorySettings.ChainOffsets);
+            _txtBaseOverride.Text = "0";
             _chkFinalDeref.Checked = false;
             var def = new PlayerMemoryOffsets();
             foreach (var kv in _offsetBoxes)
@@ -181,6 +187,16 @@ public sealed class MemorySettingsDialog : Form
         try
         {
             MemorySettings.ChainStackSubtract = Convert.ToUInt32(dlg._txtStackSubtract.Text.Trim(), 16);
+        }
+        catch
+        {
+            MessageBox.Show(owner, AppLocale.Get("MemEdit.InvalidHex"), Application.ProductName,
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+        try
+        {
+            MemorySettings.ChainBaseOverride = Convert.ToUInt32(dlg._txtBaseOverride.Text.Trim(), 16);
         }
         catch
         {

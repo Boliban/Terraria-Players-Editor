@@ -17,6 +17,14 @@ public static class MemorySettings
     /// <summary>Anchor: main thread stack base minus this value (threadstack0 - 984 = -0x3D8).</summary>
     public static uint ChainStackSubtract { get; set; } = 0x3D8;
 
+    /// <summary>
+    /// Optional absolute base address override (e.g. a heap address from a CE
+    /// pointer scan). When non-zero, the chain starts directly at this address
+    /// instead of at (threadstack0 - ChainStackSubtract). Heap addresses are
+    /// stable while the game runs but change after a restart.
+    /// </summary>
+    public static uint ChainBaseOverride { get; set; } = 0;
+
     /// <summary>Pointer chain offsets (hex), CE semantics: read + add per step.</summary>
     public static List<uint> ChainOffsets { get; set; } = new() { 0x32C, 0x4, 0x550, 0x0, 0x0, 0xD8 };
 
@@ -28,6 +36,13 @@ public static class MemorySettings
 
     /// <summary>When the pointer chain fails, scan the game memory to locate the Player object.</summary>
     public static bool AutoScanFallback { get; set; } = true;
+
+    /// <summary>
+    /// Last successfully located Player base address, cached across connections
+    /// so re-connecting to the same running game is instant and stable. Validated
+    /// before use; cleared implicitly when it no longer points at a Player.
+    /// </summary>
+    public static uint LastPlayerBase { get; set; }
 
     public static PlayerMemoryOffsets Offsets { get; } = new();
 
@@ -43,8 +58,10 @@ public static class MemorySettings
             if (s.ChainOffsets is { Count: > 0 })
                 ChainOffsets = s.ChainOffsets;
             ChainFinalDeref = s.ChainFinalDeref;
+            ChainBaseOverride = s.ChainBaseOverride;
             AutoRefresh = s.AutoRefresh;
             AutoScanFallback = s.AutoScanFallback;
+            LastPlayerBase = s.LastPlayerBase;
             Offsets.LoadFrom(s.Offsets);
         }
         catch (Exception ex)
@@ -63,8 +80,10 @@ public static class MemorySettings
                 ChainStackSubtract = ChainStackSubtract,
                 ChainOffsets = ChainOffsets,
                 ChainFinalDeref = ChainFinalDeref,
+                ChainBaseOverride = ChainBaseOverride,
                 AutoRefresh = AutoRefresh,
                 AutoScanFallback = AutoScanFallback,
+                LastPlayerBase = LastPlayerBase,
                 Offsets = Offsets.Export()
             };
             File.WriteAllText(SettingsFile, JsonSerializer.Serialize(s));
@@ -101,8 +120,10 @@ public static class MemorySettings
         public uint ChainStackSubtract { get; set; } = 0x3D8;
         public List<uint>? ChainOffsets { get; set; }
         public bool ChainFinalDeref { get; set; }
+        public uint ChainBaseOverride { get; set; }
         public bool AutoRefresh { get; set; } = true;
         public bool AutoScanFallback { get; set; } = true;
+        public uint LastPlayerBase { get; set; }
         public PlayerMemoryOffsets.OffsetData? Offsets { get; set; }
     }
 }
@@ -115,6 +136,9 @@ public static class MemorySettings
 public sealed class PlayerMemoryOffsets
 {
     // === Player fields (CSX "Terraria.Player" structure) ===
+    public uint PositionX = 0x20;     // float
+    public uint PositionY = 0x24;     // float
+    public uint BodyFrameCounter = 0x50; // double, advances every frame while the player updates
     public uint Name = 0x8C;          // System.String reference
     public uint Armor = 0xB4;         // Item[3]
     public uint Dye = 0xB8;           // Item[10]
